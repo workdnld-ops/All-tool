@@ -1,0 +1,15 @@
+{
+  "name": "簽單耗材頻率統計",
+  "short_name": "簽單統計",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1041/1041888.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

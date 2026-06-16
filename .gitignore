@@ -1,0 +1,17 @@
+.DS_Store
+Thumbs.db
+
+# Local-only credentials and temporary folders
+.gh-auth/
+.preview/
+.tools/
+.npm-cache/
+apps/*/.npm-cache/
+deploy/
+
+# Dependencies
+node_modules/
+apps/*/node_modules/
+
+# Keep imported apps as plain source, not nested repositories
+apps/*/.git/

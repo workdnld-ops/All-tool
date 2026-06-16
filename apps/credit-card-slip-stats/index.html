@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>簽單耗材統計 PWA</title>
+    
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1041/1041888.png">
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a73e8">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1041/1041888.png">
+    
+    <style>
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --peak: #e74c3c; --off: #27ae60; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 15px; margin: 0; }
+        .container { background: white; padding: 1.2rem; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); width: 100%; max-width: 480px; box-sizing: border-box; }
+        
+        /* 店鋪切換 */
+        .shop-tabs { display: flex; gap: 8px; margin-bottom: 15px; background: #eee; padding: 4px; border-radius: 10px; }
+        .shop-btn { flex: 1; padding: 10px; border: none; border-radius: 7px; cursor: pointer; font-weight: bold; background: transparent; transition: 0.3s; font-size: 1rem; }
+        .shop-btn.active { background: white; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        /* 1+1+2 統計排版 */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+        .stat-card { padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: center; }
+        .stat-full-width { grid-column: span 2; }
+        
+        .stat-card.full { background: #e8f0fe; border-color: #d2e3fc; }
+        .stat-card.year { background: #f1f3f4; border-color: #dadce0; }
+        .stat-card.peak { border-top: 4px solid var(--peak); background: #fff5f5; }
+        .stat-card.off { border-top: 4px solid var(--off); background: #f5fff8; }
+
+        .stat-label { font-size: 0.85rem; color: #5f6368; margin-bottom: 6px; font-weight: bold; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; color: #1967d2; }
+        .stat-card.peak .stat-value { color: var(--peak); font-size: 1.4rem; }
+        .stat-card.off .stat-value { color: var(--off); font-size: 1.4rem; }
+
+        /* 輸入區 */
+        .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        select { padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 1rem; background: white; }
+        textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #eaeeef; border-radius: 10px; box-sizing: border-box; font-size: 16px; resize: none; transition: 0.3s; }
+        textarea:focus { border-color: var(--primary); outline: none; }
+        .status { font-size: 0.7rem; color: #34a853; text-align: right; height: 15px; margin-top: 5px; font-weight: bold; }
+        
+        /* 歷史標籤 */
+        .tag-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; max-height: 200px; overflow-y: auto; padding: 5px; }
+        .day-tag { background: #f1f3f4; color: #3c4043; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; border: 1px solid #dadce0; }
+        .section-title { font-size: 0.85rem; font-weight: bold; color: #70757a; margin-top: 15px; border-left: 3px solid var(--primary); padding-left: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="shop-tabs">
+        <button id="btn-neihu" class="shop-btn active" onclick="switchShop('neihu')">內湖</button>
+        <button id="btn-ruiguang" class="shop-btn" onclick="switchShop('ruiguang')">瑞光</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card full stat-full-width">
+            <div class="stat-label">📊 全期總平均頻率</div>
+            <div class="stat-value"><span id="avg-full">0</span> <small style="font-size: 1rem;">天</small></div>
+        </div>
+        <div class="stat-card year stat-full-width">
+            <div class="stat-label">📅 <span id="current-year-label">2026</span> 年平均</div>
+            <div class="stat-value"><span id="avg-year">0</span> <small style="font-size: 1rem;">天</small></div>
+        </div>
+        <div class="stat-card peak">
+            <div class="stat-label">🔥 旺季 (7-1月)</div>
+            <div class="stat-value"><span id="avg-peak">0</span> <small style="font-size: 0.9rem;">天</small></div>
+        </div>
+        <div class="stat-card off">
+            <div class="stat-label">🍀 淡季 (2-6月)</div>
+            <div class="stat-value"><span id="avg-off">0</span> <small style="font-size: 0.9rem;">天</small></div>
+        </div>
+    </div>
+
+    <div class="control-row">
+        <label style="font-weight:bold">年份切換</label>
+        <select id="yearSelect" onchange="loadCurrentInput()"></select>
+    </div>
+    
+    <textarea id="dateInput" placeholder="輸入日期例如：1/5, 1/20..." oninput="handleInput()"></textarea>
+    <div id="saveStatus" class="status">雲端連線中...</div>
+
+    <div class="section-title">更換紀錄 (由新到舊)</div>
+    <div id="daysContainer" class="tag-container"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDzZhWJL8MZA-sqF_wjS9GH7e0Jn_Ysqho",
+    authDomain: "credit-paper-use.firebaseapp.com",
+    databaseURL: "https://credit-paper-use-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "credit-paper-use",
+    storageBucket: "credit-paper-use.firebasestorage.app",
+    messagingSenderId: "751908121457",
+    appId: "1:751908121457:web:caf62a76df8a16382e64d0",
+    measurementId: "G-584STP6STE"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  let currentShop = 'neihu';
+  let allData = { neihu: {}, ruiguang: {} };
+  let debounceTimer;
+
+  const yearSelect = document.getElementById('yearSelect');
+  const thisYear = new Date().getFullYear();
+  for (let y = 2030; y >= 2022; y--) {
+      let opt = document.createElement('option');
+      opt.value = y;
+      opt.innerHTML = y + ' 年';
+      if (y === thisYear) opt.selected = true;
+      yearSelect.appendChild(opt);
+  }
+  document.getElementById('current-year-label').innerText = thisYear;
+
+  onValue(ref(db, 'shops/'), (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+          allData = data;
+          updateUI();
+          document.getElementById('saveStatus').innerText = "雲端同步成功";
+      }
+  });
+
+  window.switchShop = (shop) => {
+      currentShop = shop;
+      document.querySelectorAll('.shop-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('btn-' + shop).classList.add('active');
+      updateUI();
+  };
+
+  window.loadCurrentInput = () => {
+    document.getElementById('current-year-label').innerText = yearSelect.value;
+    updateUI();
+  };
+
+  window.handleInput = () => {
+      const year = yearSelect.value;
+      const text = document.getElementById('dateInput').value;
+      if (!allData[currentShop]) allData[currentShop] = {};
+      allData[currentShop][year] = text;
+      
+      document.getElementById('saveStatus').innerText = "儲存中...";
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+          set(ref(db, `shops/${currentShop}/${year}`), text)
+            .then(() => document.getElementById('saveStatus').innerText = "已安全儲存");
+      }, 800);
+      calculateAndRender();
+  };
+
+  function updateUI() {
+      const year = yearSelect.value;
+      document.getElementById('dateInput').value = (allData[currentShop] && allData[currentShop][year]) || "";
+      calculateAndRender();
+  }
+
+  function calculateAndRender() {
+      const shopObj = allData[currentShop] || {};
+      const selectedYear = yearSelect.value;
+      let allDates = [];
+      
+      for (let year in shopObj) {
+          const lines = shopObj[year].split(/[\n,，、\s]+/).filter(d => d.includes('/'));
+          lines.forEach(dStr => {
+              const [m, d] = dStr.split('/');
+              const dateObj = new Date(parseInt(year), parseInt(m)-1, parseInt(d));
+              if (!isNaN(dateObj.getTime())) {
+                  allDates.push({ date: dateObj, year: year, month: parseInt(m) });
+              }
+          });
+      }
+
+      allDates.sort((a, b) => b.date - a.date);
+
+      let stats = {
+          full: { total: 0, count: 0 },
+          year: { total: 0, count: 0 },
+          peak: { total: 0, count: 0 },
+          off: { total: 0, count: 0 }
+      };
+
+      const container = document.getElementById('daysContainer');
+      container.innerHTML = "";
+
+      for (let i = 0; i < allDates.length - 1; i++) {
+          const diff = Math.round((allDates[i].date - allDates[i+1].date) / 86400000);
+          if (diff > 0) {
+              stats.full.total += diff;
+              stats.full.count++;
+
+              if (allDates[i].year === selectedYear) {
+                  stats.year.total += diff;
+                  stats.year.count++;
+              }
+
+              const m = allDates[i].month;
+              if (m === 1 || m >= 7) {
+                  stats.peak.total += diff;
+                  stats.peak.count++;
+              } else {
+                  stats.off.total += diff;
+                  stats.off.count++;
+              }
+              container.innerHTML += `<span class="day-tag">${diff}天</span>`;
+          }
+      }
+
+      const getAvg = (s) => s.count > 0 ? (s.total / s.count).toFixed(1) : "0";
+      document.getElementById('avg-full').innerText = getAvg(stats.full);
+      document.getElementById('avg-year').innerText = getAvg(stats.year);
+      document.getElementById('avg-peak').innerText = getAvg(stats.peak);
+      document.getElementById('avg-off').innerText = getAvg(stats.off);
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  }
+</script>
+</body>
+</html>

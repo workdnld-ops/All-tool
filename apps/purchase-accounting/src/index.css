@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Warm dark theme - cozy and inviting */
+    --background: 25 15% 12%;
+    --foreground: 30 15% 92%;
+
+    --card: 25 18% 16%;
+    --card-foreground: 30 15% 92%;
+
+    --popover: 25 20% 14%;
+    --popover-foreground: 30 15% 92%;
+
+    --primary: 30 85% 58%;
+    --primary-foreground: 25 15% 12%;
+
+    --secondary: 28 35% 25%;
+    --secondary-foreground: 30 15% 92%;
+
+    --muted: 25 20% 20%;
+    --muted-foreground: 30 10% 65%;
+
+    --accent: 28 75% 52%;
+    --accent-foreground: 25 15% 12%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 30 15% 98%;
+
+    --border: 25 20% 24%;
+    --input: 25 20% 24%;
+    --ring: 30 85% 58%;
+
+    --radius: 0.75rem;
+
+    /* Tag colors */
+    --tag-sky: 199 89% 48%;
+    --tag-emerald: 160 84% 39%;
+    --tag-purple: 271 81% 56%;
+    --tag-pink: 330 81% 60%;
+    --tag-rose: 356 75% 53%;
+    --tag-orange: 25 95% 53%;
+    --tag-red: 0 84% 60%;
+    --tag-violet: 258 90% 66%;
+    --tag-yellow: 45 93% 47%;
+    --tag-stone: 25 5% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+    touch-action: pan-x pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  
+  input, textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Desktop font size increase (4pt ≈ 0.25rem total) */
+  @media (min-width: 1024px) {
+    body {
+      font-size: 1.25rem;
+    }
+  }
+}

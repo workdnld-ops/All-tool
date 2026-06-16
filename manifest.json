@@ -1,0 +1,17 @@
+{
+  "name": "庶務工具",
+  "short_name": "庶務工具",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#1f6f64",
+  "icons": [
+    {
+      "src": "assets/toolbox-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

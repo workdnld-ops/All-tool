@@ -1,0 +1,10 @@
+{
+  "name": "all-tool",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "npm install --prefix apps/purchase-accounting --cache apps/purchase-accounting/.npm-cache && npm run build --prefix apps/purchase-accounting && node scripts/prepare-deploy.mjs",
+    "prepare-deploy": "node scripts/prepare-deploy.mjs"
+  }
+}
