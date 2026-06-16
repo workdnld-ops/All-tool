@@ -78,13 +78,13 @@ const Index = () => {
   const sensors = useSensors(
     useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 150,
-        tolerance: 5,
+        delay: 300,
+        tolerance: 8,
       },
     })
   );
@@ -411,7 +411,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+    <div className="h-[100dvh] max-h-[100dvh] flex flex-col bg-background overflow-hidden" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <input
         ref={fileInputRef}
         type="file"
@@ -473,7 +473,7 @@ const Index = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex-1 overflow-hidden pt-2">
+      <div className="flex-1 min-h-0 overflow-hidden pt-2">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
@@ -483,15 +483,19 @@ const Index = () => {
           <Swiper
             spaceBetween={16}
             slidesPerView={1}
-            centeredSlides={true}
+            centeredSlides={false}
             onSwiper={(swiper) => (swiperRef.current = swiper)}
             onSlideChange={(swiper) => setCurrentSlideIndex(swiper.activeIndex)}
-            className="h-full px-4 py-2"
-            slideToClickedSlide={true}
+            className="h-full min-h-0 px-4 py-2"
+            threshold={12}
+            resistanceRatio={0.35}
+            touchStartPreventDefault={false}
+            touchMoveStopPropagation={false}
+            slideToClickedSlide={false}
             breakpoints={{
               320: {
-                slidesPerView: 1.1,
-                centeredSlides: true,
+                slidesPerView: 1,
+                centeredSlides: false,
               },
               768: {
                 slidesPerView: 2,
@@ -514,7 +518,7 @@ const Index = () => {
             {lists
               .sort((a, b) => a.order - b.order)
               .map((list) => (
-                <SwiperSlide key={list.id} className="h-full">
+                <SwiperSlide key={list.id} className="h-full min-h-0">
                   <List
                     list={list}
                     tags={tags}

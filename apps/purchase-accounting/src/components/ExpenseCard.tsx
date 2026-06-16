@@ -72,6 +72,7 @@ export function ExpenseCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: isDeleteMode ? 'manipulation' : 'auto',
   };
 
   const cycleStatus = () => {
@@ -124,7 +125,7 @@ export function ExpenseCard({
       {...(!isDeleteMode ? listeners : {})}
       className={cn(
         "bg-card rounded-lg p-2 shadow-sm border border-border transition-all",
-        !isDeleteMode && "cursor-grab active:cursor-grabbing touch-none",
+        !isDeleteMode && "cursor-grab active:cursor-grabbing",
         isDeleteMode && "cursor-pointer hover:bg-destructive/20",
         isSelected && "ring-2 ring-destructive",
         isDragging && "opacity-50 cursor-grabbing"

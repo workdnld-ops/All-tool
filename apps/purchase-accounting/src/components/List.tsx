@@ -288,7 +288,7 @@ export function List({
   };
 
   return (
-    <div data-list-id={list.id} className="flex-shrink-0 w-full h-full bg-card rounded-2xl shadow-lg border border-border flex flex-col">
+    <div data-list-id={list.id} className="flex-shrink-0 w-full h-full min-h-0 bg-card rounded-2xl shadow-lg border border-border flex flex-col">
       <div className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -394,7 +394,7 @@ export function List({
         </div>
       </div>
 
-      <div ref={setNodeRef} className="overflow-y-auto p-4 space-y-2 h-[34rem]">
+      <div ref={setNodeRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2 touch-pan-y">
         <SortableContext items={list.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {list.cards.map((card) => (
             <ExpenseCard
