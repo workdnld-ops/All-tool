@@ -328,7 +328,7 @@ const Index = () => {
         tags,
         archivedLists,
         exportDate: new Date().toISOString(),
-        version: '1.1.1',
+        version: '1.1.2',
       };
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });

@@ -23,7 +23,7 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
 
   return (
     <header className="h-12 flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border px-4 flex items-center justify-between sticky top-0 z-50">
-      <h1 className="font-bold text-base">記帳本 v1.1.1</h1>
+      <h1 className="font-bold text-base">記帳本 v1.1.2</h1>
       
       <div className="flex gap-2">
         <Button
