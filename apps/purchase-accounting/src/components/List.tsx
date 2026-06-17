@@ -96,15 +96,28 @@ export function List({
   };
 
   const handleSortCards = () => {
-    const statusOrder = ['invoice', 'package', 'complete', 'check', 'excluded', 'none'];
-    const sortedCards = [...list.cards]
-      .sort((a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status))
-      .map((card, index) => ({ ...card, order: index }));
+    const statusOrder: Record<ExpenseCardType['status'], number> = {
+      none: 0,
+      invoice: 1,
+      package: 2,
+      complete: 3,
+      check: 4,
+      excluded: 5,
+    };
+    const sortedCards = list.cards
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .sort((a, b) => {
+        const rankDiff = statusOrder[a.card.status] - statusOrder[b.card.status];
+        return rankDiff || a.originalIndex - b.originalIndex;
+      })
+      .map(({ card }, index) => ({ ...card, order: index }));
     onUpdateList(list.id, { cards: sortedCards });
   };
 
   const handleScreenshot = async () => {
     try {
+      const screenshotCards = list.cards.filter(card => card.status !== 'excluded');
+
       // 高DPI縮放比例 (提高清晰度)
       const SCALE = 3; // 3倍解析度，確保文字清晰
       
@@ -150,7 +163,7 @@ export function List({
       const singleCardWidth = CARD_PADDING + dateWidth + 8 + contentWidth + 8 + amountWidth + CARD_PADDING;
 
       // 計算列數
-      const totalColumns = Math.ceil(list.cards.length / CARDS_PER_COLUMN);
+      const totalColumns = Math.max(1, Math.ceil(screenshotCards.length / CARDS_PER_COLUMN));
       
       // 動態計算圖片寬度 = 左邊距 + (單列寬度 × 列數) + (列間距 × (列數-1)) + 右邊距
       const imageWidth = PADDING + (singleCardWidth * totalColumns) + (COLUMN_GAP * (totalColumns - 1)) + PADDING;
@@ -197,7 +210,7 @@ export function List({
       // 繪製多列卡片
       for (let col = 0; col < totalColumns; col++) {
         const columnStartX = PADDING + (col * (singleCardWidth + COLUMN_GAP));
-        const columnCards = list.cards.slice(col * CARDS_PER_COLUMN, (col + 1) * CARDS_PER_COLUMN);
+        const columnCards = screenshotCards.slice(col * CARDS_PER_COLUMN, (col + 1) * CARDS_PER_COLUMN);
 
         columnCards.forEach((card, rowIndex) => {
           const yOffset = HEADER_HEIGHT + PADDING + (rowIndex * CARD_HEIGHT);

@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 
@@ -248,6 +249,15 @@ export function ExpenseCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
+            <DropdownMenuItem
+              onClick={() => onUpdate(card.id, { tagId: null })}
+              disabled={!card.tagId}
+              className="mb-1 text-muted-foreground"
+            >
+              <X className="w-3.5 h-3.5 mr-2" />
+              重置標籤
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {tags.map(tag => (
               <DropdownMenuItem
                 key={tag.id}
