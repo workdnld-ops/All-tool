@@ -488,9 +488,13 @@ const Index = () => {
             onSlideChange={(swiper) => setCurrentSlideIndex(swiper.activeIndex)}
             className="h-full min-h-0 px-4 py-2"
             threshold={12}
+            touchAngle={35}
             resistanceRatio={0.35}
             touchStartPreventDefault={false}
             touchMoveStopPropagation={false}
+            preventClicks={true}
+            preventClicksPropagation={true}
+            nested={true}
             slideToClickedSlide={false}
             breakpoints={{
               320: {

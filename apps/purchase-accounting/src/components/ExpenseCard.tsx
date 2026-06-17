@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, FileText, Package, PackageCheck, Check, File, Zap, Minus } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { X, FileText, Package, PackageCheck, Check, File, Zap, Minus, GripVertical } from 'lucide-react';
 import { ExpenseCard as ExpenseCardType, DeliveryStatus, InvoiceType, Tag } from '@/types';
 import { cn } from '@/lib/utils';
 import { useSortable } from '@dnd-kit/sortable';
@@ -57,11 +57,15 @@ export function ExpenseCard({
   const [tempDate, setTempDate] = useState(card.date);
   const [tempContent, setTempContent] = useState(card.content);
   const [tempAmount, setTempAmount] = useState(card.amount.toString());
+  const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
+  const pointerStateRef = useRef({ x: 0, y: 0, moved: false });
+  const tagPointerTypeRef = useRef<string | null>(null);
 
   const {
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
   } = useSortable({ 
@@ -72,7 +76,30 @@ export function ExpenseCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    touchAction: isDeleteMode ? 'manipulation' : 'auto',
+    touchAction: 'auto',
+  };
+
+  const handlePointerDownCapture = (event: React.PointerEvent) => {
+    pointerStateRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+    };
+  };
+
+  const handlePointerMoveCapture = (event: React.PointerEvent) => {
+    const dx = Math.abs(event.clientX - pointerStateRef.current.x);
+    const dy = Math.abs(event.clientY - pointerStateRef.current.y);
+    if (dx > 8 || dy > 8) {
+      pointerStateRef.current.moved = true;
+    }
+  };
+
+  const stopClickAfterGesture = (event: React.MouseEvent) => {
+    if (!pointerStateRef.current.moved) return;
+    event.preventDefault();
+    event.stopPropagation();
+    pointerStateRef.current.moved = false;
   };
 
   const cycleStatus = () => {
@@ -121,18 +148,32 @@ export function ExpenseCard({
     <div
       ref={setNodeRef}
       style={style}
-      {...(!isDeleteMode ? attributes : {})}
-      {...(!isDeleteMode ? listeners : {})}
       className={cn(
         "bg-card rounded-lg p-2 shadow-sm border border-border transition-all",
-        !isDeleteMode && "cursor-grab active:cursor-grabbing",
         isDeleteMode && "cursor-pointer hover:bg-destructive/20",
         isSelected && "ring-2 ring-destructive",
-        isDragging && "opacity-50 cursor-grabbing"
+        isDragging && "opacity-50"
       )}
+      onPointerDownCapture={handlePointerDownCapture}
+      onPointerMoveCapture={handlePointerMoveCapture}
+      onClickCapture={stopClickAfterGesture}
       onClick={isDeleteMode ? onSelect : undefined}
     >
       <div className="flex items-center gap-0.5 text-sm">
+        <Button
+          ref={setActivatorNodeRef}
+          variant="ghost"
+          size="icon"
+          type="button"
+          aria-label="拖曳排序"
+          className="h-6 w-5 flex-shrink-0 cursor-grab touch-none p-0 text-muted-foreground active:cursor-grabbing"
+          disabled={isDeleteMode}
+          {...(!isDeleteMode ? attributes : {})}
+          {...(!isDeleteMode ? listeners : {})}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </Button>
+
         <Button
           variant="ghost"
           size="icon"
@@ -164,11 +205,40 @@ export function ExpenseCard({
           </button>
         )}
 
-        <DropdownMenu>
+        <DropdownMenu open={isTagMenuOpen} onOpenChange={setIsTagMenuOpen}>
           <DropdownMenuTrigger asChild disabled={isDeleteMode}>
             <Button
               variant="outline"
               size="sm"
+              type="button"
+              onPointerDownCapture={(event) => {
+                tagPointerTypeRef.current = event.pointerType;
+                if (event.pointerType === 'touch') {
+                  event.preventDefault();
+                }
+              }}
+              onPointerUp={(event) => {
+                if (event.pointerType !== 'touch') return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (pointerStateRef.current.moved) {
+                  pointerStateRef.current.moved = false;
+                  return;
+                }
+                setIsTagMenuOpen((open) => !open);
+              }}
+              onClick={(event) => {
+                if (pointerStateRef.current.moved) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  pointerStateRef.current.moved = false;
+                  return;
+                }
+                if (tagPointerTypeRef.current === 'touch') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }
+              }}
               className={cn(
                 "h-6 px-1.5 text-[10px] min-w-[2.5rem] flex-shrink-0",
                 currentTag && `bg-tag-${currentTag.color} border-tag-${currentTag.color} text-white`
