@@ -24,21 +24,60 @@ const database = getDatabase(app);
 const userId = "single-user";
 const rootPath = `users/${userId}/drinkCalculator`;
 
-export const DEFAULT_ITEMS = [
-  { id: "fin", name: "FIN", pricePerCase: 350, bottlesPerCase: 24, order: 0, active: true },
-  { id: "tree-top-apple", name: "樹頂蘋果汁", pricePerCase: 480, bottlesPerCase: 24, order: 1, active: true },
-  { id: "cola", name: "可樂", pricePerCase: 345, bottlesPerCase: 24, order: 2, active: true },
-  { id: "apple-soda", name: "蘋果西打", pricePerCase: 365, bottlesPerCase: 24, order: 3, active: true },
-  { id: "oolong-tea", name: "烏龍茶", pricePerCase: 340, bottlesPerCase: 24, order: 4, active: true },
+export const STORE_OPTIONS = [
+  { id: "neihu", shortName: "內湖", lineName: "台北內湖店" },
+  { id: "ruiguang", shortName: "瑞光", lineName: "台北瑞光店" },
 ];
 
+export const STORE_LIMITS = {
+  neihu: {
+    fin: 13,
+    "tree-top-apple": 9,
+    cola: 9,
+    "apple-soda": 9,
+    "oolong-tea": 6,
+  },
+  ruiguang: {
+    fin: 14,
+    "tree-top-apple": 12,
+    cola: 9,
+    "apple-soda": 10,
+    "oolong-tea": 11,
+  },
+};
+
+export const LINE_ITEM_NAMES = {
+  fin: "Fin",
+  "tree-top-apple": "樹頂蘋果汁 320ml",
+  cola: "可樂",
+  "apple-soda": "蘋果蘇打",
+  "oolong-tea": "開喜烏龍茶",
+};
+
+export const DEFAULT_ITEMS = [
+  { id: "fin", name: "FIN", pricePerCase: 350, bottlesPerCase: 24, order: 0, active: true },
+  { id: "tree-top-apple", name: "樹頂蘋果汁 320ml", pricePerCase: 480, bottlesPerCase: 24, order: 1, active: true },
+  { id: "cola", name: "可樂", pricePerCase: 345, bottlesPerCase: 24, order: 2, active: true },
+  { id: "apple-soda", name: "蘋果蘇打", pricePerCase: 365, bottlesPerCase: 24, order: 3, active: true },
+  { id: "oolong-tea", name: "開喜烏龍茶", pricePerCase: 340, bottlesPerCase: 24, order: 4, active: true },
+];
+
+export function getStore(storeId) {
+  return STORE_OPTIONS.find((store) => store.id === storeId) || STORE_OPTIONS[0];
+}
+
+export function getStoreLimit(storeId, itemId) {
+  return STORE_LIMITS[storeId]?.[itemId] ?? Number.POSITIVE_INFINITY;
+}
+
 function normalizeItem(item, fallbackId) {
+  const defaultItem = DEFAULT_ITEMS.find((candidate) => candidate.id === fallbackId);
   return {
     id: String(item.id || fallbackId),
-    name: String(item.name || "未命名品項"),
-    pricePerCase: Math.max(0, Number(item.pricePerCase) || 0),
-    bottlesPerCase: Math.max(1, Number(item.bottlesPerCase) || 1),
-    order: Number.isFinite(Number(item.order)) ? Number(item.order) : 0,
+    name: String(item.name || defaultItem?.name || "未命名品項"),
+    pricePerCase: Math.max(0, Number(item.pricePerCase) || defaultItem?.pricePerCase || 0),
+    bottlesPerCase: Math.max(1, Number(item.bottlesPerCase) || defaultItem?.bottlesPerCase || 1),
+    order: Number.isFinite(Number(item.order)) ? Number(item.order) : defaultItem?.order || 0,
     active: item.active !== false,
   };
 }
@@ -55,14 +94,19 @@ function normalizeItems(data) {
 
 function normalizeOrders(data) {
   return Object.entries(data || {})
-    .map(([id, order]) => ({
-      id,
-      date: order.date || "",
-      createdAt: order.createdAt || "",
-      items: order.items || {},
-      totalBoxes: Number(order.totalBoxes) || 0,
-      totalPrice: Number(order.totalPrice) || 0,
-    }))
+    .map(([id, order]) => {
+      const store = getStore(order.storeId);
+      return {
+        id,
+        date: order.date || "",
+        createdAt: order.createdAt || "",
+        storeId: store.id,
+        storeName: order.storeName || store.lineName,
+        items: order.items || {},
+        totalBoxes: Number(order.totalBoxes) || 0,
+        totalPrice: Number(order.totalPrice) || 0,
+      };
+    })
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
@@ -99,7 +143,7 @@ export function subscribeOrders(onChange, onError) {
   const ordersRef = ref(database, `${rootPath}/orders`);
   return onValue(
     ordersRef,
-    (snapshot) => onChange(normalizeOrders(snapshot.val()).slice(0, 20)),
+    (snapshot) => onChange(normalizeOrders(snapshot.val()).slice(0, 60)),
     (error) => {
       console.error("Drink orders read error:", error);
       onError?.(error);

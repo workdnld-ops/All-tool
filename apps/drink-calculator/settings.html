@@ -43,7 +43,6 @@
       margin: 0 auto;
       padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
       display: grid;
-      grid-template-rows: auto auto auto auto;
       align-content: start;
       gap: 6px;
     }
@@ -90,11 +89,6 @@
       border-color: var(--primary);
       background: var(--primary);
       color: #fff;
-    }
-
-    .button.danger {
-      border-color: rgba(180, 35, 24, 0.24);
-      color: var(--danger);
     }
 
     .add-panel,
@@ -317,7 +311,7 @@
       const bottlesPerCase = Math.max(1, parseNonNegativeInteger(newBottles.value));
 
       if (!name) {
-        setStatus("請輸入品項名稱。", true);
+        setStatus("請輸入品項名稱", true);
         newName.focus();
         return;
       }
@@ -347,7 +341,7 @@
       const active = itemValue(id, "active").checked;
 
       if (!name) {
-        setStatus("品項名稱不可空白。", true);
+        setStatus("品項名稱不能空白", true);
         return;
       }
 
