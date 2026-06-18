@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>飲料計算器</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e3f1ee;
+      --accent: #9a6700;
+      --danger: #b42318;
+      --shadow: 0 12px 30px rgba(23, 33, 38, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.55rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-bottom: 4px;
+    }
+
+    .metric strong {
+      font-size: 1.45rem;
+      color: var(--primary);
+    }
+
+    .item-list,
+    .history-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item,
+    .order {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 88px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .item h2,
+    .order h2 {
+      margin: 0;
+      font-size: 1rem;
+      line-height: 1.25;
+    }
+
+    .item-meta,
+    .order-meta {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    .quantity {
+      width: 88px;
+      min-height: 44px;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .quantity:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.18);
+      outline: none;
+    }
+
+    .subtotal {
+      margin-top: 6px;
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0 20px;
+    }
+
+    .section-title {
+      margin: 20px 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .order-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .delete {
+      color: var(--danger);
+      border: 0;
+      background: transparent;
+      padding: 4px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    @media (max-width: 520px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .header-actions,
+      .actions {
+        width: 100%;
+      }
+
+      .header-actions .button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>飲料計算器</h1>
+        <div class="status" id="status">讀取飲料資料中...</div>
+      </div>
+      <div class="header-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <a class="button" href="settings.html">設定</a>
+      </div>
+    </header>
+
+    <section class="summary" aria-label="合計">
+      <div class="metric">
+        <span>總箱數</span>
+        <strong><span id="total-boxes">0</span> 箱</strong>
+      </div>
+      <div class="metric">
+        <span>總金額</span>
+        <strong id="total-price">$0</strong>
+      </div>
+    </section>
+
+    <section class="item-list" id="item-list" aria-label="飲料品項"></section>
+
+    <div class="actions">
+      <button class="button" id="reset-button" type="button">重置</button>
+      <button class="button primary" id="save-button" type="button" disabled>儲存訂單</button>
+    </div>
+
+    <h2 class="section-title">最近訂單</h2>
+    <section class="history-list" id="history-list" aria-label="最近訂單"></section>
+  </main>
+
+  <script type="module">
+    import {
+      deleteOrder,
+      formatCurrency,
+      parseNonNegativeInteger,
+      saveOrder,
+      subscribeItems,
+      subscribeOrders,
+    } from "./drink-data.js";
+
+    const itemList = document.getElementById("item-list");
+    const historyList = document.getElementById("history-list");
+    const status = document.getElementById("status");
+    const totalBoxes = document.getElementById("total-boxes");
+    const totalPrice = document.getElementById("total-price");
+    const resetButton = document.getElementById("reset-button");
+    const saveButton = document.getElementById("save-button");
+
+    let items = [];
+    let quantities = {};
+    let currentTotals = { boxes: 0, price: 0, lines: [] };
+
+    function pricePerBottle(item) {
+      return item.pricePerCase / item.bottlesPerCase;
+    }
+
+    function formatUnitCurrency(value) {
+      return `$${(Number(value) || 0).toLocaleString("zh-TW", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })}`;
+    }
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function renderItems() {
+      const activeItems = items.filter((item) => item.active);
+      if (activeItems.length === 0) {
+        itemList.innerHTML = '<div class="empty">目前沒有啟用中的飲料品項，請先到設定新增或啟用品項。</div>';
+        calculateTotals();
+        return;
+      }
+
+      itemList.innerHTML = activeItems.map((item) => `
+        <article class="item">
+          <div>
+            <h2>${escapeHtml(item.name)}</h2>
+            <div class="item-meta">
+              每箱 ${item.bottlesPerCase} 瓶 · ${formatCurrency(item.pricePerCase)} / 箱 · ${formatUnitCurrency(pricePerBottle(item))} / 瓶
+            </div>
+            <div class="subtotal" id="subtotal-${item.id}">$0</div>
+          </div>
+          <input
+            class="quantity"
+            id="quantity-${item.id}"
+            data-id="${item.id}"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            placeholder="0"
+            value="${quantities[item.id] || ""}"
+            aria-label="${escapeHtml(item.name)} 箱數"
+          >
+        </article>
+      `).join("");
+      calculateTotals();
+    }
+
+    function calculateTotals() {
+      const lines = [];
+      let boxes = 0;
+      let price = 0;
+
+      items.filter((item) => item.active).forEach((item) => {
+        const input = document.getElementById(`quantity-${item.id}`);
+        const quantity = parseNonNegativeInteger(input?.value || quantities[item.id]);
+        const subtotal = quantity * item.pricePerCase;
+        quantities[item.id] = quantity ? String(quantity) : "";
+        boxes += quantity;
+        price += subtotal;
+
+        const subtotalElement = document.getElementById(`subtotal-${item.id}`);
+        if (subtotalElement) subtotalElement.textContent = formatCurrency(subtotal);
+
+        if (quantity > 0) {
+          lines.push({
+            id: item.id,
+            name: item.name,
+            boxes: quantity,
+            pricePerCase: item.pricePerCase,
+            bottlesPerCase: item.bottlesPerCase,
+            subtotal,
+          });
+        }
+      });
+
+      currentTotals = { boxes, price, lines };
+      totalBoxes.textContent = String(boxes);
+      totalPrice.textContent = formatCurrency(price);
+      saveButton.disabled = boxes === 0;
+    }
+
+    function resetForm() {
+      quantities = {};
+      document.querySelectorAll(".quantity").forEach((input) => {
+        input.value = "";
+      });
+      calculateTotals();
+    }
+
+    async function handleSaveOrder() {
+      calculateTotals();
+      if (currentTotals.boxes === 0) return;
+
+      saveButton.disabled = true;
+      setStatus("儲存訂單中...");
+
+      const createdAt = new Date().toISOString();
+      const orderItems = Object.fromEntries(
+        currentTotals.lines.map((line) => [
+          line.id,
+          {
+            name: line.name,
+            boxes: line.boxes,
+            pricePerCase: line.pricePerCase,
+            bottlesPerCase: line.bottlesPerCase,
+            subtotal: line.subtotal,
+          },
+        ]),
+      );
+
+      try {
+        await saveOrder({
+          date: createdAt.slice(0, 10),
+          createdAt,
+          items: orderItems,
+          totalBoxes: currentTotals.boxes,
+          totalPrice: currentTotals.price,
+        });
+        resetForm();
+        setStatus("訂單已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("訂單儲存失敗，請確認網路或 Firebase 權限。", true);
+        calculateTotals();
+      }
+    }
+
+    function renderOrders(orders) {
+      if (orders.length === 0) {
+        historyList.innerHTML = '<div class="empty">尚無歷史訂單。</div>';
+        return;
+      }
+
+      historyList.innerHTML = orders.map((order) => {
+        const lines = Object.values(order.items || {})
+          .map((item) => `${escapeHtml(item.name)} ${item.boxes} 箱`)
+          .join("、");
+        return `
+          <article class="order">
+            <div class="order-head">
+              <div>
+                <h2>${order.date || "未記錄日期"} · ${formatCurrency(order.totalPrice)}</h2>
+                <div class="order-meta">${order.totalBoxes} 箱 · ${lines || "無明細"}</div>
+              </div>
+              <button class="delete" data-delete-order="${order.id}" type="button">刪除</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    itemList.addEventListener("input", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      const id = event.target.dataset.id;
+      if (!id) return;
+      quantities[id] = event.target.value;
+      calculateTotals();
+    });
+
+    historyList.addEventListener("click", async (event) => {
+      const button = event.target.closest("[data-delete-order]");
+      if (!button) return;
+      if (!confirm("確定刪除這筆飲料訂單？")) return;
+      try {
+        await deleteOrder(button.dataset.deleteOrder);
+      } catch (error) {
+        console.error(error);
+        setStatus("刪除訂單失敗。", true);
+      }
+    });
+
+    resetButton.addEventListener("click", resetForm);
+    saveButton.addEventListener("click", handleSaveOrder);
+
+    subscribeItems(
+      (loadedItems) => {
+        items = loadedItems;
+        setStatus("資料已同步");
+        renderItems();
+      },
+      () => setStatus("飲料資料讀取失敗，請確認網路或 Firebase 權限。", true),
+    );
+
+    subscribeOrders(
+      renderOrders,
+      () => setStatus("歷史訂單讀取失敗。", true),
+    );
+  </script>
+</body>
+</html>

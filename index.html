@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>庶務工具</title>
+  <title>庶務工具箱</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/toolbox-icon.svg">
@@ -20,6 +20,8 @@
       --primary-soft: #e5f2ef;
       --gold: #8a5a00;
       --gold-soft: #fff4d8;
+      --blue: #245b9b;
+      --blue-soft: #e7f0fb;
       --shadow: 0 12px 34px rgba(30, 42, 51, 0.09);
     }
 
@@ -34,7 +36,7 @@
     }
 
     .shell {
-      width: min(960px, 100%);
+      width: min(1040px, 100%);
       margin: 0 auto;
       padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
     }
@@ -89,6 +91,7 @@
     }
 
     .toolbar strong { font-size: 0.96rem; }
+
     .toolbar span {
       color: var(--muted);
       font-size: 0.88rem;
@@ -96,7 +99,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
     }
 
@@ -117,6 +120,7 @@
     }
 
     .tool:active { transform: translateY(1px); }
+
     .tool:hover {
       border-color: rgba(31, 111, 100, 0.5);
       box-shadow: 0 16px 40px rgba(30, 42, 51, 0.13);
@@ -143,6 +147,11 @@
     .icon.purchase {
       background: var(--gold-soft);
       color: var(--gold);
+    }
+
+    .icon.drink {
+      background: var(--blue-soft);
+      color: var(--blue);
     }
 
     .icon svg {
@@ -186,6 +195,10 @@
       font-size: 0.95rem;
     }
 
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
     @media (max-width: 680px) {
       .shell {
         padding-left: 14px;
@@ -215,17 +228,17 @@
     <header>
       <div class="brand">
         <img src="assets/toolbox-icon.svg" alt="">
-        <h1>庶務工具</h1>
+        <h1>庶務工具箱</h1>
       </div>
       <div class="date" id="today"></div>
     </header>
 
-    <section class="toolbar" aria-label="工具狀態">
-      <strong>2 個工具</strong>
-      <span>信用卡簽單紙統計、採購記帳</span>
+    <section class="toolbar" aria-label="工具箱狀態">
+      <strong>3 個工具</strong>
+      <span>信用卡簽單紙統計、採購記帳、飲料計算器</span>
     </section>
 
-    <section class="grid" aria-label="工具列表">
+    <section class="grid" aria-label="工具清單">
       <a class="tool" href="apps/credit-card-slip-stats/index.html">
         <div class="tool-top">
           <div class="icon" aria-hidden="true">
@@ -237,11 +250,11 @@
               <path d="M16 16v-7"/>
             </svg>
           </div>
-          <span class="status">可使用</span>
+          <span class="status">已整合</span>
         </div>
         <div>
           <h2>信用卡簽單紙消耗統計</h2>
-          <p>統計內湖、瑞光兩店簽單紙更換頻率。</p>
+          <p>統計各據點簽單紙用量與補充數量。</p>
         </div>
         <span class="action">開啟</span>
       </a>
@@ -256,11 +269,29 @@
               <path d="M9 15h3"/>
             </svg>
           </div>
-          <span class="status">可使用</span>
+          <span class="status">已整合</span>
         </div>
         <div>
           <h2>採購記帳</h2>
           <p>記錄採購項目、金額、標籤與購買頻率。</p>
+        </div>
+        <span class="action">開啟</span>
+      </a>
+
+      <a class="tool" href="apps/drink-calculator/index.html">
+        <div class="tool-top">
+          <div class="icon drink" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M8 3h8"/>
+              <path d="M10 3v4l-2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9l-2-2V3"/>
+              <path d="M8 13h8"/>
+            </svg>
+          </div>
+          <span class="status">已整合</span>
+        </div>
+        <div>
+          <h2>飲料計算器</h2>
+          <p>計算飲料訂購箱數與金額，並保存歷史訂單。</p>
         </div>
         <span class="action">開啟</span>
       </a>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>飲料品項設定</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --danger: #b42318;
+      --shadow: 0 12px 30px rgba(23, 33, 38, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(880px, 100%);
+      margin: 0 auto;
+      padding: max(18px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      letter-spacing: 0;
+    }
+
+    .button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 12px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.danger {
+      border-color: rgba(180, 35, 24, 0.22);
+      color: var(--danger);
+    }
+
+    .status {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+
+    .panel,
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px 120px 92px;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    input {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.18);
+      outline: none;
+    }
+
+    .item-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) 96px 96px 72px 86px 156px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .toggle input {
+      width: 18px;
+      min-height: 18px;
+      height: 18px;
+    }
+
+    .row-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.58);
+    }
+
+    @media (max-width: 760px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      header .button {
+        width: 100%;
+      }
+
+      .form-grid,
+      .item {
+        grid-template-columns: 1fr;
+      }
+
+      .row-actions {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>飲料品項設定</h1>
+        <div class="status" id="status">讀取設定中...</div>
+      </div>
+      <a class="button" href="index.html">返回計算器</a>
+    </header>
+
+    <section class="panel" aria-label="新增品項">
+      <div class="form-grid">
+        <label>
+          品項名稱
+          <input id="new-name" type="text" placeholder="例如：FIN">
+        </label>
+        <label>
+          每箱價格
+          <input id="new-price" type="number" min="0" inputmode="numeric" placeholder="0">
+        </label>
+        <label>
+          每箱瓶數
+          <input id="new-bottles" type="number" min="1" inputmode="numeric" value="24">
+        </label>
+        <button class="button primary" id="add-button" type="button">新增</button>
+      </div>
+    </section>
+
+    <section class="item-list" id="item-list" aria-label="飲料品項設定"></section>
+  </main>
+
+  <script type="module">
+    import {
+      addItem,
+      deleteItem,
+      parseNonNegativeInteger,
+      saveItem,
+      subscribeItems,
+    } from "./drink-data.js";
+
+    const status = document.getElementById("status");
+    const itemList = document.getElementById("item-list");
+    const addButton = document.getElementById("add-button");
+    const newName = document.getElementById("new-name");
+    const newPrice = document.getElementById("new-price");
+    const newBottles = document.getElementById("new-bottles");
+    let items = [];
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function itemValue(id, field) {
+      return document.querySelector(`[data-id="${id}"][data-field="${field}"]`);
+    }
+
+    function renderItems() {
+      if (items.length === 0) {
+        itemList.innerHTML = '<div class="empty">尚無飲料品項。</div>';
+        return;
+      }
+
+      itemList.innerHTML = items.map((item) => `
+        <article class="item">
+          <label>
+            品項名稱
+            <input data-id="${item.id}" data-field="name" type="text" value="${escapeHtml(item.name)}">
+          </label>
+          <label>
+            每箱價格
+            <input data-id="${item.id}" data-field="pricePerCase" type="number" min="0" inputmode="numeric" value="${item.pricePerCase}">
+          </label>
+          <label>
+            每箱瓶數
+            <input data-id="${item.id}" data-field="bottlesPerCase" type="number" min="1" inputmode="numeric" value="${item.bottlesPerCase}">
+          </label>
+          <label>
+            排序
+            <input data-id="${item.id}" data-field="order" type="number" inputmode="numeric" value="${item.order}">
+          </label>
+          <label class="toggle">
+            <input data-id="${item.id}" data-field="active" type="checkbox" ${item.active ? "checked" : ""}>
+            啟用
+          </label>
+          <div class="row-actions">
+            <button class="button primary" data-save="${item.id}" type="button">儲存</button>
+            <button class="button danger" data-delete="${item.id}" type="button">刪除</button>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    async function handleAddItem() {
+      const name = newName.value.trim();
+      const pricePerCase = parseNonNegativeInteger(newPrice.value);
+      const bottlesPerCase = Math.max(1, parseNonNegativeInteger(newBottles.value));
+
+      if (!name) {
+        setStatus("請輸入品項名稱。", true);
+        newName.focus();
+        return;
+      }
+
+      try {
+        await addItem({
+          name,
+          pricePerCase,
+          bottlesPerCase,
+          order: items.length,
+        });
+        newName.value = "";
+        newPrice.value = "";
+        newBottles.value = "24";
+        setStatus("品項已新增");
+      } catch (error) {
+        console.error(error);
+        setStatus("新增失敗，請確認網路或 Firebase 權限。", true);
+      }
+    }
+
+    async function handleSaveItem(id) {
+      const name = itemValue(id, "name").value.trim();
+      const pricePerCase = parseNonNegativeInteger(itemValue(id, "pricePerCase").value);
+      const bottlesPerCase = Math.max(1, parseNonNegativeInteger(itemValue(id, "bottlesPerCase").value));
+      const order = Number.parseInt(itemValue(id, "order").value, 10) || 0;
+      const active = itemValue(id, "active").checked;
+
+      if (!name) {
+        setStatus("品項名稱不可空白。", true);
+        return;
+      }
+
+      try {
+        await saveItem({ id, name, pricePerCase, bottlesPerCase, order, active });
+        setStatus("品項已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("儲存失敗，請確認網路或 Firebase 權限。", true);
+      }
+    }
+
+    itemList.addEventListener("click", async (event) => {
+      const saveButton = event.target.closest("[data-save]");
+      if (saveButton) {
+        await handleSaveItem(saveButton.dataset.save);
+        return;
+      }
+
+      const deleteButton = event.target.closest("[data-delete]");
+      if (!deleteButton) return;
+      if (!confirm("確定刪除這個飲料品項？歷史訂單不會被刪除。")) return;
+
+      try {
+        await deleteItem(deleteButton.dataset.delete);
+        setStatus("品項已刪除");
+      } catch (error) {
+        console.error(error);
+        setStatus("刪除失敗，請確認網路或 Firebase 權限。", true);
+      }
+    });
+
+    addButton.addEventListener("click", handleAddItem);
+
+    subscribeItems(
+      (loadedItems) => {
+        items = loadedItems;
+        renderItems();
+        setStatus("設定已同步");
+      },
+      () => setStatus("設定讀取失敗，請確認網路或 Firebase 權限。", true),
+    );
+  </script>
+</body>
+</html>

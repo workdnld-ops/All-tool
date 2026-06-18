@@ -1,72 +1,39 @@
 # All-tool
 
-這個資料夾是整合後要部署的庶務工具箱。外層的 `信用卡簽單紙消耗統計` 和 `採購記帳` 是原始來源備份，不是部署目標。
+這個資料夾是整合後要部署的庶務工具箱。外層的工具資料夾是來源備份，不是 Cloudflare 的部署目標。
 
-## 要部署哪裡
+## 工具清單
 
-部署時請使用 `All-tool` 這個資料夾作為網站根目錄。
+- `apps/credit-card-slip-stats`：信用卡簽單紙消耗統計。
+- `apps/purchase-accounting`：採購記帳，Cloudflare 會使用 build 後的 `apps/purchase-accounting/dist/`。
+- `apps/drink-calculator`：飲料計算器，包含計算頁、品項設定頁與 Firebase 歷史訂單。
 
-- 首頁入口：`index.html`
-- 信用卡簽單紙統計：`apps/credit-card-slip-stats/index.html`
-- 採購記帳靜態版：`apps/purchase-accounting/dist/`
+## Cloudflare Pages 設定
 
-如果部署到 Cloudflare Pages，建議設定：
+如果 GitHub repo 根目錄就是 `All-tool`，Cloudflare 設定如下：
 
-- Root directory：如果 GitHub repo 根目錄就是 `All-tool`，留空；如果 repo 是外層資料夾，填 `All-tool`
-- Build command：`npm run build`
-- Output directory：`deploy`
+```text
+Framework preset: None
+Build command: npm run build
+Build output directory: deploy
+```
 
-Cloudflare build 時會先產生採購記帳靜態版，再把實際網站檔案整理到 `deploy/`。Cloudflare 只會發布 `deploy/`，不會發布原始碼、`node_modules` 或 npm 快取。
+如果 GitHub repo 外層還包著其他資料夾，請把 Cloudflare 的 Root directory 設為 `All-tool`。
 
-如果只是本機或簡單靜態空間部署，先執行 `npm run build`，再上傳 `deploy/` 內容即可。
-
-## GitHub 到 Cloudflare Pages
-
-1. 在 GitHub 建立 repository，例如 `all-tool`。
-2. 在這個資料夾初始化並推送：
-
-   ```powershell
-   cd "C:\Users\ACH\Desktop\Codex專案 - 庶務相關工具\All-tool"
-   git add .
-   git commit -m "Initial All-tool deployment"
-   git branch -M main
-   git remote add origin https://github.com/你的帳號/all-tool.git
-   git push -u origin main
-   ```
-
-3. 到 Cloudflare Dashboard > Workers & Pages > Create application > Pages > Connect to Git。
-4. 選 GitHub repository，設定：
-
-   ```text
-   Framework preset: None
-   Production branch: main
-   Root directory: 留空
-   Build command: npm run build
-   Build output directory: deploy
-   ```
-
-如果你不是把 `All-tool` 當 repo 根目錄，而是把外層資料夾整包推到 GitHub，Cloudflare 的 Root directory 請填 `All-tool`。
-
-## 工具
-
-- `apps/credit-card-slip-stats`：信用卡簽單紙消耗統計，副本來源是 `信用卡簽單紙消耗統計/原始版本`。
-- `apps/purchase-accounting`：採購記帳，副本來源是 `採購記帳/原始版本`。
-
-原始版本資料夾只作為備份與來源，不直接修改。所有整合調整都放在 `apps/` 副本中。
-
-## 入口
-
-- `index.html`：庶務工具首頁。
-- `manifest.json`：工具首頁 PWA 設定。
-- `sw.js`：工具首頁基本離線快取。
-
-採購記帳是 Vite/React 專案，需要先在 `apps/purchase-accounting` build，首頁會連到 `apps/purchase-accounting/dist/`。
-
-## 本機產生部署資料夾
+## 本機打包
 
 ```powershell
 cd "C:\Users\ACH\Desktop\Codex專案 - 庶務相關工具\All-tool"
 npm run build
 ```
 
-build 完成後會產生 `deploy/`。這個資料夾就是實際要被 Cloudflare Pages 發布的網站內容。
+打包完成後會產生 `deploy/`，Cloudflare Pages 發布的就是這個資料夾。
+
+## 飲料計算器資料
+
+飲料計算器使用與採購記帳相同的 Firebase Realtime Database，資料路徑如下：
+
+- `users/single-user/drinkCalculator/items`
+- `users/single-user/drinkCalculator/orders`
+
+第一次開啟時若沒有飲料品項，會自動建立預設品項。設定頁可調整品項名稱、箱價、每箱瓶數、排序與啟用狀態。

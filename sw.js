@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v2";
+const CACHE_NAME = "ops-toolbox-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,7 +7,10 @@ const APP_SHELL = [
   "./apps/credit-card-slip-stats/index.html",
   "./apps/credit-card-slip-stats/manifest.json",
   "./apps/credit-card-slip-stats/sw.js",
-  "./apps/purchase-accounting/dist/index.html"
+  "./apps/purchase-accounting/dist/index.html",
+  "./apps/drink-calculator/index.html",
+  "./apps/drink-calculator/settings.html",
+  "./apps/drink-calculator/drink-data.js"
 ];
 
 self.addEventListener("install", (event) => {

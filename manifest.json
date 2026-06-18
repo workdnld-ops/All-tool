@@ -1,6 +1,6 @@
 {
-  "name": "庶務工具",
-  "short_name": "庶務工具",
+  "name": "庶務工具箱",
+  "short_name": "庶務工具箱",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
