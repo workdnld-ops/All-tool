@@ -10,23 +10,24 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f7f9;
+      --bg: #f5f7f8;
       --surface: #ffffff;
       --ink: #172126;
       --muted: #63717a;
       --line: #dce4e8;
       --primary: #1f6f64;
-      --primary-soft: #e3f1ee;
       --accent: #9a6700;
       --danger: #b42318;
-      --shadow: 0 12px 30px rgba(23, 33, 38, 0.08);
     }
 
     * { box-sizing: border-box; }
 
+    html,
     body {
       margin: 0;
-      min-height: 100vh;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
       background: var(--bg);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
@@ -38,45 +39,57 @@
     }
 
     .shell {
-      width: min(860px, 100%);
+      width: min(720px, 100%);
+      height: 100dvh;
       margin: 0 auto;
-      padding: max(18px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
+      padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+      gap: 6px;
     }
 
     header {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
+      gap: 8px;
+      min-height: 40px;
     }
 
     h1 {
       margin: 0;
-      font-size: 1.55rem;
-      line-height: 1.15;
+      font-size: 1.3rem;
+      line-height: 1.05;
       letter-spacing: 0;
     }
 
-    .header-actions {
-      display: flex;
-      gap: 8px;
-      flex: 0 0 auto;
+    .status {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.2;
+      min-height: 15px;
+    }
+
+    .header-actions,
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
     }
 
     .button {
-      min-height: 40px;
+      min-height: 34px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface);
       color: var(--ink);
-      padding: 0 12px;
+      padding: 0 10px;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
       white-space: nowrap;
     }
 
@@ -87,154 +100,190 @@
     }
 
     .button:disabled {
-      opacity: 0.5;
+      opacity: 0.45;
       cursor: not-allowed;
-    }
-
-    .status {
-      min-height: 24px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-bottom: 10px;
     }
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-bottom: 12px;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .metric,
+    .item,
+    .history-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
     }
 
     .metric {
-      border: 1px solid var(--line);
-      background: var(--surface);
-      border-radius: 8px;
-      padding: 12px;
-      box-shadow: var(--shadow);
+      padding: 8px 10px;
+      min-height: 58px;
     }
 
     .metric span {
       display: block;
       color: var(--muted);
-      font-size: 0.82rem;
-      margin-bottom: 4px;
+      font-size: 0.76rem;
+      line-height: 1.2;
+      margin-bottom: 2px;
     }
 
     .metric strong {
-      font-size: 1.45rem;
       color: var(--primary);
+      font-size: 1.25rem;
+      line-height: 1.1;
     }
 
-    .item-list,
-    .history-list {
+    .item-list {
       display: grid;
-      gap: 10px;
-    }
-
-    .item,
-    .order {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface);
-      padding: 12px;
-      box-shadow: var(--shadow);
+      grid-template-rows: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+      min-height: 0;
     }
 
     .item {
+      min-height: 0;
+      padding: 7px 8px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 88px;
-      gap: 12px;
+      grid-template-columns: minmax(0, 1fr) 74px;
+      gap: 8px;
       align-items: center;
     }
 
-    .item h2,
-    .order h2 {
-      margin: 0;
-      font-size: 1rem;
-      line-height: 1.25;
+    .item h2 {
+      margin: 0 0 2px;
+      font-size: 0.98rem;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .item-meta,
-    .order-meta {
+    .item-meta {
       color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.5;
-      margin-top: 4px;
+      font-size: 0.76rem;
+      line-height: 1.25;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtotal {
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      margin-top: 2px;
     }
 
     .quantity {
-      width: 88px;
-      min-height: 44px;
+      width: 74px;
+      min-height: 42px;
       border: 1px solid #b8c6cc;
       border-radius: 8px;
       text-align: center;
-      font-size: 1.15rem;
-      font-weight: 700;
+      font-size: 1.06rem;
+      font-weight: 850;
+      color: var(--ink);
+      background: #fff;
     }
 
     .quantity:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.18);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
       outline: none;
     }
 
-    .subtotal {
-      margin-top: 6px;
-      color: var(--accent);
-      font-weight: 800;
+    .history-panel {
+      min-height: 34px;
+      overflow: hidden;
     }
 
-    .actions {
+    .history-panel summary {
+      min-height: 34px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: 850;
+      list-style: none;
+    }
+
+    .history-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .history-list {
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 0 10px 10px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 12px 0 20px;
+      gap: 6px;
     }
 
-    .section-title {
-      margin: 20px 0 10px;
-      font-size: 1.05rem;
+    .order {
+      border-top: 1px solid var(--line);
+      padding-top: 6px;
+      font-size: 0.82rem;
+      line-height: 1.4;
     }
 
     .order-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: flex-start;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .order h2 {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.25;
+    }
+
+    .order-meta {
+      color: var(--muted);
     }
 
     .delete {
       color: var(--danger);
       border: 0;
       background: transparent;
-      padding: 4px;
+      padding: 0;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 850;
     }
 
     .empty {
       color: var(--muted);
       border: 1px dashed var(--line);
       border-radius: 8px;
-      padding: 18px;
+      padding: 12px;
       text-align: center;
       background: rgba(255, 255, 255, 0.58);
+      font-size: 0.9rem;
     }
 
-    @media (max-width: 520px) {
-      header {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .header-actions,
-      .actions {
-        width: 100%;
-      }
-
-      .header-actions .button {
-        flex: 1;
-      }
+    @media (max-height: 720px) {
+      .shell { gap: 4px; padding-left: 8px; padding-right: 8px; }
+      header { min-height: 34px; }
+      h1 { font-size: 1.12rem; }
+      .status { font-size: 0.72rem; }
+      .button { min-height: 30px; font-size: 0.88rem; }
+      .metric { min-height: 48px; padding: 6px 8px; }
+      .metric strong { font-size: 1.08rem; }
+      .item { padding: 5px 7px; grid-template-columns: minmax(0, 1fr) 66px; }
+      .item h2 { font-size: 0.88rem; }
+      .item-meta { font-size: 0.68rem; }
+      .subtotal { font-size: 0.82rem; }
+      .quantity { width: 66px; min-height: 34px; }
+      .history-panel,
+      .history-panel summary { min-height: 30px; }
     }
   </style>
 </head>
@@ -243,7 +292,7 @@
     <header>
       <div>
         <h1>飲料計算器</h1>
-        <div class="status" id="status">讀取飲料資料中...</div>
+        <div class="status" id="status">讀取資料中...</div>
       </div>
       <div class="header-actions">
         <a class="button" href="../../index.html">工具箱</a>
@@ -269,8 +318,13 @@
       <button class="button primary" id="save-button" type="button" disabled>儲存訂單</button>
     </div>
 
-    <h2 class="section-title">最近訂單</h2>
-    <section class="history-list" id="history-list" aria-label="最近訂單"></section>
+    <details class="history-panel">
+      <summary>
+        <span>最近訂單</span>
+        <span id="history-count">0 筆</span>
+      </summary>
+      <section class="history-list" id="history-list" aria-label="最近訂單"></section>
+    </details>
   </main>
 
   <script type="module">
@@ -285,6 +339,7 @@
 
     const itemList = document.getElementById("item-list");
     const historyList = document.getElementById("history-list");
+    const historyCount = document.getElementById("history-count");
     const status = document.getElementById("status");
     const totalBoxes = document.getElementById("total-boxes");
     const totalPrice = document.getElementById("total-price");
@@ -321,7 +376,7 @@
     }
 
     function renderItems() {
-      const activeItems = items.filter((item) => item.active);
+      const activeItems = items.filter((item) => item.active).slice(0, 5);
       if (activeItems.length === 0) {
         itemList.innerHTML = '<div class="empty">目前沒有啟用中的飲料品項，請先到設定新增或啟用品項。</div>';
         calculateTotals();
@@ -333,7 +388,7 @@
           <div>
             <h2>${escapeHtml(item.name)}</h2>
             <div class="item-meta">
-              每箱 ${item.bottlesPerCase} 瓶 · ${formatCurrency(item.pricePerCase)} / 箱 · ${formatUnitCurrency(pricePerBottle(item))} / 瓶
+              ${item.bottlesPerCase} 瓶 · ${formatCurrency(item.pricePerCase)} / 箱 · ${formatUnitCurrency(pricePerBottle(item))} / 瓶
             </div>
             <div class="subtotal" id="subtotal-${item.id}">$0</div>
           </div>
@@ -359,7 +414,7 @@
       let boxes = 0;
       let price = 0;
 
-      items.filter((item) => item.active).forEach((item) => {
+      items.filter((item) => item.active).slice(0, 5).forEach((item) => {
         const input = document.getElementById(`quantity-${item.id}`);
         const quantity = parseNonNegativeInteger(input?.value || quantities[item.id]);
         const subtotal = quantity * item.pricePerCase;
@@ -435,6 +490,7 @@
     }
 
     function renderOrders(orders) {
+      historyCount.textContent = `${orders.length} 筆`;
       if (orders.length === 0) {
         historyList.innerHTML = '<div class="empty">尚無歷史訂單。</div>';
         return;
@@ -464,6 +520,18 @@
       if (!id) return;
       quantities[id] = event.target.value;
       calculateTotals();
+    });
+
+    itemList.addEventListener("focusin", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      if (!event.target.classList.contains("quantity")) return;
+      setTimeout(() => event.target.select(), 0);
+    });
+
+    itemList.addEventListener("click", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      if (!event.target.classList.contains("quantity")) return;
+      setTimeout(() => event.target.select(), 0);
     });
 
     historyList.addEventListener("click", async (event) => {

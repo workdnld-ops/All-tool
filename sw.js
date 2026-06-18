@@ -1,6 +1,5 @@
-const CACHE_NAME = "ops-toolbox-v3";
+const CACHE_NAME = "ops-toolbox-v4";
 const APP_SHELL = [
-  "./",
   "./index.html",
   "./manifest.json",
   "./assets/toolbox-icon.svg",
@@ -13,12 +12,24 @@ const APP_SHELL = [
   "./apps/drink-calculator/drink-data.js"
 ];
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(APP_SHELL.map((url) => cache.add(url).catch(() => undefined)))
-    )
+async function cacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+  await Promise.all(
+    APP_SHELL.map(async (url) => {
+      try {
+        const response = await fetch(url, { cache: "reload", redirect: "follow" });
+        if (response.ok && !response.redirected) {
+          await cache.put(url, response);
+        }
+      } catch {
+        // Best effort cache. Network failures should not block activation.
+      }
+    })
   );
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(cacheAppShell());
   self.skipWaiting();
 });
 
@@ -33,19 +44,34 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const requestUrl = new URL(event.request.url);
-  const isSameOrigin = requestUrl.origin === self.location.origin;
 
-  if (!isSameOrigin) return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request, { redirect: "follow" })
+        .then((response) => {
+          if (response.ok && !response.redirected) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() => {
-        if (event.request.mode === "navigate") {
-          return caches.match("./index.html");
+      if (cached && !cached.redirected) return cached;
+      return fetch(event.request).then((response) => {
+        if (response.ok && !response.redirected) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
-        throw new Error("Network request failed");
+        return response;
       });
     })
   );
