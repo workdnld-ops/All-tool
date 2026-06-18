@@ -1,10 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
+  get,
   getDatabase,
   onValue,
   ref,
   remove,
   set,
+  update,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
 
 const firebaseConfig = {
@@ -21,33 +23,71 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const userId = "single-user";
 const rootPath = `users/${userId}/cleaningSchedule`;
+const DEFAULT_VERSION = "cleaning-defaults-20260618-v2";
 
 export const STORE_OPTIONS = [
   { id: "neihu", name: "內湖" },
   { id: "ruiguang", name: "瑞光" },
 ];
 
-export const DEFAULT_STAFF = [
-  { id: "a-lin", name: "A-Lin", order: 0, active: true },
-  { id: "baishu", name: "Baishu", order: 1, active: true },
-  { id: "jerry", name: "Jerry", order: 2, active: true },
-  { id: "oscar", name: "Oscar", order: 3, active: true },
-  { id: "yula", name: "Yula", order: 4, active: true },
-  { id: "emma", name: "Emma", order: 5, active: true },
-  { id: "kang", name: "Kang", order: 6, active: true },
-  { id: "q", name: "Q", order: 7, active: true },
+const staffNames = [
+  "百數",
+  "Jerry",
+  "Oscar",
+  "Addy",
+  "Abao",
+  "Jacob",
+  "Andrew",
+  "Chichi",
+  "A-lin",
+  "Betsy",
+  "阿康",
+  "Jason",
+  "小Q",
+  "Brian",
+  "Stephen",
+  "Jazzy",
+  "Eric",
+  "Otton",
+  "Yula",
+  "Luke",
+  "SuSu",
+  "Emma",
+  "Ryan",
+  "Justin",
+  "Debbi",
 ];
 
-export const DEFAULT_TASKS = [
-  { id: "snow-machine", name: "雪機檢查", order: 0, active: true },
-  { id: "ac-filter", name: "清理冷氣濾網", order: 1, active: true },
-  { id: "counter-board", name: "擦櫃檯、機上背板", order: 2, active: true },
-  { id: "staff-room", name: "清理員工休息區(冰箱、桌面、地板)", order: 3, active: true },
-  { id: "ice-machine-water", name: "更換製冰機的水", order: 4, active: true },
-  { id: "glass-door", name: "擦玻璃大門", order: 5, active: true },
-  { id: "snow-gear", name: "清雪鞋雪板", order: 6, active: true },
-  { id: "snacks", name: "買零食", order: 7, active: true },
+const taskNames = [
+  "雪機檢查",
+  "吸塵+清理吸塵器內部",
+  "雪機甩水後上矽油",
+  "單板清潔",
+  "雙板清潔",
+  "擦機上背板",
+  "擦玻璃門口裡外",
+  "擦拭前後檯面跟櫃子",
+  "檢查機下積水",
+  "檢查並清理手機容量",
+  "打掃員工休息區（含冰箱）",
+  "清潔製冰機",
+  "清理除濕機濾網",
+  "打掃機下(地面清潔、物品整理)",
 ];
+
+export const DEFAULT_STAFF = staffNames.map((name, order) => ({
+  id: `staff-${order + 1}`,
+  name,
+  order,
+  active: true,
+}));
+
+export const DEFAULT_TASKS = taskNames.map((name, order) => ({
+  id: `task-${order + 1}`,
+  name,
+  order,
+  active: true,
+}));
 
 function slugify(value) {
   return String(value)
@@ -80,18 +120,34 @@ function normalizeList(data, defaults) {
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "zh-TW"));
 }
 
+async function ensureDefaults(path, defaults) {
+  const versionRef = ref(database, `${rootPath}/defaultVersions/${path}`);
+  const versionSnapshot = await get(versionRef);
+  if (versionSnapshot.val() === DEFAULT_VERSION) return;
+  await update(ref(database, `${rootPath}/${path}`), mapFromArray(defaults));
+  await set(versionRef, DEFAULT_VERSION);
+}
+
 function subscribeList(path, defaults, onChange, onError) {
   const listRef = ref(database, `${rootPath}/${path}`);
   return onValue(
     listRef,
     async (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        await set(listRef, mapFromArray(defaults));
-        onChange(defaults);
-        return;
+      try {
+        const data = snapshot.val();
+        if (!data) {
+          await set(listRef, mapFromArray(defaults));
+          await set(ref(database, `${rootPath}/defaultVersions/${path}`), DEFAULT_VERSION);
+          onChange(defaults);
+          return;
+        }
+        await ensureDefaults(path, defaults);
+        const updatedSnapshot = await get(listRef);
+        onChange(normalizeList(updatedSnapshot.val() || data, defaults));
+      } catch (error) {
+        console.error(`Cleaning ${path} sync error:`, error);
+        onError?.(error);
       }
-      onChange(normalizeList(data, defaults));
     },
     (error) => {
       console.error(`Cleaning ${path} read error:`, error);
