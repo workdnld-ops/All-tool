@@ -17,6 +17,8 @@
       --line: #dce4e8;
       --primary: #1f6f64;
       --danger: #b42318;
+      --drag: #8a5a00;
+      --drag-soft: #fff4d8;
     }
 
     * { box-sizing: border-box; }
@@ -62,7 +64,8 @@
     }
 
     .button,
-    .tab {
+    .tab,
+    .drag-handle {
       min-height: 34px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -112,16 +115,52 @@
 
     .panel[hidden] { display: none; }
 
-    .add-row,
-    .row {
+    .add-row {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 54px 50px 54px 42px;
+      grid-template-columns: minmax(0, 1fr) 58px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .row,
+    .heading {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 50px 54px 42px;
       gap: 5px;
       align-items: center;
     }
 
     .row {
       padding: 6px;
+      transition: border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+    }
+
+    .row.dragging {
+      border-color: var(--drag);
+      background: var(--drag-soft);
+      opacity: 0.72;
+    }
+
+    .row.drag-over {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.14);
+    }
+
+    .drag-handle {
+      min-width: 34px;
+      padding: 0;
+      color: var(--drag);
+      background: var(--drag-soft);
+      border-color: transparent;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
     }
 
     input {
@@ -133,11 +172,6 @@
       color: var(--ink);
       background: #fff;
       min-width: 0;
-    }
-
-    input[type="number"] {
-      text-align: center;
-      font-weight: 800;
     }
 
     input[type="checkbox"] {
@@ -153,9 +187,6 @@
     }
 
     .heading {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 54px 50px 54px 42px;
-      gap: 5px;
       color: var(--muted);
       font-size: 0.72rem;
       font-weight: 850;
@@ -166,9 +197,8 @@
       .shell { gap: 6px; }
       .button,
       .tab { min-height: 32px; padding: 0 7px; }
-      .add-row,
       .row,
-      .heading { grid-template-columns: minmax(0, 1fr) 42px 42px 46px 36px; }
+      .heading { grid-template-columns: 34px minmax(0, 1fr) 42px 46px 36px; }
       .button { font-size: 0.78rem; }
     }
   </style>
@@ -191,13 +221,10 @@
     <section class="panel" id="staff-panel">
       <div class="add-row">
         <input id="new-staff" type="text" placeholder="新增同仁">
-        <input id="new-staff-order" type="number" inputmode="numeric" placeholder="序">
-        <span></span>
         <button class="button primary" id="add-staff" type="button">新增</button>
-        <span></span>
       </div>
       <div class="heading" aria-hidden="true">
-        <span>名稱</span><span>排序</span><span>啟用</span><span>儲存</span><span>刪</span>
+        <span>拖</span><span>名稱</span><span>啟用</span><span>儲存</span><span>刪</span>
       </div>
       <div class="list" id="staff-list"></div>
     </section>
@@ -205,13 +232,10 @@
     <section class="panel" id="task-panel" hidden>
       <div class="add-row">
         <input id="new-task" type="text" placeholder="新增項目">
-        <input id="new-task-order" type="number" inputmode="numeric" placeholder="序">
-        <span></span>
         <button class="button primary" id="add-task" type="button">新增</button>
-        <span></span>
       </div>
       <div class="heading" aria-hidden="true">
-        <span>項目</span><span>排序</span><span>啟用</span><span>儲存</span><span>刪</span>
+        <span>拖</span><span>項目</span><span>啟用</span><span>儲存</span><span>刪</span>
       </div>
       <div class="list" id="task-list"></div>
     </section>
@@ -237,7 +261,7 @@
       saveTask,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v2";
+    } from "./cleaning-data.js?v=cleaning-v3";
 
     const status = document.getElementById("status");
     const staffPanel = document.getElementById("staff-panel");
@@ -247,11 +271,11 @@
     const staffList = document.getElementById("staff-list");
     const taskList = document.getElementById("task-list");
     const newStaff = document.getElementById("new-staff");
-    const newStaffOrder = document.getElementById("new-staff-order");
     const newTask = document.getElementById("new-task");
-    const newTaskOrder = document.getElementById("new-task-order");
     let staff = [];
     let tasks = [];
+    let dragged = null;
+    let pointerDrag = null;
 
     function setStatus(message, isError = false) {
       status.textContent = message;
@@ -277,9 +301,9 @@
 
     function rowTemplate(item, type) {
       return `
-        <div class="row">
+        <div class="row" draggable="true" data-row-type="${type}" data-row-id="${item.id}">
+          <button class="drag-handle" type="button" data-drag-handle aria-label="拖曳排序">☰</button>
           <input data-${type}-name="${item.id}" type="text" value="${escapeHtml(item.name)}" aria-label="${escapeHtml(item.name)} 名稱">
-          <input data-${type}-order="${item.id}" type="number" inputmode="numeric" value="${item.order}" aria-label="${escapeHtml(item.name)} 排序">
           <input data-${type}-active="${item.id}" type="checkbox" ${item.active ? "checked" : ""} aria-label="${escapeHtml(item.name)} 啟用">
           <button class="button primary" data-save-${type}="${item.id}" type="button">儲存</button>
           <button class="button danger" data-delete-${type}="${item.id}" type="button">刪</button>
@@ -295,24 +319,130 @@
       taskList.innerHTML = tasks.map((item) => rowTemplate(item, "task")).join("");
     }
 
+    function listForType(type) {
+      return type === "staff" ? staff : tasks;
+    }
+
+    function setListForType(type, nextList) {
+      if (type === "staff") {
+        staff = nextList;
+        renderStaff();
+      } else {
+        tasks = nextList;
+        renderTasks();
+      }
+    }
+
+    async function saveItemForType(type, item) {
+      if (type === "staff") await saveStaffMember(item);
+      else await saveTask(item);
+    }
+
+    async function reorderItem(type, fromId, toId) {
+      if (!fromId || !toId || fromId === toId) return;
+      const sourceList = listForType(type);
+      const fromIndex = sourceList.findIndex((item) => item.id === fromId);
+      const toIndex = sourceList.findIndex((item) => item.id === toId);
+      if (fromIndex < 0 || toIndex < 0) return;
+
+      const nextList = [...sourceList];
+      const [moved] = nextList.splice(fromIndex, 1);
+      nextList.splice(toIndex, 0, moved);
+      const ordered = nextList.map((item, index) => ({ ...item, order: index }));
+      setListForType(type, ordered);
+      setStatus("儲存排序中...");
+      try {
+        await Promise.all(ordered.map((item) => saveItemForType(type, item)));
+        setStatus("排序已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("排序儲存失敗，請確認網路。", true);
+      }
+    }
+
+    function setupDrag(listElement, type) {
+      listElement.addEventListener("dragstart", (event) => {
+        const row = event.target.closest(`[data-row-type="${type}"]`);
+        if (!row) return;
+        dragged = { type, id: row.dataset.rowId };
+        row.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", row.dataset.rowId);
+      });
+
+      listElement.addEventListener("dragover", (event) => {
+        const row = event.target.closest(`[data-row-type="${type}"]`);
+        if (!row) return;
+        event.preventDefault();
+        row.classList.add("drag-over");
+      });
+
+      listElement.addEventListener("dragleave", (event) => {
+        const row = event.target.closest(`[data-row-type="${type}"]`);
+        if (row) row.classList.remove("drag-over");
+      });
+
+      listElement.addEventListener("drop", async (event) => {
+        const row = event.target.closest(`[data-row-type="${type}"]`);
+        if (!row || !dragged || dragged.type !== type) return;
+        event.preventDefault();
+        row.classList.remove("drag-over");
+        await reorderItem(type, dragged.id, row.dataset.rowId);
+        dragged = null;
+      });
+
+      listElement.addEventListener("dragend", () => {
+        listElement.querySelectorAll(".dragging,.drag-over").forEach((row) => {
+          row.classList.remove("dragging", "drag-over");
+        });
+        dragged = null;
+      });
+
+      listElement.addEventListener("pointerdown", (event) => {
+        const handle = event.target.closest("[data-drag-handle]");
+        if (!handle) return;
+        const row = handle.closest(`[data-row-type="${type}"]`);
+        if (!row) return;
+        pointerDrag = { type, id: row.dataset.rowId, pointerId: event.pointerId };
+        row.classList.add("dragging");
+        handle.setPointerCapture?.(event.pointerId);
+      });
+
+      listElement.addEventListener("pointerup", async (event) => {
+        if (!pointerDrag || pointerDrag.type !== type) return;
+        const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(`[data-row-type="${type}"]`);
+        listElement.querySelectorAll(".dragging,.drag-over").forEach((row) => {
+          row.classList.remove("dragging", "drag-over");
+        });
+        const fromId = pointerDrag.id;
+        pointerDrag = null;
+        if (target) await reorderItem(type, fromId, target.dataset.rowId);
+      });
+
+      listElement.addEventListener("pointercancel", () => {
+        pointerDrag = null;
+        listElement.querySelectorAll(".dragging,.drag-over").forEach((row) => {
+          row.classList.remove("dragging", "drag-over");
+        });
+      });
+    }
+
     staffTab.addEventListener("click", () => showPanel("staff"));
     taskTab.addEventListener("click", () => showPanel("task"));
 
     document.getElementById("add-staff").addEventListener("click", async () => {
       const name = newStaff.value.trim();
       if (!name) return setStatus("請輸入同仁名稱", true);
-      await saveStaffMember({ name, order: Number.parseInt(newStaffOrder.value, 10) || staff.length });
+      await saveStaffMember({ name, order: staff.length });
       newStaff.value = "";
-      newStaffOrder.value = "";
       setStatus("同仁已新增");
     });
 
     document.getElementById("add-task").addEventListener("click", async () => {
       const name = newTask.value.trim();
       if (!name) return setStatus("請輸入打掃項目", true);
-      await saveTask({ name, order: Number.parseInt(newTaskOrder.value, 10) || tasks.length });
+      await saveTask({ name, order: tasks.length });
       newTask.value = "";
-      newTaskOrder.value = "";
       setStatus("項目已新增");
     });
 
@@ -321,10 +451,11 @@
       const del = event.target.closest("[data-delete-staff]");
       if (save) {
         const id = save.dataset.saveStaff;
+        const current = staff.find((item) => item.id === id);
         await saveStaffMember({
           id,
           name: document.querySelector(`[data-staff-name="${id}"]`).value.trim(),
-          order: Number.parseInt(document.querySelector(`[data-staff-order="${id}"]`).value, 10) || 0,
+          order: current?.order || 0,
           active: document.querySelector(`[data-staff-active="${id}"]`).checked,
         });
         setStatus("同仁已儲存");
@@ -340,10 +471,11 @@
       const del = event.target.closest("[data-delete-task]");
       if (save) {
         const id = save.dataset.saveTask;
+        const current = tasks.find((item) => item.id === id);
         await saveTask({
           id,
           name: document.querySelector(`[data-task-name="${id}"]`).value.trim(),
-          order: Number.parseInt(document.querySelector(`[data-task-order="${id}"]`).value, 10) || 0,
+          order: current?.order || 0,
           active: document.querySelector(`[data-task-active="${id}"]`).checked,
         });
         setStatus("項目已儲存");
@@ -353,6 +485,9 @@
         setStatus("項目已刪除");
       }
     });
+
+    setupDrag(staffList, "staff");
+    setupDrag(taskList, "task");
 
     subscribeStaff(
       (loadedStaff) => {

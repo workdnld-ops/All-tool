@@ -297,7 +297,7 @@
 
       <section class="panel">
         <div class="task-title">
-          <span>以上完成去</span>
+          <span>以上完成去做</span>
           <button class="mini-button" id="clear-extra" type="button">清空</button>
         </div>
         <div class="chip-list" id="extra-task-list"></div>
@@ -530,7 +530,7 @@
         .map((taskId) => findTask(taskId)?.name)
         .filter(Boolean);
       if (storePlan.extraNote) extraNames.push(storePlan.extraNote);
-      if (extraNames.length > 0) lines.push(`以上完成去${extraNames.join("、")}`);
+      if (extraNames.length > 0) lines.push(`以上完成去做：${extraNames.join("、")}`);
       return lines.join("\n");
     }
 
