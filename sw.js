@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v5";
+const CACHE_NAME = "ops-toolbox-v6";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
@@ -39,6 +39,10 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+
+  if (requestUrl.pathname.startsWith("/apps/drink-calculator/")) {
+    return;
+  }
 
   if (event.request.mode === "navigate") {
     return;

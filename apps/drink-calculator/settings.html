@@ -250,13 +250,32 @@
     <section class="item-list" id="item-list" aria-label="飲料品項設定"></section>
   </main>
 
+  <script>
+    function markDrinkLoadFailure() {
+      const status = document.getElementById("status");
+      if (!status || !status.textContent.includes("讀取")) return;
+      status.textContent = "資料載入失敗，請重新整理";
+      status.style.color = "var(--danger)";
+    }
+
+    window.addEventListener("error", markDrinkLoadFailure);
+    window.addEventListener("unhandledrejection", markDrinkLoadFailure);
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("../../sw.js", { updateViaCache: "none" })
+        .then((registration) => registration.update())
+        .catch(() => undefined);
+    }
+  </script>
+
   <script type="module">
     import {
       addItem,
       parseNonNegativeInteger,
       saveItem,
       subscribeItems,
-    } from "./drink-data.js";
+    } from "./drink-data.js?v=store-line-v2";
 
     const status = document.getElementById("status");
     const itemList = document.getElementById("item-list");
