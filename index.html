@@ -17,12 +17,10 @@
       --muted: #66727c;
       --line: #dfe5e8;
       --primary: #1f6f64;
-      --primary-soft: #e5f2ef;
       --gold: #8a5a00;
-      --gold-soft: #fff4d8;
       --blue: #245b9b;
-      --blue-soft: #e7f0fb;
-      --shadow: 0 12px 34px rgba(30, 42, 51, 0.09);
+      --rose: #9a3d55;
+      --shadow: 0 10px 24px rgba(30, 42, 51, 0.08);
     }
 
     * { box-sizing: border-box; }
@@ -30,133 +28,105 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: linear-gradient(180deg, rgba(31, 111, 100, 0.08), transparent 310px), var(--bg);
+      background: var(--bg);
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
     }
 
     .shell {
-      width: min(1040px, 100%);
+      width: min(920px, 100%);
       margin: 0 auto;
-      padding: max(22px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+      padding: max(18px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
     }
 
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 12px 2px 22px;
+      gap: 12px;
+      padding: 4px 0 14px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       min-width: 0;
     }
 
     .brand img {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      box-shadow: 0 8px 22px rgba(31, 111, 100, 0.22);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       flex: 0 0 auto;
     }
 
     h1 {
       margin: 0;
-      font-size: clamp(1.55rem, 5vw, 2.15rem);
-      letter-spacing: 0;
+      font-size: 1.45rem;
       line-height: 1.1;
+      letter-spacing: 0;
     }
 
     .date {
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.82rem;
       white-space: nowrap;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.72);
-      border-radius: 8px;
-      padding: 10px 12px;
-      margin-bottom: 14px;
-      backdrop-filter: blur(10px);
-    }
-
-    .toolbar strong { font-size: 0.96rem; }
-
-    .toolbar span {
-      color: var(--muted);
-      font-size: 0.88rem;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
     }
 
     .tool {
-      min-height: 176px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 18px;
+      min-height: 104px;
+      display: grid;
+      place-items: center;
+      gap: 8px;
       background: var(--surface);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 18px;
+      padding: 12px 8px;
       color: inherit;
+      text-align: center;
       text-decoration: none;
       box-shadow: var(--shadow);
-      transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
     }
 
-    .tool:active { transform: translateY(1px); }
-
-    .tool:hover {
-      border-color: rgba(31, 111, 100, 0.5);
-      box-shadow: 0 16px 40px rgba(30, 42, 51, 0.13);
-    }
-
-    .tool-top {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 14px;
+    .tool:active {
+      transform: translateY(1px);
     }
 
     .icon {
-      width: 48px;
-      height: 48px;
+      width: 42px;
+      height: 42px;
       display: grid;
       place-items: center;
       border-radius: 8px;
-      background: var(--primary-soft);
       color: var(--primary);
-      flex: 0 0 auto;
+      background: #e5f2ef;
     }
 
     .icon.purchase {
-      background: var(--gold-soft);
       color: var(--gold);
+      background: #fff4d8;
     }
 
     .icon.drink {
-      background: var(--blue-soft);
       color: var(--blue);
+      background: #e7f0fb;
+    }
+
+    .icon.cleaning {
+      color: var(--rose);
+      background: #fbe8ee;
     }
 
     .icon svg {
-      width: 27px;
-      height: 27px;
+      width: 24px;
+      height: 24px;
       stroke: currentColor;
       stroke-width: 2.1;
       fill: none;
@@ -164,62 +134,22 @@
       stroke-linejoin: round;
     }
 
-    .status {
-      border-radius: 999px;
-      padding: 5px 9px;
-      font-size: 0.78rem;
-      line-height: 1;
-      white-space: nowrap;
-      background: var(--primary-soft);
-      color: var(--primary);
-      font-weight: 700;
-    }
-
     h2 {
-      margin: 0 0 8px;
-      font-size: 1.18rem;
+      margin: 0;
+      font-size: 0.98rem;
       line-height: 1.25;
       letter-spacing: 0;
     }
 
-    p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.55;
-      font-size: 0.95rem;
-    }
-
-    .action {
-      color: var(--primary);
-      font-weight: 750;
-      font-size: 0.95rem;
-    }
-
-    @media (max-width: 860px) {
+    @media (max-width: 720px) {
       .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
-    @media (max-width: 680px) {
-      .shell {
-        padding-left: 14px;
-        padding-right: 14px;
-      }
-
-      header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 10px;
-      }
-
+    @media (max-width: 420px) {
+      .shell { padding-left: 10px; padding-right: 10px; }
+      header { align-items: flex-start; flex-direction: column; }
       .date { white-space: normal; }
-
-      .toolbar {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
-      .grid { grid-template-columns: 1fr; }
-      .tool { min-height: 158px; }
+      .tool { min-height: 94px; }
     }
   </style>
 </head>
@@ -233,67 +163,55 @@
       <div class="date" id="today"></div>
     </header>
 
-    <section class="toolbar" aria-label="工具箱狀態">
-      <strong>3 個工具</strong>
-      <span>信用卡簽單紙統計、採購記帳、飲料計算器</span>
-    </section>
-
     <section class="grid" aria-label="工具清單">
       <a class="tool" href="apps/credit-card-slip-stats/index.html">
-        <div class="tool-top">
-          <div class="icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M4 19V5"/>
-              <path d="M4 19h16"/>
-              <path d="M8 16v-5"/>
-              <path d="M12 16V8"/>
-              <path d="M16 16v-7"/>
-            </svg>
-          </div>
-          <span class="status">已整合</span>
+        <div class="icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 19V5"/>
+            <path d="M4 19h16"/>
+            <path d="M8 16v-5"/>
+            <path d="M12 16V8"/>
+            <path d="M16 16v-7"/>
+          </svg>
         </div>
-        <div>
-          <h2>信用卡簽單紙消耗統計</h2>
-          <p>統計各據點簽單紙用量與補充數量。</p>
-        </div>
-        <span class="action">開啟</span>
+        <h2>簽單統計</h2>
       </a>
 
       <a class="tool" href="apps/purchase-accounting/dist/">
-        <div class="tool-top">
-          <div class="icon purchase" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M6 3h12v18H6z"/>
-              <path d="M9 7h6"/>
-              <path d="M9 11h6"/>
-              <path d="M9 15h3"/>
-            </svg>
-          </div>
-          <span class="status">已整合</span>
+        <div class="icon purchase" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 3h12v18H6z"/>
+            <path d="M9 7h6"/>
+            <path d="M9 11h6"/>
+            <path d="M9 15h3"/>
+          </svg>
         </div>
-        <div>
-          <h2>採購記帳</h2>
-          <p>記錄採購項目、金額、標籤與購買頻率。</p>
-        </div>
-        <span class="action">開啟</span>
+        <h2>採購記帳</h2>
       </a>
 
       <a class="tool" href="apps/drink-calculator/index.html">
-        <div class="tool-top">
-          <div class="icon drink" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M8 3h8"/>
-              <path d="M10 3v4l-2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9l-2-2V3"/>
-              <path d="M8 13h8"/>
-            </svg>
-          </div>
-          <span class="status">已整合</span>
+        <div class="icon drink" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M8 3h8"/>
+            <path d="M10 3v4l-2 2v10a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V9l-2-2V3"/>
+            <path d="M8 13h8"/>
+          </svg>
         </div>
-        <div>
-          <h2>飲料計算器</h2>
-          <p>計算飲料訂購箱數與金額，並保存歷史訂單。</p>
+        <h2>飲料計算器</h2>
+      </a>
+
+      <a class="tool" href="apps/cleaning-schedule/index.html">
+        <div class="icon cleaning" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 21h18"/>
+            <path d="M7 21V9"/>
+            <path d="M17 21V9"/>
+            <path d="M6 9h12"/>
+            <path d="M8 5h8"/>
+            <path d="M10 5V3h4v2"/>
+          </svg>
         </div>
-        <span class="action">開啟</span>
+        <h2>打掃安排</h2>
       </a>
     </section>
   </main>

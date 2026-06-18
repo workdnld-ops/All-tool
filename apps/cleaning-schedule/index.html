@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>打掃安排</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+      --danger: #b42318;
+      --rose: #9a3d55;
+      --rose-soft: #fbe8ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .shell {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      gap: 8px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.76rem;
+      min-height: 16px;
+    }
+
+    .button,
+    .tab,
+    .chip,
+    .mini-button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .button,
+    .tab {
+      padding: 0 10px;
+    }
+
+    .button.primary,
+    .tab.active,
+    .chip.selected {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.rose {
+      border-color: var(--rose);
+      background: var(--rose);
+      color: #fff;
+    }
+
+    .button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .top-actions,
+    .store-tabs,
+    .flow-actions {
+      display: grid;
+      gap: 6px;
+    }
+
+    .top-actions {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .store-tabs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .time-grid,
+    .flow-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .panel,
+    .assignment-row,
+    .settings-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
+    }
+
+    .panel,
+    .settings-panel {
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.25;
+      color: var(--muted);
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    input {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      padding: 0 9px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    .chip-list,
+    .staff-tray,
+    .assigned-list,
+    .setting-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      min-height: 30px;
+      padding: 0 9px;
+      font-size: 0.84rem;
+    }
+
+    .chip.staff {
+      touch-action: none;
+    }
+
+    .mini-button {
+      min-height: 28px;
+      padding: 0 8px;
+      font-size: 0.78rem;
+      color: var(--primary);
+      background: var(--primary-soft);
+      border-color: transparent;
+    }
+
+    .view {
+      display: grid;
+      gap: 8px;
+    }
+
+    .view[hidden] {
+      display: none;
+    }
+
+    .assignment-header {
+      display: grid;
+      gap: 6px;
+    }
+
+    .assignment-row {
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .assignment-row.drag-over {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.14);
+    }
+
+    .task-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .assigned-list {
+      min-height: 34px;
+      align-items: center;
+      padding: 4px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .done-extra {
+      display: grid;
+      gap: 5px;
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 46px 54px 42px;
+      gap: 5px;
+      align-items: center;
+      width: 100%;
+    }
+
+    .setting-row input {
+      min-height: 30px;
+    }
+
+    .setting-row .button {
+      min-height: 30px;
+      padding: 0 6px;
+      font-size: 0.78rem;
+    }
+
+    @media (max-width: 520px) {
+      .shell { gap: 6px; }
+      h1 { font-size: 1.18rem; }
+      .button,
+      .tab { min-height: 32px; padding: 0 8px; }
+      .panel { padding: 7px; }
+      .time-grid { grid-template-columns: 1fr 1fr; }
+      .flow-actions { grid-template-columns: 1fr 1fr; }
+      .setting-row { grid-template-columns: minmax(0, 1fr) 42px 48px 38px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>打掃安排</h1>
+        <div class="status" id="status">讀取設定中...</div>
+      </div>
+      <div class="top-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <button class="button" id="settings-toggle" type="button">設定</button>
+      </div>
+    </header>
+
+    <section class="settings-panel" id="settings-panel" hidden>
+      <div class="panel-title">同仁名稱</div>
+      <div class="setting-list" id="staff-settings"></div>
+      <div class="setting-row">
+        <input id="new-staff" type="text" placeholder="新增同仁">
+        <input id="new-staff-order" type="number" inputmode="numeric" placeholder="序">
+        <button class="button primary" id="add-staff" type="button">新增</button>
+        <span></span>
+      </div>
+      <div class="panel-title">打掃項目</div>
+      <div class="setting-list" id="task-settings"></div>
+      <div class="setting-row">
+        <input id="new-task" type="text" placeholder="新增項目">
+        <input id="new-task-order" type="number" inputmode="numeric" placeholder="序">
+        <button class="button primary" id="add-task" type="button">新增</button>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="view" id="setup-view">
+      <section class="panel" aria-label="時間">
+        <div class="panel-title">選擇時間</div>
+        <div class="time-grid">
+          <label>
+            開始
+            <input id="start-time" type="time" value="14:00">
+          </label>
+          <label>
+            結束
+            <input id="end-time" type="time" value="15:00">
+          </label>
+        </div>
+      </section>
+
+      <section class="store-tabs" id="store-tabs" aria-label="選擇店別"></section>
+
+      <section class="panel">
+        <div class="panel-title">選擇該店人力</div>
+        <div class="chip-list" id="staff-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">選擇打掃項目</div>
+        <div class="chip-list" id="task-list"></div>
+      </section>
+
+      <div class="flow-actions">
+        <button class="button" id="copy-line-setup" type="button">複製Line</button>
+        <button class="button primary" id="go-assign" type="button">分配項目</button>
+      </div>
+    </section>
+
+    <section class="view" id="assign-view" hidden>
+      <section class="panel assignment-header">
+        <div class="panel-title" id="assign-title">分配打掃項目</div>
+        <div class="staff-tray" id="staff-tray"></div>
+      </section>
+
+      <section class="view" id="assignment-list"></section>
+
+      <section class="panel done-extra">
+        <div class="task-title">
+          <span>以上完成去</span>
+          <button class="mini-button" id="clear-extra" type="button">清空</button>
+        </div>
+        <input id="done-extra" type="text" placeholder="例如：清理員工休息室、擦玻璃大門、買零食$325">
+      </section>
+
+      <div class="flow-actions">
+        <button class="button" id="back-setup" type="button">返回選擇</button>
+        <button class="button rose" id="copy-line" type="button">複製Line</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function markLoadFailure() {
+      const status = document.getElementById("status");
+      if (!status || !status.textContent.includes("讀取")) return;
+      status.textContent = "資料載入失敗，請重新整理";
+      status.style.color = "var(--danger)";
+    }
+
+    window.addEventListener("error", markLoadFailure);
+    window.addEventListener("unhandledrejection", markLoadFailure);
+  </script>
+
+  <script type="module">
+    import {
+      STORE_OPTIONS,
+      deleteStaffMember,
+      deleteTask,
+      saveStaffMember,
+      saveTask,
+      subscribeStaff,
+      subscribeTasks,
+    } from "./cleaning-data.js?v=cleaning-v1";
+
+    const status = document.getElementById("status");
+    const settingsToggle = document.getElementById("settings-toggle");
+    const settingsPanel = document.getElementById("settings-panel");
+    const staffSettings = document.getElementById("staff-settings");
+    const taskSettings = document.getElementById("task-settings");
+    const newStaff = document.getElementById("new-staff");
+    const newStaffOrder = document.getElementById("new-staff-order");
+    const newTask = document.getElementById("new-task");
+    const newTaskOrder = document.getElementById("new-task-order");
+    const startTime = document.getElementById("start-time");
+    const endTime = document.getElementById("end-time");
+    const storeTabs = document.getElementById("store-tabs");
+    const staffList = document.getElementById("staff-list");
+    const taskList = document.getElementById("task-list");
+    const setupView = document.getElementById("setup-view");
+    const assignView = document.getElementById("assign-view");
+    const assignTitle = document.getElementById("assign-title");
+    const staffTray = document.getElementById("staff-tray");
+    const assignmentList = document.getElementById("assignment-list");
+    const doneExtra = document.getElementById("done-extra");
+
+    let staff = [];
+    let tasks = [];
+    let selectedStoreId = localStorage.getItem("cleaningStore") || STORE_OPTIONS[0].id;
+    const plan = Object.fromEntries(STORE_OPTIONS.map((store) => [
+      store.id,
+      { staffIds: [], taskIds: [], assignments: {}, extra: "" },
+    ]));
+    let draggedStaffId = "";
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function activeStaff() {
+      return staff.filter((member) => member.active);
+    }
+
+    function activeTasks() {
+      return tasks.filter((task) => task.active);
+    }
+
+    function currentStore() {
+      return STORE_OPTIONS.find((store) => store.id === selectedStoreId) || STORE_OPTIONS[0];
+    }
+
+    function currentPlan() {
+      return plan[selectedStoreId];
+    }
+
+    function findStaff(id) {
+      return staff.find((member) => member.id === id);
+    }
+
+    function findTask(id) {
+      return tasks.find((task) => task.id === id);
+    }
+
+    function renderStores() {
+      storeTabs.innerHTML = STORE_OPTIONS.map((store) => `
+        <button class="tab ${store.id === selectedStoreId ? "active" : ""}" type="button" data-store="${store.id}">
+          ${escapeHtml(store.name)}
+        </button>
+      `).join("");
+    }
+
+    function renderChips() {
+      const current = currentPlan();
+      staffList.innerHTML = activeStaff().map((member) => `
+        <button class="chip ${current.staffIds.includes(member.id) ? "selected" : ""}" type="button" data-staff="${member.id}">
+          ${escapeHtml(member.name)}
+        </button>
+      `).join("") || '<span class="empty">尚無同仁，請先到設定新增。</span>';
+
+      taskList.innerHTML = activeTasks().map((task) => `
+        <button class="chip ${current.taskIds.includes(task.id) ? "selected" : ""}" type="button" data-task="${task.id}">
+          ${escapeHtml(task.name)}
+        </button>
+      `).join("") || '<span class="empty">尚無項目，請先到設定新增。</span>';
+    }
+
+    function renderSettings() {
+      staffSettings.innerHTML = staff.map((member) => `
+        <div class="setting-row">
+          <input data-staff-name="${member.id}" type="text" value="${escapeHtml(member.name)}" aria-label="${escapeHtml(member.name)} 名稱">
+          <input data-staff-order="${member.id}" type="number" inputmode="numeric" value="${member.order}" aria-label="${escapeHtml(member.name)} 排序">
+          <button class="button primary" data-save-staff="${member.id}" type="button">儲存</button>
+          <button class="button" data-delete-staff="${member.id}" type="button">刪</button>
+        </div>
+      `).join("");
+
+      taskSettings.innerHTML = tasks.map((task) => `
+        <div class="setting-row">
+          <input data-task-name="${task.id}" type="text" value="${escapeHtml(task.name)}" aria-label="${escapeHtml(task.name)} 名稱">
+          <input data-task-order="${task.id}" type="number" inputmode="numeric" value="${task.order}" aria-label="${escapeHtml(task.name)} 排序">
+          <button class="button primary" data-save-task="${task.id}" type="button">儲存</button>
+          <button class="button" data-delete-task="${task.id}" type="button">刪</button>
+        </div>
+      `).join("");
+    }
+
+    function cleanupSelections() {
+      for (const store of STORE_OPTIONS) {
+        const storePlan = plan[store.id];
+        storePlan.staffIds = storePlan.staffIds.filter((id) => staff.some((member) => member.id === id && member.active));
+        storePlan.taskIds = storePlan.taskIds.filter((id) => tasks.some((task) => task.id === id && task.active));
+        for (const taskId of Object.keys(storePlan.assignments)) {
+          if (!storePlan.taskIds.includes(taskId)) delete storePlan.assignments[taskId];
+          else storePlan.assignments[taskId] = (storePlan.assignments[taskId] || []).filter((id) => storePlan.staffIds.includes(id));
+        }
+      }
+    }
+
+    function addStaffToTask(taskId, staffId) {
+      const current = currentPlan();
+      if (!current.staffIds.includes(staffId)) return;
+      current.assignments[taskId] ||= [];
+      if (!current.assignments[taskId].includes(staffId)) current.assignments[taskId].push(staffId);
+      renderAssignments();
+    }
+
+    function removeStaffFromTask(taskId, staffId) {
+      const assigned = currentPlan().assignments[taskId] || [];
+      currentPlan().assignments[taskId] = assigned.filter((id) => id !== staffId);
+      renderAssignments();
+    }
+
+    function renderAssignments() {
+      const current = currentPlan();
+      assignTitle.textContent = `${currentStore().name} 分配打掃項目`;
+      staffTray.innerHTML = current.staffIds.map((id) => {
+        const member = findStaff(id);
+        if (!member) return "";
+        return `<button class="chip staff" draggable="true" data-drag-staff="${id}" type="button">${escapeHtml(member.name)}</button>`;
+      }).join("") || '<span class="empty">請先選擇該店人力。</span>';
+
+      assignmentList.innerHTML = current.taskIds.map((taskId) => {
+        const task = findTask(taskId);
+        const assigned = current.assignments[taskId] || [];
+        const assignedText = assigned.map((staffId) => {
+          const member = findStaff(staffId);
+          if (!member) return "";
+          return `<button class="chip selected" data-remove-staff="${staffId}" data-task-row="${taskId}" type="button">${escapeHtml(member.name)} ×</button>`;
+        }).join("");
+        return `
+          <article class="assignment-row" data-drop-task="${taskId}">
+            <div class="task-title">
+              <span>${escapeHtml(task?.name || "未命名項目")}</span>
+              <button class="mini-button" data-clear-task="${taskId}" type="button">清空</button>
+            </div>
+            <div class="assigned-list">
+              ${assignedText || '<span class="empty">未分配</span>'}
+            </div>
+          </article>
+        `;
+      }).join("") || '<div class="empty">請先選擇打掃項目。</div>';
+      doneExtra.value = current.extra || "";
+    }
+
+    function showAssignView() {
+      if (currentPlan().staffIds.length === 0 || currentPlan().taskIds.length === 0) {
+        setStatus("請先選擇人力與打掃項目", true);
+        return;
+      }
+      setupView.hidden = true;
+      assignView.hidden = false;
+      settingsPanel.hidden = true;
+      renderAssignments();
+      setStatus(`${currentStore().name} 分配中`);
+    }
+
+    function showSetupView() {
+      setupView.hidden = false;
+      assignView.hidden = true;
+      renderChips();
+      setStatus(`${currentStore().name} 選擇中`);
+    }
+
+    function lineForStore(store) {
+      const storePlan = plan[store.id];
+      const lines = [store.name];
+      const groups = new Map();
+      for (const taskId of storePlan.taskIds) {
+        const task = findTask(taskId);
+        const names = (storePlan.assignments[taskId] || [])
+          .map((staffId) => findStaff(staffId)?.name)
+          .filter(Boolean);
+        if (!task || names.length === 0) continue;
+        const nameText = names.join("、");
+        if (!groups.has(nameText)) groups.set(nameText, []);
+        groups.get(nameText).push(task.name);
+      }
+      for (const [nameText, taskNames] of groups) {
+        lines.push(`${taskNames.join("、")}：${nameText}`);
+      }
+      if (storePlan.extra) lines.push(`以上完成去${storePlan.extra}`);
+      return lines.join("\n");
+    }
+
+    function buildLineMessage() {
+      const start = startTime.value || "14:00";
+      const end = endTime.value || "15:00";
+      return `打掃${start}-${end}\n\n${STORE_OPTIONS.map(lineForStore).join("\n\n")}`;
+    }
+
+    async function copyLine() {
+      const message = buildLineMessage();
+      try {
+        await navigator.clipboard.writeText(message);
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = message;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.append(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+      setStatus("Line 訊息已複製");
+    }
+
+    storeTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-store]");
+      if (!button) return;
+      currentPlan().extra = doneExtra.value.trim();
+      selectedStoreId = button.dataset.store;
+      localStorage.setItem("cleaningStore", selectedStoreId);
+      renderStores();
+      renderChips();
+      if (!assignView.hidden) renderAssignments();
+      setStatus(`已切換到${currentStore().name}`);
+    });
+
+    staffList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-staff]");
+      if (!button) return;
+      const ids = currentPlan().staffIds;
+      if (ids.includes(button.dataset.staff)) {
+        currentPlan().staffIds = ids.filter((id) => id !== button.dataset.staff);
+        for (const taskId of Object.keys(currentPlan().assignments)) {
+          removeStaffFromTask(taskId, button.dataset.staff);
+        }
+      } else {
+        ids.push(button.dataset.staff);
+      }
+      renderChips();
+    });
+
+    taskList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-task]");
+      if (!button) return;
+      const ids = currentPlan().taskIds;
+      if (ids.includes(button.dataset.task)) {
+        currentPlan().taskIds = ids.filter((id) => id !== button.dataset.task);
+        delete currentPlan().assignments[button.dataset.task];
+      } else {
+        ids.push(button.dataset.task);
+      }
+      renderChips();
+    });
+
+    staffTray.addEventListener("dragstart", (event) => {
+      const button = event.target.closest("[data-drag-staff]");
+      if (!button) return;
+      draggedStaffId = button.dataset.dragStaff;
+      event.dataTransfer.setData("text/plain", draggedStaffId);
+    });
+
+    staffTray.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-drag-staff]");
+      if (!button) return;
+      draggedStaffId = button.dataset.dragStaff;
+      setStatus(`已選擇 ${findStaff(draggedStaffId)?.name || ""}，點任務列即可加入`);
+    });
+
+    assignmentList.addEventListener("dragover", (event) => {
+      const row = event.target.closest("[data-drop-task]");
+      if (!row) return;
+      event.preventDefault();
+      row.classList.add("drag-over");
+    });
+
+    assignmentList.addEventListener("dragleave", (event) => {
+      const row = event.target.closest("[data-drop-task]");
+      if (row) row.classList.remove("drag-over");
+    });
+
+    assignmentList.addEventListener("drop", (event) => {
+      const row = event.target.closest("[data-drop-task]");
+      if (!row) return;
+      event.preventDefault();
+      row.classList.remove("drag-over");
+      addStaffToTask(row.dataset.dropTask, event.dataTransfer.getData("text/plain"));
+    });
+
+    assignmentList.addEventListener("click", (event) => {
+      const remove = event.target.closest("[data-remove-staff]");
+      if (remove) {
+        removeStaffFromTask(remove.dataset.taskRow, remove.dataset.removeStaff);
+        return;
+      }
+
+      const clear = event.target.closest("[data-clear-task]");
+      if (clear) {
+        currentPlan().assignments[clear.dataset.clearTask] = [];
+        renderAssignments();
+        return;
+      }
+
+      const row = event.target.closest("[data-drop-task]");
+      if (row && draggedStaffId) addStaffToTask(row.dataset.dropTask, draggedStaffId);
+    });
+
+    doneExtra.addEventListener("input", () => {
+      currentPlan().extra = doneExtra.value.trim();
+    });
+
+    document.getElementById("clear-extra").addEventListener("click", () => {
+      currentPlan().extra = "";
+      doneExtra.value = "";
+    });
+
+    settingsToggle.addEventListener("click", () => {
+      settingsPanel.hidden = !settingsPanel.hidden;
+    });
+
+    document.getElementById("go-assign").addEventListener("click", showAssignView);
+    document.getElementById("back-setup").addEventListener("click", showSetupView);
+    document.getElementById("copy-line").addEventListener("click", copyLine);
+    document.getElementById("copy-line-setup").addEventListener("click", copyLine);
+
+    document.getElementById("add-staff").addEventListener("click", async () => {
+      const name = newStaff.value.trim();
+      if (!name) return setStatus("請輸入同仁名稱", true);
+      await saveStaffMember({ name, order: Number.parseInt(newStaffOrder.value, 10) || staff.length });
+      newStaff.value = "";
+      newStaffOrder.value = "";
+      setStatus("同仁已新增");
+    });
+
+    document.getElementById("add-task").addEventListener("click", async () => {
+      const name = newTask.value.trim();
+      if (!name) return setStatus("請輸入打掃項目", true);
+      await saveTask({ name, order: Number.parseInt(newTaskOrder.value, 10) || tasks.length });
+      newTask.value = "";
+      newTaskOrder.value = "";
+      setStatus("項目已新增");
+    });
+
+    staffSettings.addEventListener("click", async (event) => {
+      const save = event.target.closest("[data-save-staff]");
+      const del = event.target.closest("[data-delete-staff]");
+      if (save) {
+        const id = save.dataset.saveStaff;
+        await saveStaffMember({
+          id,
+          name: document.querySelector(`[data-staff-name="${id}"]`).value.trim(),
+          order: Number.parseInt(document.querySelector(`[data-staff-order="${id}"]`).value, 10) || 0,
+        });
+        setStatus("同仁已儲存");
+      }
+      if (del && confirm("確定刪除這位同仁？")) {
+        await deleteStaffMember(del.dataset.deleteStaff);
+        setStatus("同仁已刪除");
+      }
+    });
+
+    taskSettings.addEventListener("click", async (event) => {
+      const save = event.target.closest("[data-save-task]");
+      const del = event.target.closest("[data-delete-task]");
+      if (save) {
+        const id = save.dataset.saveTask;
+        await saveTask({
+          id,
+          name: document.querySelector(`[data-task-name="${id}"]`).value.trim(),
+          order: Number.parseInt(document.querySelector(`[data-task-order="${id}"]`).value, 10) || 0,
+        });
+        setStatus("項目已儲存");
+      }
+      if (del && confirm("確定刪除這個項目？")) {
+        await deleteTask(del.dataset.deleteTask);
+        setStatus("項目已刪除");
+      }
+    });
+
+    renderStores();
+
+    subscribeStaff(
+      (loadedStaff) => {
+        staff = loadedStaff;
+        cleanupSelections();
+        renderSettings();
+        renderChips();
+        if (!assignView.hidden) renderAssignments();
+        setStatus("設定已同步");
+      },
+      () => setStatus("同仁讀取失敗，請確認網路。", true),
+    );
+
+    subscribeTasks(
+      (loadedTasks) => {
+        tasks = loadedTasks;
+        cleanupSelections();
+        renderSettings();
+        renderChips();
+        if (!assignView.hidden) renderAssignments();
+        setStatus("設定已同步");
+      },
+      () => setStatus("項目讀取失敗，請確認網路。", true),
+    );
+  </script>
+</body>
+</html>
