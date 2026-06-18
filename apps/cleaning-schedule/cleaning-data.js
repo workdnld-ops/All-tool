@@ -3,6 +3,7 @@ import {
   get,
   getDatabase,
   onValue,
+  push,
   ref,
   remove,
   set,
@@ -120,6 +121,19 @@ function normalizeList(data, defaults) {
     .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "zh-TW"));
 }
 
+function normalizeCleaningRecords(data) {
+  return Object.entries(data || {})
+    .map(([id, record]) => ({
+      id,
+      date: record.date || "",
+      createdAt: record.createdAt || "",
+      startTime: record.startTime || "",
+      endTime: record.endTime || "",
+      stores: record.stores || {},
+    }))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
 async function ensureDefaults(path, defaults) {
   const versionRef = ref(database, `${rootPath}/defaultVersions/${path}`);
   const versionSnapshot = await get(versionRef);
@@ -164,6 +178,18 @@ export function subscribeTasks(onChange, onError) {
   return subscribeList("tasks", DEFAULT_TASKS, onChange, onError);
 }
 
+export function subscribeCleaningRecords(onChange, onError) {
+  const recordsRef = ref(database, `${rootPath}/records`);
+  return onValue(
+    recordsRef,
+    (snapshot) => onChange(normalizeCleaningRecords(snapshot.val())),
+    (error) => {
+      console.error("Cleaning records read error:", error);
+      onError?.(error);
+    },
+  );
+}
+
 export async function saveStaffMember(member) {
   const id = member.id || slugify(member.name);
   await set(ref(database, `${rootPath}/staff/${id}`), normalizeRecord({ ...member, id }, id));
@@ -180,4 +206,13 @@ export async function deleteStaffMember(id) {
 
 export async function deleteTask(id) {
   await remove(ref(database, `${rootPath}/tasks/${id}`));
+}
+
+export async function saveCleaningRecord(record) {
+  const recordRef = push(ref(database, `${rootPath}/records`));
+  await set(recordRef, record);
+}
+
+export async function deleteCleaningRecord(id) {
+  await remove(ref(database, `${rootPath}/records/${id}`));
 }

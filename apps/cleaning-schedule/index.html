@@ -121,10 +121,15 @@
     }
 
     .top-actions,
-    .store-tabs,
     .flow-actions,
+    .store-tabs,
     .time-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .top-actions,
+    .record-actions {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .panel,
@@ -250,6 +255,7 @@
       </div>
       <div class="top-actions">
         <a class="button" href="../../index.html">工具箱</a>
+        <a class="button" href="stats.html">統計</a>
         <a class="button" href="settings.html">設定</a>
       </div>
     </header>
@@ -281,7 +287,7 @@
         <div class="chip-list" id="task-list"></div>
       </section>
 
-      <div class="flow-actions">
+      <div class="flow-actions record-actions">
         <button class="button" id="copy-line-setup" type="button">複製Line</button>
         <button class="button primary" id="go-assign" type="button">分配項目</button>
       </div>
@@ -306,6 +312,7 @@
 
       <div class="flow-actions">
         <button class="button" id="back-setup" type="button">返回選擇</button>
+        <button class="button primary" id="save-record" type="button">儲存紀錄</button>
         <button class="button rose" id="copy-line" type="button">複製Line</button>
       </div>
     </section>
@@ -326,9 +333,11 @@
   <script type="module">
     import {
       STORE_OPTIONS,
+      saveCleaningRecord,
+      subscribeCleaningRecords,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v2";
+    } from "./cleaning-data.js?v=cleaning-v4";
 
     const status = document.getElementById("status");
     const startTime = document.getElementById("start-time");
@@ -346,6 +355,7 @@
 
     let staff = [];
     let tasks = [];
+    let records = [];
     let selectedStoreId = localStorage.getItem("cleaningStore") || STORE_OPTIONS[0].id;
     const plan = Object.fromEntries(STORE_OPTIONS.map((store) => [
       store.id,
@@ -389,6 +399,23 @@
 
     function findTask(id) {
       return tasks.find((task) => task.id === id);
+    }
+
+    function recordHasStaffTask(record, staffId, taskId) {
+      return STORE_OPTIONS.some((store) => {
+        const assignment = record.stores?.[store.id]?.assignments?.[taskId];
+        return Array.isArray(assignment?.staffIds) && assignment.staffIds.includes(staffId);
+      });
+    }
+
+    function repeatWarning(staffId, taskId) {
+      const recentRecords = records.slice(0, 3);
+      if (recentRecords.length < 3) return "";
+      const repeated = recentRecords.every((record) => recordHasStaffTask(record, staffId, taskId));
+      if (!repeated) return "";
+      const member = findStaff(staffId);
+      const task = findTask(taskId);
+      return `${member?.name || "此同仁"} 最近三次都有做「${task?.name || "此項目"}」`;
     }
 
     function assignedStaffSet() {
@@ -447,6 +474,8 @@
       if (!current.staffIds.includes(staffId)) return;
       current.assignments[taskId] ||= [];
       if (!current.assignments[taskId].includes(staffId)) current.assignments[taskId].push(staffId);
+      const warning = repeatWarning(staffId, taskId);
+      if (warning) setStatus(`提醒：${warning}`, true);
       renderAssignments();
     }
 
@@ -538,6 +567,53 @@
       const start = startTime.value || "14:00";
       const end = endTime.value || "15:00";
       return `打掃${start}-${end}\n\n${STORE_OPTIONS.map(lineForStore).join("\n\n")}`;
+    }
+
+    function buildCleaningRecord() {
+      const createdAt = new Date().toISOString();
+      const stores = Object.fromEntries(STORE_OPTIONS.map((store) => {
+        const storePlan = plan[store.id];
+        const assignments = {};
+        for (const taskId of storePlan.taskIds) {
+          const assignedStaffIds = storePlan.assignments[taskId] || [];
+          if (assignedStaffIds.length === 0) continue;
+          const task = findTask(taskId);
+          assignments[taskId] = {
+            taskId,
+            taskName: task?.name || "",
+            staffIds: assignedStaffIds,
+            staffNames: assignedStaffIds.map((staffId) => findStaff(staffId)?.name).filter(Boolean),
+          };
+        }
+        const extraTaskNames = storePlan.extraTaskIds
+          .map((taskId) => findTask(taskId)?.name)
+          .filter(Boolean);
+        return [store.id, {
+          storeId: store.id,
+          storeName: store.name,
+          assignments,
+          extraTaskIds: storePlan.extraTaskIds,
+          extraTaskNames,
+          extraNote: storePlan.extraNote || "",
+        }];
+      }));
+      return {
+        date: createdAt.slice(0, 10),
+        createdAt,
+        startTime: startTime.value || "14:00",
+        endTime: endTime.value || "15:00",
+        stores,
+      };
+    }
+
+    async function saveRecord() {
+      try {
+        await saveCleaningRecord(buildCleaningRecord());
+        setStatus("打掃紀錄已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("紀錄儲存失敗，請確認網路。", true);
+      }
     }
 
     async function copyLine() {
@@ -674,6 +750,7 @@
 
     document.getElementById("go-assign").addEventListener("click", showAssignView);
     document.getElementById("back-setup").addEventListener("click", showSetupView);
+    document.getElementById("save-record").addEventListener("click", saveRecord);
     document.getElementById("copy-line").addEventListener("click", copyLine);
     document.getElementById("copy-line-setup").addEventListener("click", copyLine);
 
@@ -699,6 +776,13 @@
         setStatus("設定已同步");
       },
       () => setStatus("項目讀取失敗，請確認網路。", true),
+    );
+
+    subscribeCleaningRecords(
+      (loadedRecords) => {
+        records = loadedRecords;
+      },
+      () => setStatus("紀錄讀取失敗，連續分配提醒暫時不可用。", true),
     );
   </script>
 </body>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>打掃統計</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      width: min(920px, 100%);
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      gap: 8px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.24rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.76rem;
+      min-height: 16px;
+    }
+
+    .button,
+    .tab {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .tab.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .view {
+      display: grid;
+      gap: 8px;
+    }
+
+    .view[hidden] { display: none; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 9px;
+      display: grid;
+      gap: 6px;
+      box-shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 0.98rem;
+      line-height: 1.3;
+      letter-spacing: 0;
+    }
+
+    .line {
+      display: grid;
+      gap: 3px;
+      padding-top: 6px;
+      border-top: 1px solid var(--line);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .line:first-of-type {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      padding: 14px;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 520px) {
+      .button,
+      .tab { min-height: 32px; padding: 0 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>打掃統計</h1>
+        <div class="status" id="status">讀取紀錄中...</div>
+      </div>
+      <a class="button" href="index.html">返回</a>
+    </header>
+
+    <section class="tabs">
+      <button class="tab active" id="task-tab" type="button">依項目</button>
+      <button class="tab" id="staff-tab" type="button">依人員</button>
+    </section>
+
+    <section class="view" id="task-view"></section>
+    <section class="view" id="staff-view" hidden></section>
+  </main>
+
+  <script>
+    function markLoadFailure() {
+      const status = document.getElementById("status");
+      if (!status || !status.textContent.includes("讀取")) return;
+      status.textContent = "資料載入失敗，請重新整理";
+      status.style.color = "#b42318";
+    }
+
+    window.addEventListener("error", markLoadFailure);
+    window.addEventListener("unhandledrejection", markLoadFailure);
+  </script>
+
+  <script type="module">
+    import { subscribeCleaningRecords } from "./cleaning-data.js?v=cleaning-v4";
+
+    const status = document.getElementById("status");
+    const taskTab = document.getElementById("task-tab");
+    const staffTab = document.getElementById("staff-tab");
+    const taskView = document.getElementById("task-view");
+    const staffView = document.getElementById("staff-view");
+    let records = [];
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function showTab(type) {
+      const isTask = type === "task";
+      taskView.hidden = !isTask;
+      staffView.hidden = isTask;
+      taskTab.classList.toggle("active", isTask);
+      staffTab.classList.toggle("active", !isTask);
+    }
+
+    function entryDate(record, storeName) {
+      const time = record.startTime && record.endTime ? ` ${record.startTime}-${record.endTime}` : "";
+      return `${record.date || record.createdAt?.slice(0, 10) || "未記錄日期"} ${storeName}${time}`;
+    }
+
+    function collectEntries() {
+      const entries = [];
+      for (const record of records) {
+        for (const store of Object.values(record.stores || {})) {
+          for (const assignment of Object.values(store.assignments || {})) {
+            for (let index = 0; index < (assignment.staffIds || []).length; index += 1) {
+              entries.push({
+                date: record.date || record.createdAt?.slice(0, 10) || "",
+                createdAt: record.createdAt || record.date || "",
+                storeName: store.storeName || "",
+                taskId: assignment.taskId,
+                taskName: assignment.taskName || "未命名項目",
+                staffId: assignment.staffIds[index],
+                staffName: assignment.staffNames?.[index] || assignment.staffIds[index],
+                label: entryDate(record, store.storeName || ""),
+              });
+            }
+          }
+        }
+      }
+      return entries.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    }
+
+    function averageIntervalText(entries) {
+      if (entries.length < 2) return "-";
+      const times = entries
+        .map((entry) => new Date(entry.createdAt || entry.date).getTime())
+        .filter((time) => Number.isFinite(time))
+        .sort((a, b) => a - b);
+      if (times.length < 2) return "-";
+      let totalDays = 0;
+      for (let index = 1; index < times.length; index += 1) {
+        totalDays += Math.abs(times[index] - times[index - 1]) / 86400000;
+      }
+      return `${(totalDays / (times.length - 1)).toFixed(1)} 天`;
+    }
+
+    function groupBy(items, getKey) {
+      const groups = new Map();
+      for (const item of items) {
+        const key = getKey(item);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+      return groups;
+    }
+
+    function renderTaskStats(entries) {
+      if (entries.length === 0) {
+        taskView.innerHTML = '<div class="empty">尚無儲存紀錄。</div>';
+        return;
+      }
+      const byTask = groupBy(entries, (entry) => entry.taskName);
+      taskView.innerHTML = [...byTask.entries()].map(([taskName, taskEntries]) => {
+        const byStaff = groupBy(taskEntries, (entry) => entry.staffName);
+        const lines = [...byStaff.entries()].map(([staffName, staffEntries]) => `
+          <div class="line">
+            <strong>${escapeHtml(staffName)}</strong>
+            <div class="meta">${staffEntries.map((entry) => escapeHtml(entry.label)).join("、")}</div>
+          </div>
+        `).join("");
+        return `
+          <article class="card">
+            <h2>${escapeHtml(taskName)}</h2>
+            ${lines}
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderStaffStats(entries) {
+      if (entries.length === 0) {
+        staffView.innerHTML = '<div class="empty">尚無儲存紀錄。</div>';
+        return;
+      }
+      const byStaff = groupBy(entries, (entry) => entry.staffName);
+      staffView.innerHTML = [...byStaff.entries()].map(([staffName, staffEntries]) => {
+        const byTask = groupBy(staffEntries, (entry) => entry.taskName);
+        const lines = [...byTask.entries()].map(([taskName, taskEntries]) => `
+          <div class="line">
+            <strong>${escapeHtml(taskName)}</strong>
+            <div class="meta">次數 ${taskEntries.length} · 平均間隔 ${averageIntervalText(taskEntries)}</div>
+            <div class="meta">${taskEntries.map((entry) => escapeHtml(entry.label)).join("、")}</div>
+          </div>
+        `).join("");
+        return `
+          <article class="card">
+            <h2>${escapeHtml(staffName)}</h2>
+            ${lines}
+          </article>
+        `;
+      }).join("");
+    }
+
+    function render() {
+      const entries = collectEntries();
+      renderTaskStats(entries);
+      renderStaffStats(entries);
+      status.textContent = `已讀取 ${records.length} 筆紀錄`;
+    }
+
+    taskTab.addEventListener("click", () => showTab("task"));
+    staffTab.addEventListener("click", () => showTab("staff"));
+
+    subscribeCleaningRecords(
+      (loadedRecords) => {
+        records = loadedRecords;
+        render();
+      },
+      () => {
+        status.textContent = "紀錄讀取失敗，請確認網路。";
+        status.style.color = "#b42318";
+      },
+    );
+  </script>
+</body>
+</html>
