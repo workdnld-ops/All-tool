@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>打掃設定</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
@@ -34,6 +34,24 @@
 
     button,
     input { font: inherit; }
+
+    button,
+    .button,
+    .tab,
+    .drag-handle,
+    .row,
+    .heading {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
+    }
 
     .shell {
       width: min(860px, 100%);
@@ -125,7 +143,7 @@
     .row,
     .heading {
       display: grid;
-      grid-template-columns: 36px minmax(0, 1fr) 50px 54px 42px;
+      grid-template-columns: 36px minmax(0, 1fr) 50px 42px;
       gap: 5px;
       align-items: center;
     }
@@ -198,7 +216,7 @@
       .button,
       .tab { min-height: 32px; padding: 0 7px; }
       .row,
-      .heading { grid-template-columns: 34px minmax(0, 1fr) 42px 46px 36px; }
+      .heading { grid-template-columns: 34px minmax(0, 1fr) 42px 36px; }
       .button { font-size: 0.78rem; }
     }
   </style>
@@ -224,7 +242,7 @@
         <button class="button primary" id="add-staff" type="button">新增</button>
       </div>
       <div class="heading" aria-hidden="true">
-        <span>拖</span><span>名稱</span><span>啟用</span><span>儲存</span><span>刪</span>
+        <span>拖</span><span>名稱</span><span>啟用</span><span>刪</span>
       </div>
       <div class="list" id="staff-list"></div>
     </section>
@@ -235,7 +253,7 @@
         <button class="button primary" id="add-task" type="button">新增</button>
       </div>
       <div class="heading" aria-hidden="true">
-        <span>拖</span><span>項目</span><span>啟用</span><span>儲存</span><span>刪</span>
+        <span>拖</span><span>項目</span><span>啟用</span><span>刪</span>
       </div>
       <div class="list" id="task-list"></div>
     </section>
@@ -261,7 +279,7 @@
       saveTask,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v3";
+    } from "./cleaning-data.js?v=cleaning-v5";
 
     const status = document.getElementById("status");
     const staffPanel = document.getElementById("staff-panel");
@@ -276,6 +294,7 @@
     let tasks = [];
     let dragged = null;
     let pointerDrag = null;
+    const autoSaveTimers = new Map();
 
     function setStatus(message, isError = false) {
       status.textContent = message;
@@ -301,11 +320,10 @@
 
     function rowTemplate(item, type) {
       return `
-        <div class="row" draggable="true" data-row-type="${type}" data-row-id="${item.id}">
-          <button class="drag-handle" type="button" data-drag-handle aria-label="拖曳排序">☰</button>
+        <div class="row" data-row-type="${type}" data-row-id="${item.id}">
+          <button class="drag-handle" draggable="true" type="button" data-drag-handle aria-label="拖曳排序">☰</button>
           <input data-${type}-name="${item.id}" type="text" value="${escapeHtml(item.name)}" aria-label="${escapeHtml(item.name)} 名稱">
           <input data-${type}-active="${item.id}" type="checkbox" ${item.active ? "checked" : ""} aria-label="${escapeHtml(item.name)} 啟用">
-          <button class="button primary" data-save-${type}="${item.id}" type="button">儲存</button>
           <button class="button danger" data-delete-${type}="${item.id}" type="button">刪</button>
         </div>
       `;
@@ -338,6 +356,34 @@
       else await saveTask(item);
     }
 
+    function itemFromRow(type, id) {
+      const current = listForType(type).find((item) => item.id === id);
+      const nameInput = document.querySelector(`[data-${type}-name="${id}"]`);
+      const activeInput = document.querySelector(`[data-${type}-active="${id}"]`);
+      return {
+        id,
+        name: nameInput?.value.trim() || current?.name || "",
+        order: current?.order || 0,
+        active: Boolean(activeInput?.checked),
+      };
+    }
+
+    function scheduleAutoSave(type, id, delay = 450) {
+      const key = `${type}:${id}`;
+      clearTimeout(autoSaveTimers.get(key));
+      autoSaveTimers.set(key, setTimeout(async () => {
+        const item = itemFromRow(type, id);
+        if (!item.name) return setStatus("名稱不可空白", true);
+        try {
+          await saveItemForType(type, item);
+          setStatus("設定已自動儲存");
+        } catch (error) {
+          console.error(error);
+          setStatus("自動儲存失敗，請確認網路。", true);
+        }
+      }, delay));
+    }
+
     async function reorderItem(type, fromId, toId) {
       if (!fromId || !toId || fromId === toId) return;
       const sourceList = listForType(type);
@@ -362,8 +408,12 @@
 
     function setupDrag(listElement, type) {
       listElement.addEventListener("dragstart", (event) => {
-        const row = event.target.closest(`[data-row-type="${type}"]`);
-        if (!row) return;
+        const handle = event.target.closest("[data-drag-handle]");
+        const row = handle?.closest(`[data-row-type="${type}"]`);
+        if (!row) {
+          event.preventDefault();
+          return;
+        }
         dragged = { type, id: row.dataset.rowId };
         row.classList.add("dragging");
         event.dataTransfer.effectAllowed = "move";
@@ -401,11 +451,16 @@
       listElement.addEventListener("pointerdown", (event) => {
         const handle = event.target.closest("[data-drag-handle]");
         if (!handle) return;
+        event.preventDefault();
         const row = handle.closest(`[data-row-type="${type}"]`);
         if (!row) return;
         pointerDrag = { type, id: row.dataset.rowId, pointerId: event.pointerId };
         row.classList.add("dragging");
         handle.setPointerCapture?.(event.pointerId);
+      });
+
+      listElement.addEventListener("contextmenu", (event) => {
+        if (event.target.closest("[data-drag-handle]")) event.preventDefault();
       });
 
       listElement.addEventListener("pointerup", async (event) => {
@@ -444,6 +499,36 @@
       await saveTask({ name, order: tasks.length });
       newTask.value = "";
       setStatus("項目已新增");
+    });
+
+    staffList.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-staff-name]");
+      if (input) scheduleAutoSave("staff", input.dataset.staffName);
+    });
+
+    staffList.addEventListener("change", (event) => {
+      const input = event.target.closest("[data-staff-active]");
+      if (input) scheduleAutoSave("staff", input.dataset.staffActive, 0);
+    });
+
+    staffList.addEventListener("focusout", (event) => {
+      const input = event.target.closest("[data-staff-name]");
+      if (input) scheduleAutoSave("staff", input.dataset.staffName, 0);
+    });
+
+    taskList.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-task-name]");
+      if (input) scheduleAutoSave("task", input.dataset.taskName);
+    });
+
+    taskList.addEventListener("change", (event) => {
+      const input = event.target.closest("[data-task-active]");
+      if (input) scheduleAutoSave("task", input.dataset.taskActive, 0);
+    });
+
+    taskList.addEventListener("focusout", (event) => {
+      const input = event.target.closest("[data-task-name]");
+      if (input) scheduleAutoSave("task", input.dataset.taskName, 0);
     });
 
     staffList.addEventListener("click", async (event) => {

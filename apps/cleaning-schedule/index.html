@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>打掃安排</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
@@ -36,6 +36,24 @@
 
     button,
     input { font: inherit; }
+
+    button,
+    .button,
+    .tab,
+    .chip,
+    .mini-button,
+    .assignment-row {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
+    }
 
     .shell {
       width: min(860px, 100%);
@@ -104,6 +122,11 @@
       border-color: var(--assigned);
       background: var(--assigned);
       color: #fff;
+    }
+
+    .chip.recent-task {
+      border-color: #c47a1b;
+      box-shadow: inset 0 0 0 1px rgba(196, 122, 27, 0.3);
     }
 
     .button.rose {
@@ -207,6 +230,19 @@
       padding: 8px;
       display: grid;
       gap: 7px;
+    }
+
+    .assignment-row.recent-task {
+      border-color: #c47a1b;
+      background: #fff8ec;
+      box-shadow: 0 0 0 3px rgba(196, 122, 27, 0.12);
+    }
+
+    .recent-label {
+      color: #9a5a00;
+      font-size: 0.72rem;
+      font-weight: 850;
+      white-space: nowrap;
     }
 
     .assignment-row.drag-over {
@@ -337,7 +373,7 @@
       subscribeCleaningRecords,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v4";
+    } from "./cleaning-data.js?v=cleaning-v5";
 
     const status = document.getElementById("status");
     const startTime = document.getElementById("start-time");
@@ -408,6 +444,17 @@
       });
     }
 
+    function lastRecordForStore(storeId = selectedStoreId) {
+      return records.find((record) => record.stores?.[storeId]);
+    }
+
+    function lastTaskSetForStore(storeId = selectedStoreId) {
+      const storeRecord = lastRecordForStore(storeId)?.stores?.[storeId];
+      const taskIds = new Set(Object.keys(storeRecord?.assignments || {}));
+      for (const taskId of storeRecord?.extraTaskIds || []) taskIds.add(taskId);
+      return taskIds;
+    }
+
     function repeatWarning(staffId, taskId) {
       const recentRecords = records.slice(0, 3);
       if (recentRecords.length < 3) return "";
@@ -433,6 +480,7 @@
     function renderChips() {
       const current = currentPlan();
       const assigned = assignedStaffSet();
+      const lastTasks = lastTaskSetForStore();
       staffList.innerHTML = activeStaff().map((member) => `
         <button class="chip ${current.staffIds.includes(member.id) ? "selected" : ""} ${assigned.has(member.id) ? "assigned" : ""}" type="button" data-staff="${member.id}">
           ${escapeHtml(member.name)}
@@ -440,7 +488,7 @@
       `).join("") || '<span class="empty">尚無同仁，請先到設定新增。</span>';
 
       taskList.innerHTML = activeTasks().map((task) => `
-        <button class="chip ${current.taskIds.includes(task.id) ? "selected" : ""}" type="button" data-task="${task.id}">
+        <button class="chip ${current.taskIds.includes(task.id) ? "selected" : ""} ${lastTasks.has(task.id) ? "recent-task" : ""}" type="button" data-task="${task.id}">
           ${escapeHtml(task.name)}
         </button>
       `).join("") || '<span class="empty">尚無項目，請先到設定新增。</span>';
@@ -488,6 +536,7 @@
     function renderAssignments() {
       const current = currentPlan();
       const assigned = assignedStaffSet();
+      const lastTasks = lastTaskSetForStore();
       assignTitle.textContent = `${currentStore().name} 分配打掃項目`;
       staffTray.innerHTML = current.staffIds.map((id) => {
         const member = findStaff(id);
@@ -498,15 +547,17 @@
       assignmentList.innerHTML = current.taskIds.map((taskId) => {
         const task = findTask(taskId);
         const assignedNames = current.assignments[taskId] || [];
+        const didLastTime = lastTasks.has(taskId);
         const assignedText = assignedNames.map((staffId) => {
           const member = findStaff(staffId);
           if (!member) return "";
           return `<button class="chip selected assigned" data-remove-staff="${staffId}" data-task-row="${taskId}" type="button">${escapeHtml(member.name)} ×</button>`;
         }).join("");
         return `
-          <article class="assignment-row" data-drop-task="${taskId}">
+          <article class="assignment-row ${didLastTime ? "recent-task" : ""}" data-drop-task="${taskId}">
             <div class="task-title">
               <span>${escapeHtml(task?.name || "未命名項目")}</span>
+              ${didLastTime ? '<span class="recent-label">上次做過</span>' : ""}
               <button class="mini-button" data-clear-task="${taskId}" type="button">清空</button>
             </div>
             <div class="assigned-list">
@@ -781,6 +832,8 @@
     subscribeCleaningRecords(
       (loadedRecords) => {
         records = loadedRecords;
+        renderChips();
+        if (!assignView.hidden) renderAssignments();
       },
       () => setStatus("紀錄讀取失敗，連續分配提醒暫時不可用。", true),
     );
