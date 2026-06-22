@@ -378,7 +378,7 @@
       subscribeCleaningRecords,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v6";
+    } from "./cleaning-data.js?v=cleaning-v7";
 
     const status = document.getElementById("status");
     const startTime = document.getElementById("start-time");
@@ -442,20 +442,35 @@
       return tasks.find((task) => task.id === id);
     }
 
-    function recordHasStaffTask(record, staffId, taskId) {
-      return STORE_OPTIONS.some((store) => {
-        const assignment = record.stores?.[store.id]?.assignments?.[taskId];
-        return Array.isArray(assignment?.staffIds) && assignment.staffIds.includes(staffId);
-      });
+    function storeHasActivity(storeRecord) {
+      if (!storeRecord) return false;
+      if (Object.keys(storeRecord.assignments || {}).length > 0) return true;
+      if ((storeRecord.taskIds || []).length > 0) return true;
+      if ((storeRecord.extraTaskIds || []).length > 0) return true;
+      return Boolean(storeRecord.extraNote);
+    }
+
+    function recordHasStaffTask(record, staffId, taskId, storeId = selectedStoreId) {
+      const assignment = record.stores?.[storeId]?.assignments?.[taskId];
+      return Array.isArray(assignment?.staffIds) && assignment.staffIds.includes(staffId);
+    }
+
+    function recentRecordsForStore(storeId = selectedStoreId) {
+      return records
+        .filter((record) => storeHasActivity(record.stores?.[storeId]))
+        .slice(0, 3);
     }
 
     function lastRecordForStore(storeId = selectedStoreId) {
-      return records.find((record) => record.stores?.[storeId]);
+      return records.find((record) => storeHasActivity(record.stores?.[storeId]));
     }
 
     function lastTaskSetForStore(storeId = selectedStoreId) {
       const storeRecord = lastRecordForStore(storeId)?.stores?.[storeId];
-      const taskIds = new Set(Object.keys(storeRecord?.assignments || {}));
+      const taskIds = new Set([
+        ...Object.keys(storeRecord?.assignments || {}),
+        ...(storeRecord?.taskIds || []),
+      ]);
       for (const taskId of storeRecord?.extraTaskIds || []) taskIds.add(taskId);
       return taskIds;
     }
@@ -470,7 +485,7 @@
     }
 
     function repeatWarning(staffId, taskId) {
-      const recentRecords = records.slice(0, 3);
+      const recentRecords = recentRecordsForStore();
       if (recentRecords.length < 3) return "";
       const repeated = recentRecords.every((record) => recordHasStaffTask(record, staffId, taskId));
       if (!repeated) return "";
@@ -660,6 +675,8 @@
         return [store.id, {
           storeId: store.id,
           storeName: store.name,
+          taskIds: storePlan.taskIds,
+          taskNames: storePlan.taskIds.map((taskId) => findTask(taskId)?.name).filter(Boolean),
           assignments,
           extraTaskIds: storePlan.extraTaskIds,
           extraTaskNames,
