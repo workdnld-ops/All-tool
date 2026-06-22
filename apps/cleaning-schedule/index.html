@@ -245,6 +245,11 @@
       white-space: nowrap;
     }
 
+    .last-assigned {
+      color: #8a5a00;
+      font-weight: 850;
+    }
+
     .assignment-row.drag-over {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.14);
@@ -373,7 +378,7 @@
       subscribeCleaningRecords,
       subscribeStaff,
       subscribeTasks,
-    } from "./cleaning-data.js?v=cleaning-v5";
+    } from "./cleaning-data.js?v=cleaning-v6";
 
     const status = document.getElementById("status");
     const startTime = document.getElementById("start-time");
@@ -453,6 +458,15 @@
       const taskIds = new Set(Object.keys(storeRecord?.assignments || {}));
       for (const taskId of storeRecord?.extraTaskIds || []) taskIds.add(taskId);
       return taskIds;
+    }
+
+    function lastStaffNamesForTask(taskId, storeId = selectedStoreId) {
+      const assignment = lastRecordForStore(storeId)?.stores?.[storeId]?.assignments?.[taskId];
+      if (!assignment) return [];
+      const names = assignment.staffNames || [];
+      return (assignment.staffIds || [])
+        .map((staffId, index) => names[index] || findStaff(staffId)?.name || staffId)
+        .filter(Boolean);
     }
 
     function repeatWarning(staffId, taskId) {
@@ -548,20 +562,24 @@
         const task = findTask(taskId);
         const assignedNames = current.assignments[taskId] || [];
         const didLastTime = lastTasks.has(taskId);
+        const lastNames = lastStaffNamesForTask(taskId);
         const assignedText = assignedNames.map((staffId) => {
           const member = findStaff(staffId);
           if (!member) return "";
           return `<button class="chip selected assigned" data-remove-staff="${staffId}" data-task-row="${taskId}" type="button">${escapeHtml(member.name)} ×</button>`;
         }).join("");
+        const emptyText = lastNames.length > 0
+          ? `<span class="empty last-assigned">上次：${escapeHtml(lastNames.join("、"))}</span>`
+          : '<span class="empty">未分配</span>';
         return `
           <article class="assignment-row ${didLastTime ? "recent-task" : ""}" data-drop-task="${taskId}">
             <div class="task-title">
               <span>${escapeHtml(task?.name || "未命名項目")}</span>
-              ${didLastTime ? '<span class="recent-label">上次做過</span>' : ""}
+              ${didLastTime ? '<span class="recent-label">上次項目</span>' : ""}
               <button class="mini-button" data-clear-task="${taskId}" type="button">清空</button>
             </div>
             <div class="assigned-list">
-              ${assignedText || '<span class="empty">未分配</span>'}
+              ${assignedText || emptyText}
             </div>
           </article>
         `;

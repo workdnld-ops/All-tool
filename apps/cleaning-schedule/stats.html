@@ -89,6 +89,10 @@
       gap: 6px;
     }
 
+    .store-tabs {
+      margin-top: 2px;
+    }
+
     .view {
       display: grid;
       gap: 8px;
@@ -159,6 +163,8 @@
       <a class="button" href="index.html">返回</a>
     </header>
 
+    <section class="tabs store-tabs" id="store-tabs"></section>
+
     <section class="tabs">
       <button class="tab active" id="task-tab" type="button">依項目</button>
       <button class="tab" id="staff-tab" type="button">依人員</button>
@@ -181,14 +187,16 @@
   </script>
 
   <script type="module">
-    import { subscribeCleaningRecords } from "./cleaning-data.js?v=cleaning-v5";
+    import { STORE_OPTIONS, subscribeCleaningRecords } from "./cleaning-data.js?v=cleaning-v6";
 
     const status = document.getElementById("status");
+    const storeTabs = document.getElementById("store-tabs");
     const taskTab = document.getElementById("task-tab");
     const staffTab = document.getElementById("staff-tab");
     const taskView = document.getElementById("task-view");
     const staffView = document.getElementById("staff-view");
     let records = [];
+    let selectedStoreId = localStorage.getItem("cleaningStatsStore") || STORE_OPTIONS[0].id;
 
     function escapeHtml(value) {
       return String(value)
@@ -207,28 +215,40 @@
       staffTab.classList.toggle("active", !isTask);
     }
 
-    function entryDate(record, storeName) {
-      const time = record.startTime && record.endTime ? ` ${record.startTime}-${record.endTime}` : "";
-      return `${record.date || record.createdAt?.slice(0, 10) || "未記錄日期"} ${storeName}${time}`;
+    function currentStore() {
+      return STORE_OPTIONS.find((store) => store.id === selectedStoreId) || STORE_OPTIONS[0];
     }
 
-    function collectEntries() {
+    function renderStoreTabs() {
+      storeTabs.innerHTML = STORE_OPTIONS.map((store) => `
+        <button class="tab ${store.id === selectedStoreId ? "active" : ""}" type="button" data-store="${store.id}">
+          ${escapeHtml(store.name)}
+        </button>
+      `).join("");
+    }
+
+    function entryDate(record) {
+      const time = record.startTime && record.endTime ? ` ${record.startTime}-${record.endTime}` : "";
+      return `${record.date || record.createdAt?.slice(0, 10) || "未記錄日期"}${time}`;
+    }
+
+    function collectEntries(storeId = selectedStoreId) {
       const entries = [];
       for (const record of records) {
-        for (const store of Object.values(record.stores || {})) {
-          for (const assignment of Object.values(store.assignments || {})) {
-            for (let index = 0; index < (assignment.staffIds || []).length; index += 1) {
-              entries.push({
-                date: record.date || record.createdAt?.slice(0, 10) || "",
-                createdAt: record.createdAt || record.date || "",
-                storeName: store.storeName || "",
-                taskId: assignment.taskId,
-                taskName: assignment.taskName || "未命名項目",
-                staffId: assignment.staffIds[index],
-                staffName: assignment.staffNames?.[index] || assignment.staffIds[index],
-                label: entryDate(record, store.storeName || ""),
-              });
-            }
+        const store = record.stores?.[storeId];
+        if (!store) continue;
+        for (const assignment of Object.values(store.assignments || {})) {
+          for (let index = 0; index < (assignment.staffIds || []).length; index += 1) {
+            entries.push({
+              date: record.date || record.createdAt?.slice(0, 10) || "",
+              createdAt: record.createdAt || record.date || "",
+              storeName: store.storeName || currentStore().name,
+              taskId: assignment.taskId,
+              taskName: assignment.taskName || "未命名項目",
+              staffId: assignment.staffIds[index],
+              staffName: assignment.staffNames?.[index] || assignment.staffIds[index],
+              label: entryDate(record),
+            });
           }
         }
       }
@@ -307,11 +327,20 @@
     }
 
     function render() {
+      renderStoreTabs();
       const entries = collectEntries();
       renderTaskStats(entries);
       renderStaffStats(entries);
-      status.textContent = `已讀取 ${records.length} 筆紀錄`;
+      status.textContent = `${currentStore().name}｜已讀取 ${entries.length} 筆分配`;
     }
+
+    storeTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-store]");
+      if (!button) return;
+      selectedStoreId = button.dataset.store;
+      localStorage.setItem("cleaningStatsStore", selectedStoreId);
+      render();
+    });
 
     taskTab.addEventListener("click", () => showTab("task"));
     staffTab.addEventListener("click", () => showTab("staff"));
