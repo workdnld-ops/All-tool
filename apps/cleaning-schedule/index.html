@@ -113,6 +113,18 @@
       color: #fff;
     }
 
+    .button.feedback {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .button.feedback-error {
+      border-color: var(--danger);
+      background: #fff5f4;
+      color: var(--danger);
+    }
+
     .chip.assigned {
       border-color: var(--assigned);
       background: var(--assigned-soft);
@@ -410,6 +422,20 @@
       status.style.color = isError ? "var(--danger)" : "var(--muted)";
     }
 
+    function flashButton(button, label, isError = false) {
+      if (!button) return;
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      window.clearTimeout(Number(button.dataset.feedbackTimer || 0));
+      button.textContent = label;
+      button.classList.toggle("feedback", !isError);
+      button.classList.toggle("feedback-error", isError);
+      button.dataset.feedbackTimer = String(window.setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("feedback", "feedback-error");
+      }, 1500));
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replaceAll("&", "&amp;")
@@ -703,22 +729,32 @@
       }
     }
 
-    async function copyLine() {
+    async function copyLine(button) {
       const message = buildLineMessage();
       try {
         await navigator.clipboard.writeText(message);
+        setStatus("Line 訊息已複製");
+        flashButton(button, "已複製");
       } catch {
-        const textarea = document.createElement("textarea");
-        textarea.value = message;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.append(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        textarea.remove();
+        try {
+          const textarea = document.createElement("textarea");
+          textarea.value = message;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.append(textarea);
+          textarea.select();
+          const copied = document.execCommand("copy");
+          textarea.remove();
+          if (!copied) throw new Error("Copy command failed");
+          setStatus("Line 訊息已複製");
+          flashButton(button, "已複製");
+        } catch (error) {
+          console.error(error);
+          setStatus("複製失敗，請再試一次", true);
+          flashButton(button, "複製失敗", true);
+        }
       }
-      setStatus("Line 訊息已複製");
     }
 
     storeTabs.addEventListener("click", (event) => {
@@ -838,8 +874,8 @@
     document.getElementById("go-assign").addEventListener("click", showAssignView);
     document.getElementById("back-setup").addEventListener("click", showSetupView);
     document.getElementById("save-record").addEventListener("click", saveRecord);
-    document.getElementById("copy-line").addEventListener("click", copyLine);
-    document.getElementById("copy-line-setup").addEventListener("click", copyLine);
+    document.getElementById("copy-line").addEventListener("click", (event) => copyLine(event.currentTarget));
+    document.getElementById("copy-line-setup").addEventListener("click", (event) => copyLine(event.currentTarget));
 
     renderStores();
 

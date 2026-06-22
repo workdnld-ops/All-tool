@@ -136,6 +136,18 @@
       color: #fff;
     }
 
+    .button.feedback {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .button.feedback-error {
+      border-color: var(--danger);
+      background: #fff5f4;
+      color: var(--danger);
+    }
+
     .button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -478,6 +490,20 @@
       status.style.color = isError ? "var(--danger)" : "var(--muted)";
     }
 
+    function flashButton(button, label, isError = false) {
+      if (!button) return;
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      window.clearTimeout(Number(button.dataset.feedbackTimer || 0));
+      button.textContent = label;
+      button.classList.toggle("feedback", !isError);
+      button.classList.toggle("feedback-error", isError);
+      button.dataset.feedbackTimer = String(window.setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("feedback", "feedback-error");
+      }, 1500));
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replaceAll("&", "&amp;")
@@ -643,17 +669,26 @@
       try {
         await navigator.clipboard.writeText(message);
         setStatus("Line 訊息已複製");
+        flashButton(lineButton, "已複製");
       } catch {
-        const textarea = document.createElement("textarea");
-        textarea.value = message;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.append(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        textarea.remove();
-        setStatus("Line 訊息已複製");
+        try {
+          const textarea = document.createElement("textarea");
+          textarea.value = message;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.append(textarea);
+          textarea.select();
+          const copied = document.execCommand("copy");
+          textarea.remove();
+          if (!copied) throw new Error("Copy command failed");
+          setStatus("Line 訊息已複製");
+          flashButton(lineButton, "已複製");
+        } catch (error) {
+          console.error(error);
+          setStatus("複製失敗，請再試一次", true);
+          flashButton(lineButton, "複製失敗", true);
+        }
       }
     }
 
