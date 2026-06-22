@@ -71,6 +71,14 @@ export default function Archive() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { window.location.href = '/'; }}
+          className="h-8 px-2 text-xs font-bold"
+        >
+          工具箱
+        </Button>
         <h1 className="font-bold text-xl">欄位封存區</h1>
       </header>
 

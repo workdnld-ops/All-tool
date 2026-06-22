@@ -44,6 +44,8 @@
         textarea { width: 100%; height: 100px; padding: 12px; border: 2px solid #eaeeef; border-radius: 10px; box-sizing: border-box; font-size: 16px; resize: none; transition: 0.3s; }
         textarea:focus { border-color: var(--primary); outline: none; }
         .status { font-size: 0.7rem; color: #34a853; text-align: right; height: 15px; margin-top: 5px; font-weight: bold; }
+        .toolbox-link { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+        .toolbox-link a { min-height: 34px; padding: 0 12px; border: 1px solid #dadce0; border-radius: 8px; background: white; color: #202124; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; font-weight: bold; }
         
         /* 歷史標籤 */
         .tag-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; max-height: 200px; overflow-y: auto; padding: 5px; }
@@ -54,6 +56,10 @@
 <body>
 
 <div class="container">
+    <div class="toolbox-link">
+        <a href="../../index.html">工具箱</a>
+    </div>
+
     <div class="shop-tabs">
         <button id="btn-neihu" class="shop-btn active" onclick="switchShop('neihu')">內湖</button>
         <button id="btn-ruiguang" class="shop-btn" onclick="switchShop('ruiguang')">瑞光</button>

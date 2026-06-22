@@ -54,6 +54,14 @@ const PurchaseFrequency = () => {
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => { window.location.href = '/'; }}
+          className="h-8 px-2 text-xs font-bold"
+        >
+          工具箱
+        </Button>
         <h1 className="font-bold text-base">品項購買頻率統計</h1>
       </header>
 

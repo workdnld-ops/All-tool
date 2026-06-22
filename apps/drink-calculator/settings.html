@@ -75,6 +75,12 @@
       align-items: center;
     }
 
+    .header-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
     h1 {
       margin: 0;
       font-size: 1.2rem;
@@ -270,7 +276,10 @@
         <h1>飲料品項設定</h1>
         <div class="status" id="status">讀取設定中...</div>
       </div>
-      <a class="button" href="index.html">返回</a>
+      <div class="header-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <a class="button" href="index.html">返回</a>
+      </div>
     </header>
 
     <details class="add-panel">

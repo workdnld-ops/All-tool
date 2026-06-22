@@ -28,6 +28,14 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
       <div className="flex gap-2">
         <Button
           variant="ghost"
+          onClick={() => { window.location.href = '/'; }}
+          className="h-8 px-2 text-xs font-bold"
+        >
+          工具箱
+        </Button>
+
+        <Button
+          variant="ghost"
           size="icon"
           onClick={onAddList}
           className="h-8 w-8"
