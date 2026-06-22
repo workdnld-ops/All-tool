@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>飲料計算器</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
@@ -37,6 +37,27 @@
     button,
     input {
       font: inherit;
+    }
+
+    body,
+    button,
+    a,
+    .button,
+    .store-tab,
+    .item,
+    .suggestion-button,
+    .history-panel,
+    .delete {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
     }
 
     .shell {
@@ -414,7 +435,7 @@
       saveOrder,
       subscribeItems,
       subscribeOrders,
-    } from "./drink-data.js?v=store-line-v2";
+    } from "./drink-data.js?v=store-line-v3";
 
     const itemList = document.getElementById("item-list");
     const historyList = document.getElementById("history-list");

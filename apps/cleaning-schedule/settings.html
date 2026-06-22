@@ -36,6 +36,7 @@
     input { font: inherit; }
 
     button,
+    body,
     .button,
     .tab,
     .drag-handle,
@@ -532,19 +533,7 @@
     });
 
     staffList.addEventListener("click", async (event) => {
-      const save = event.target.closest("[data-save-staff]");
       const del = event.target.closest("[data-delete-staff]");
-      if (save) {
-        const id = save.dataset.saveStaff;
-        const current = staff.find((item) => item.id === id);
-        await saveStaffMember({
-          id,
-          name: document.querySelector(`[data-staff-name="${id}"]`).value.trim(),
-          order: current?.order || 0,
-          active: document.querySelector(`[data-staff-active="${id}"]`).checked,
-        });
-        setStatus("同仁已儲存");
-      }
       if (del && confirm("確定刪除這位同仁？")) {
         await deleteStaffMember(del.dataset.deleteStaff);
         setStatus("同仁已刪除");
@@ -552,19 +541,7 @@
     });
 
     taskList.addEventListener("click", async (event) => {
-      const save = event.target.closest("[data-save-task]");
       const del = event.target.closest("[data-delete-task]");
-      if (save) {
-        const id = save.dataset.saveTask;
-        const current = tasks.find((item) => item.id === id);
-        await saveTask({
-          id,
-          name: document.querySelector(`[data-task-name="${id}"]`).value.trim(),
-          order: current?.order || 0,
-          active: document.querySelector(`[data-task-active="${id}"]`).checked,
-        });
-        setStatus("項目已儲存");
-      }
       if (del && confirm("確定刪除這個項目？")) {
         await deleteTask(del.dataset.deleteTask);
         setStatus("項目已刪除");

@@ -32,6 +32,20 @@
 
     button { font: inherit; }
 
+    body,
+    button,
+    a,
+    .button,
+    .tab,
+    .card,
+    .line {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
     .shell {
       width: min(920px, 100%);
       margin: 0 auto;

@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>簽單耗材統計 PWA</title>
     
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1041/1041888.png">
@@ -13,7 +13,9 @@
     
     <style>
         :root { --primary: #1a73e8; --bg: #f8f9fa; --peak: #e74c3c; --off: #27ae60; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 15px; margin: 0; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 15px; margin: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+        button, select, .container, .stat-card, .day-tag { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+        textarea { -webkit-user-select: text; user-select: text; }
         .container { background: white; padding: 1.2rem; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); width: 100%; max-width: 480px; box-sizing: border-box; }
         
         /* 店鋪切換 */
