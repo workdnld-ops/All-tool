@@ -366,6 +366,12 @@
       else await saveTask(item);
     }
 
+    function isNameEditor(target) {
+      return target instanceof HTMLInputElement
+        && target.type === "text"
+        && (Boolean(target.dataset.staffName) || Boolean(target.dataset.taskName));
+    }
+
     function itemFromRow(type, id) {
       const current = listForType(type).find((item) => item.id === id);
       const nameInput = document.querySelector(`[data-${type}-name="${id}"]`);
@@ -392,6 +398,11 @@
           setStatus("自動儲存失敗，請確認網路。", true);
         }
       }, delay));
+    }
+
+    function commitActiveEditor() {
+      const active = document.activeElement;
+      if (isNameEditor(active)) active.blur();
     }
 
     async function reorderItem(type, fromId, toId) {
@@ -511,11 +522,6 @@
       setStatus("項目已新增");
     });
 
-    staffList.addEventListener("input", (event) => {
-      const input = event.target.closest("[data-staff-name]");
-      if (input) scheduleAutoSave("staff", input.dataset.staffName);
-    });
-
     staffList.addEventListener("change", (event) => {
       const input = event.target.closest("[data-staff-active]");
       if (input) scheduleAutoSave("staff", input.dataset.staffActive, 0);
@@ -524,11 +530,6 @@
     staffList.addEventListener("focusout", (event) => {
       const input = event.target.closest("[data-staff-name]");
       if (input) scheduleAutoSave("staff", input.dataset.staffName, 0);
-    });
-
-    taskList.addEventListener("input", (event) => {
-      const input = event.target.closest("[data-task-name]");
-      if (input) scheduleAutoSave("task", input.dataset.taskName);
     });
 
     taskList.addEventListener("change", (event) => {
@@ -540,6 +541,20 @@
       const input = event.target.closest("[data-task-name]");
       if (input) scheduleAutoSave("task", input.dataset.taskName, 0);
     });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || !isNameEditor(event.target)) return;
+      event.preventDefault();
+      event.target.blur();
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      const active = document.activeElement;
+      if (!isNameEditor(active)) return;
+      if (event.target === active) return;
+      if (event.target.closest("input, textarea, select")) return;
+      commitActiveEditor();
+    }, true);
 
     staffList.addEventListener("click", async (event) => {
       const del = event.target.closest("[data-delete-staff]");

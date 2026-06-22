@@ -362,6 +362,12 @@
       return document.querySelector(`[data-id="${id}"][data-field="${field}"]`);
     }
 
+    function isItemEditor(target) {
+      return target instanceof HTMLInputElement
+        && Boolean(target.dataset.id)
+        && target.type !== "checkbox";
+    }
+
     function renderItems() {
       const visibleItems = items;
       if (visibleItems.length === 0) {
@@ -434,6 +440,11 @@
     function scheduleAutoSave(id, delay = 450) {
       clearTimeout(autoSaveTimers.get(id));
       autoSaveTimers.set(id, setTimeout(() => handleSaveItem(id), delay));
+    }
+
+    function commitActiveEditor() {
+      const active = document.activeElement;
+      if (isItemEditor(active)) active.blur();
     }
 
     async function reorderItem(fromId, toId) {
@@ -544,26 +555,32 @@
       setTimeout(() => event.target.select(), 0);
     });
 
-    itemList.addEventListener("input", (event) => {
-      if (!(event.target instanceof HTMLInputElement)) return;
-      const id = event.target.dataset.id;
-      if (!id) return;
-      scheduleAutoSave(id);
-    });
-
     itemList.addEventListener("change", (event) => {
       if (!(event.target instanceof HTMLInputElement)) return;
       const id = event.target.dataset.id;
       if (!id) return;
-      scheduleAutoSave(id, 0);
+      if (event.target.type === "checkbox") scheduleAutoSave(id, 0);
     });
 
     itemList.addEventListener("focusout", (event) => {
-      if (!(event.target instanceof HTMLInputElement)) return;
+      if (!isItemEditor(event.target)) return;
       const id = event.target.dataset.id;
-      if (!id) return;
       scheduleAutoSave(id, 0);
     });
+
+    itemList.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || !isItemEditor(event.target)) return;
+      event.preventDefault();
+      event.target.blur();
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      const active = document.activeElement;
+      if (!isItemEditor(active)) return;
+      if (event.target === active) return;
+      if (event.target.closest("input, textarea, select")) return;
+      commitActiveEditor();
+    }, true);
 
     addButton.addEventListener("click", handleAddItem);
 

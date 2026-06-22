@@ -180,7 +180,7 @@
     </header>
 
     <section class="grid" aria-label="工具清單">
-      <a class="tool" href="apps/credit-card-slip-stats/index.html">
+      <a class="tool" href="apps/credit-card-slip-stats/index.html" data-tool-url="apps/credit-card-slip-stats/index.html">
         <div class="icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M4 19V5"/>
@@ -193,7 +193,7 @@
         <h2>簽單統計</h2>
       </a>
 
-      <a class="tool" href="apps/purchase-accounting/dist/">
+      <a class="tool" href="apps/purchase-accounting/dist/" data-tool-url="apps/purchase-accounting/dist/">
         <div class="icon purchase" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M6 3h12v18H6z"/>
@@ -205,7 +205,7 @@
         <h2>採購記帳</h2>
       </a>
 
-      <a class="tool" href="apps/drink-calculator/index.html">
+      <a class="tool" href="apps/drink-calculator/index.html" data-tool-url="apps/drink-calculator/index.html">
         <div class="icon drink" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M8 3h8"/>
@@ -216,7 +216,7 @@
         <h2>飲料計算器</h2>
       </a>
 
-      <a class="tool" href="apps/cleaning-schedule/index.html">
+      <a class="tool" href="apps/cleaning-schedule/index.html" data-tool-url="apps/cleaning-schedule/index.html">
         <div class="icon cleaning" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M3 21h18"/>
@@ -241,6 +241,15 @@
     }).format(new Date());
 
     document.getElementById("today").textContent = today;
+
+    document.querySelectorAll("[data-tool-url]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        const toolUrl = link.getAttribute("data-tool-url");
+        if (!toolUrl) return;
+        event.preventDefault();
+        window.location.replace(toolUrl);
+      });
+    });
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
