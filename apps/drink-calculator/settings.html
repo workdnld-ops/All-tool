@@ -117,6 +117,13 @@
       color: #fff;
     }
 
+    .button.danger {
+      border-color: var(--danger);
+      background: #fff5f4;
+      color: var(--danger);
+      padding: 0 6px;
+    }
+
     .add-panel,
     .item,
     .heading {
@@ -154,7 +161,7 @@
     .heading,
     .item {
       display: grid;
-      grid-template-columns: 34px minmax(0, 1fr) 72px 56px 42px;
+      grid-template-columns: 34px minmax(0, 1fr) 72px 56px 42px 42px;
       gap: 5px;
       align-items: center;
     }
@@ -265,7 +272,7 @@
       .toggle,
       .toggle input { min-height: 18px; height: 18px; }
       .heading,
-      .item { grid-template-columns: 30px minmax(0, 1fr) 64px 50px 32px; }
+      .item { grid-template-columns: 30px minmax(0, 1fr) 58px 46px 30px 34px; }
     }
   </style>
 </head>
@@ -301,6 +308,7 @@
       <span>箱價</span>
       <span>瓶數</span>
       <span>啟用</span>
+      <span>刪</span>
     </div>
 
     <section class="item-list" id="item-list" aria-label="飲料品項設定"></section>
@@ -328,6 +336,7 @@
   <script type="module">
     import {
       addItem,
+      deleteItem,
       parseNonNegativeInteger,
       saveItem,
       subscribeItems,
@@ -384,6 +393,7 @@
           <label class="toggle" aria-label="${escapeHtml(item.name)} 啟用">
             <input data-id="${item.id}" data-field="active" type="checkbox" ${item.active ? "checked" : ""}>
           </label>
+          <button class="button danger" data-delete-item="${item.id}" type="button" aria-label="刪除 ${escapeHtml(item.name)}">刪</button>
         </article>
       `).join("");
     }
@@ -469,6 +479,20 @@
       }
     }
 
+    async function handleDeleteItem(id) {
+      const item = items.find((candidate) => candidate.id === id);
+      const name = item?.name || "這個品項";
+      if (!confirm(`確定刪除「${name}」？`)) return;
+      clearTimeout(autoSaveTimers.get(id));
+      try {
+        await deleteItem(id);
+        setStatus("品項已刪除");
+      } catch (error) {
+        console.error(error);
+        setStatus("刪除失敗，請稍後再試", true);
+      }
+    }
+
     itemList.addEventListener("dragstart", (event) => {
       const handle = event.target.closest("[data-drag-handle]");
       const row = handle?.closest("[data-row-id]");
@@ -550,6 +574,12 @@
     });
 
     itemList.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-delete-item]");
+      if (deleteButton) {
+        handleDeleteItem(deleteButton.dataset.deleteItem);
+        return;
+      }
+
       if (!(event.target instanceof HTMLInputElement)) return;
       if (event.target.type !== "number") return;
       setTimeout(() => event.target.select(), 0);
