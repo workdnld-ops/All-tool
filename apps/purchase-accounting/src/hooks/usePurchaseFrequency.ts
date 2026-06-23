@@ -23,22 +23,55 @@ interface List {
   cards: ExpenseCard[];
 }
 
+export function normalizeItemName(value: string) {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+export function parseMonthListName(name: string) {
+  const match = name.trim().match(/^(\d{4})\s*\/\s*(\d{1,2})\s*月$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!year || month < 1 || month > 12) return null;
+  return { year, month };
+}
+
+function parsePurchaseDate(value: string, today: Date) {
+  const [month, day] = value.split('/').map(Number);
+  if (!month || !day) return null;
+
+  const purchaseDate = new Date(today.getFullYear(), month - 1, day);
+  purchaseDate.setHours(0, 0, 0, 0);
+
+  const daysInFuture = Math.floor(
+    (purchaseDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysInFuture > 31) {
+    purchaseDate.setFullYear(purchaseDate.getFullYear() - 1);
+  }
+
+  return purchaseDate;
+}
+
 export function usePurchaseFrequency(lists: List[]) {
   const itemFrequencies = useMemo(() => {
     const itemMap = new Map<string, PurchaseRecord[]>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     // 收集所有卡片記錄
     lists.forEach(list => {
+      if (!parseMonthListName(list.name)) return;
+
       list.cards.forEach(card => {
-        const itemName = card.content.trim();
+        if (card.status === 'excluded') return;
+
+        const itemName = normalizeItemName(card.content);
         if (!itemName || !card.date) return;
 
-        // 解析日期 MM/DD 格式
-        const [month, day] = card.date.split('/').map(Number);
-        if (!month || !day) return;
-
-        const currentYear = new Date().getFullYear();
-        const purchaseDate = new Date(currentYear, month - 1, day);
+        const purchaseDate = parsePurchaseDate(card.date, today);
+        if (!purchaseDate) return;
 
         if (!itemMap.has(itemName)) {
           itemMap.set(itemName, []);
@@ -54,8 +87,6 @@ export function usePurchaseFrequency(lists: List[]) {
 
     // 計算每個品項的統計資料
     const frequencies: ItemFrequency[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     itemMap.forEach((records, itemName) => {
       if (records.length < 2) {

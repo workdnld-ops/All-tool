@@ -18,8 +18,10 @@ interface ListProps {
   list: ListType;
   tags: Tag[];
   snackBudget: SnackBudgetSettings;
+  purchaseSuggestions?: PurchaseSuggestion[];
   onUpdateList: (id: string, updates: Partial<ListType>) => void;
   onAddCard: () => void;
+  onAddSuggestedCard?: (suggestion: PurchaseSuggestion) => void;
   onUpdateCard: (cardId: string, updates: Partial<ExpenseCardType>) => void;
   onDeleteCards: (cardIds: string[]) => void;
   onRestoreCard: () => void;
@@ -28,12 +30,21 @@ interface ListProps {
   onArchive?: () => void;
 }
 
+export interface PurchaseSuggestion {
+  itemName: string;
+  lastAmount: number;
+  nextPurchaseDate: Date;
+  averageDaysBetween: number;
+}
+
 export function List({ 
   list, 
   tags, 
   snackBudget,
+  purchaseSuggestions = [],
   onUpdateList, 
   onAddCard,
+  onAddSuggestedCard,
   onUpdateCard,
   onDeleteCards,
   onRestoreCard,
@@ -406,6 +417,31 @@ export function List({
           </div>
         </div>
       </div>
+
+      {purchaseSuggestions.length > 0 && (
+        <div className="mx-4 mt-3 flex-shrink-0 rounded-lg border border-primary/30 bg-primary/5 p-2">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <div className="text-xs font-bold text-primary">本月建議採購</div>
+            <div className="text-[10px] text-muted-foreground">{purchaseSuggestions.length} 項</div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {purchaseSuggestions.map((suggestion) => (
+              <button
+                key={suggestion.itemName}
+                type="button"
+                onClick={() => onAddSuggestedCard?.(suggestion)}
+                className="max-w-full rounded-md border border-primary/30 bg-background px-2 py-1 text-left text-xs font-semibold text-foreground shadow-sm active:scale-[0.99]"
+                title={`預估 ${suggestion.nextPurchaseDate.getMonth() + 1}/${suggestion.nextPurchaseDate.getDate()}，平均 ${suggestion.averageDaysBetween} 天`}
+              >
+                <span className="block truncate">+ {suggestion.itemName}</span>
+                <span className="block text-[10px] font-medium text-muted-foreground">
+                  預估 {suggestion.nextPurchaseDate.getMonth() + 1}/{suggestion.nextPurchaseDate.getDate()}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div ref={setNodeRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2 touch-pan-y">
         <SortableContext items={list.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>

@@ -3,17 +3,15 @@ import { ArrowLeft, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { List as ListType, Tag } from '@/types';
-import { DEFAULT_TAGS } from '@/types';
+import { useFirebaseArchivedLists, useFirebaseLists } from '@/hooks/useFirebase';
 import { usePurchaseFrequency, ItemFrequency } from '@/hooks/usePurchaseFrequency';
 
 const PurchaseFrequency = () => {
   const navigate = useNavigate();
-  const [lists] = useLocalStorage<ListType[]>('lists', []);
-  const [tags] = useLocalStorage<Tag[]>('tags', DEFAULT_TAGS);
+  const { lists, loading: listsLoading } = useFirebaseLists();
+  const { archivedLists, loading: archivedLoading } = useFirebaseArchivedLists();
   
-  const frequencies = usePurchaseFrequency(lists);
+  const frequencies = usePurchaseFrequency([...lists, ...archivedLists]);
 
   const formatDate = (date: Date) => {
     const month = date.getMonth() + 1;
@@ -66,7 +64,14 @@ const PurchaseFrequency = () => {
       </header>
 
       <div className="flex-1 overflow-auto p-4">
-        {frequencies.length === 0 ? (
+        {listsLoading || archivedLoading ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <div className="mb-4 h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              <p>讀取購買紀錄中...</p>
+            </CardContent>
+          </Card>
+        ) : frequencies.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <TrendingUp className="w-12 h-12 mb-4 opacity-50" />

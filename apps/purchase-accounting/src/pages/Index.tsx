@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Header } from '@/components/Header';
-import { List } from '@/components/List';
-import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS, DEFAULT_SNACK_BUDGET } from '@/types';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { List, type PurchaseSuggestion } from '@/components/List';
+import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
 import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget } from '@/hooks/useFirebase';
+import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -32,6 +32,32 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 
+function formatMonthListName(date: Date) {
+  return `${date.getFullYear()}/${date.getMonth() + 1}月`;
+}
+
+function monthRange(monthInfo: { year: number; month: number }) {
+  const start = new Date(monthInfo.year, monthInfo.month - 1, 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(monthInfo.year, monthInfo.month, 0);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function nextListName(lists: ListType[]) {
+  const latestMonth = lists
+    .map((list) => parseMonthListName(list.name))
+    .filter(Boolean)
+    .sort((a, b) => {
+      const aValue = a!.year * 12 + a!.month;
+      const bValue = b!.year * 12 + b!.month;
+      return bValue - aValue;
+    })[0];
+
+  if (!latestMonth) return formatMonthListName(new Date());
+  return formatMonthListName(new Date(latestMonth.year, latestMonth.month, 1));
+}
+
 const Index = () => {
   // Firebase hooks
   const { lists: firebaseLists, loading: listsLoading, saveLists } = useFirebaseLists();
@@ -51,6 +77,46 @@ const Index = () => {
   const [selectedListsToDelete, setSelectedListsToDelete] = useState<Set<string>>(new Set());
   const swiperRef = useRef<SwiperType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists]);
+  const suggestionsByListId = useMemo(() => {
+    const suggestionMap: Record<string, PurchaseSuggestion[]> = {};
+
+    lists.forEach((list) => {
+      const monthInfo = parseMonthListName(list.name);
+      if (!monthInfo) return;
+
+      const { start, end } = monthRange(monthInfo);
+      const existingNames = new Set(
+        list.cards
+          .filter((card) => card.status !== 'excluded')
+          .map((card) => normalizeItemName(card.content))
+          .filter(Boolean)
+      );
+
+      suggestionMap[list.id] = purchaseFrequencies
+        .filter((item) => {
+          if (item.averageDaysBetween <= 0) return false;
+          if (existingNames.has(normalizeItemName(item.itemName))) return false;
+
+          const alreadyPurchasedInMonth = item.records.some((record) =>
+            record.date >= start && record.date <= end
+          );
+          if (alreadyPurchasedInMonth) return false;
+
+          return item.nextPurchaseDate <= end;
+        })
+        .sort((a, b) => a.nextPurchaseDate.getTime() - b.nextPurchaseDate.getTime())
+        .slice(0, 8)
+        .map((item) => ({
+          itemName: item.itemName,
+          lastAmount: item.records[item.records.length - 1]?.amount || 0,
+          nextPurchaseDate: item.nextPurchaseDate,
+          averageDaysBetween: item.averageDaysBetween,
+        }));
+    });
+
+    return suggestionMap;
+  }, [lists, purchaseFrequencies]);
 
   // 同步 Firebase 資料到本地 state
   useEffect(() => {
@@ -92,7 +158,7 @@ const Index = () => {
   const handleAddList = async () => {
     const newList: ListType = {
       id: `list-${Date.now()}`,
-      name: '新欄位',
+      name: nextListName([...lists, ...archivedLists]),
       cards: [],
       order: 0,
     };
@@ -178,6 +244,43 @@ const Index = () => {
     );
     setLists(updatedLists);
     await saveLists(updatedLists);
+  };
+
+  const handleAddSuggestedCard = async (listId: string, suggestion: PurchaseSuggestion) => {
+    const list = lists.find(l => l.id === listId);
+    if (!list) return;
+
+    const existing = list.cards.some((card) =>
+      card.status !== 'excluded'
+      && normalizeItemName(card.content) === normalizeItemName(suggestion.itemName)
+    );
+    if (existing) {
+      toast.info('這個品項已經在本月卡匣裡');
+      return;
+    }
+
+    const newCard: ExpenseCard = {
+      id: `card-${Date.now()}`,
+      status: 'none',
+      date: '',
+      tagId: null,
+      content: suggestion.itemName,
+      amount: suggestion.lastAmount,
+      invoiceType: 'none',
+      order: 0,
+    };
+
+    const updatedLists = lists.map(currentList =>
+      currentList.id === listId
+        ? {
+            ...currentList,
+            cards: [newCard, ...currentList.cards.map(c => ({ ...c, order: c.order + 1 }))]
+          }
+        : currentList
+    );
+    setLists(updatedLists);
+    await saveLists(updatedLists);
+    toast.success('已加入建議品項');
   };
 
   const handleUpdateCard = async (listId: string, cardId: string, updates: Partial<ExpenseCard>) => {
@@ -527,8 +630,10 @@ const Index = () => {
                     list={list}
                     tags={tags}
                     snackBudget={snackBudget}
+                    purchaseSuggestions={suggestionsByListId[list.id] || []}
                     onUpdateList={handleUpdateList}
                     onAddCard={() => handleAddCard(list.id)}
+                    onAddSuggestedCard={(suggestion) => handleAddSuggestedCard(list.id, suggestion)}
                     onUpdateCard={(cardId, updates) =>
                       handleUpdateCard(list.id, cardId, updates)
                     }
