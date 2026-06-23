@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>慶功宴計算器</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+      --gold: #8a5a00;
+      --danger: #b42318;
+      --danger-soft: #fff5f4;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    input { font: inherit; }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .shell {
+      width: min(760px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    header {
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.76rem;
+      min-height: 16px;
+    }
+
+    .button,
+    .mode,
+    .step {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 850;
+      text-decoration: none;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+
+    .button {
+      padding: 0 10px;
+    }
+
+    .button.primary,
+    .mode.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.feedback {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .panel,
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 10px;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .mode {
+      min-height: 44px;
+      padding: 4px 8px;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 0.9rem;
+      line-height: 1.15;
+    }
+
+    .mode span {
+      font-size: 0.72rem;
+      font-weight: 700;
+      opacity: 0.86;
+    }
+
+    .counts {
+      display: grid;
+      gap: 6px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 132px;
+      gap: 8px;
+      align-items: center;
+      min-height: 48px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+    }
+
+    .row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .label {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .label strong {
+      font-size: 0.95rem;
+    }
+
+    .label span {
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.2;
+    }
+
+    .counter {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr) 34px;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .step {
+      min-height: 34px;
+      padding: 0;
+      font-size: 1.1rem;
+    }
+
+    input {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      padding: 0 8px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 850;
+      text-align: center;
+      min-width: 0;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
+      outline: none;
+    }
+
+    .expense-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 150px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfc;
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .metric strong {
+      font-size: 1.05rem;
+      line-height: 1.1;
+      word-break: break-word;
+    }
+
+    .result {
+      display: grid;
+      gap: 7px;
+    }
+
+    .result.over {
+      border-color: rgba(180, 35, 24, 0.35);
+      background: var(--danger-soft);
+    }
+
+    .result.ok {
+      border-color: rgba(31, 111, 100, 0.35);
+      background: var(--primary-soft);
+    }
+
+    .result-title {
+      font-size: 1.05rem;
+      font-weight: 900;
+    }
+
+    .result-text {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.35;
+      padding: 0 2px;
+    }
+
+    @media (max-width: 420px) {
+      .shell { gap: 6px; }
+      .panel,
+      .result { padding: 8px; }
+      .summary { grid-template-columns: 1fr 1fr; }
+      .metric:last-child { grid-column: span 2; }
+      .row { grid-template-columns: minmax(0, 1fr) 126px; }
+      .expense-grid { grid-template-columns: minmax(0, 1fr) 136px; }
+      h1 { font-size: 1.18rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>慶功宴計算器</h1>
+        <div class="status" id="status">依補助資格計算可請款上限</div>
+      </div>
+      <a class="button" href="../../index.html">工具箱</a>
+    </header>
+
+    <section class="panel">
+      <div class="mode-grid" id="mode-grid">
+        <button class="mode active" type="button" data-mode="target">
+          季達標 100%
+          <span>每人 2,000 元</span>
+        </button>
+        <button class="mode" type="button" data-mode="over">
+          季超標 110%
+          <span>每人 2,000 元 + 公假提醒</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="panel counts" aria-label="人數設定">
+      <div class="row">
+        <div class="label">
+          <strong>完整補助人數</strong>
+          <span>通過資格、經理級以上、可全額參加者</span>
+        </div>
+        <div class="counter">
+          <button class="step" type="button" data-step="full" data-delta="-1">-</button>
+          <input id="full" type="number" min="0" inputmode="numeric" value="0" aria-label="完整補助人數">
+          <button class="step" type="button" data-step="full" data-delta="1">+</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label">
+          <strong>半額補助人數</strong>
+          <span>未通過考核但核准、跨店參加等，補助 50%</span>
+        </div>
+        <div class="counter">
+          <button class="step" type="button" data-step="half" data-delta="-1">-</button>
+          <input id="half" type="number" min="0" inputmode="numeric" value="0" aria-label="半額補助人數">
+          <button class="step" type="button" data-step="half" data-delta="1">+</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="label">
+          <strong>自費參加人數</strong>
+          <span>只計入總人數，不計入公司補助上限</span>
+        </div>
+        <div class="counter">
+          <button class="step" type="button" data-step="self" data-delta="-1">-</button>
+          <input id="self" type="number" min="0" inputmode="numeric" value="0" aria-label="自費參加人數">
+          <button class="step" type="button" data-step="self" data-delta="1">+</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="expense-grid">
+        <div class="label">
+          <strong>最後餐費總金額</strong>
+          <span>可先留空，只計算請款上限</span>
+        </div>
+        <input id="expense" type="number" min="0" inputmode="numeric" placeholder="0" aria-label="最後餐費總金額">
+      </div>
+    </section>
+
+    <section class="summary" aria-label="計算摘要">
+      <div class="metric">
+        <span>總人數</span>
+        <strong id="total-people">0 人</strong>
+      </div>
+      <div class="metric">
+        <span>補助上限</span>
+        <strong id="limit">$0</strong>
+      </div>
+      <div class="metric">
+        <span>半額自付估算</span>
+        <strong id="half-self-pay">$0</strong>
+      </div>
+    </section>
+
+    <section class="result ok" id="result">
+      <div class="result-title" id="result-title">尚未輸入餐費</div>
+      <div class="result-text" id="result-text">目前可預抓請款上限為 $0。</div>
+    </section>
+
+    <div class="actions">
+      <button class="button" id="reset" type="button">重置</button>
+      <button class="button primary" id="copy" type="button">複製摘要</button>
+    </div>
+
+    <div class="note">
+      若實際支出未超出總預算，主辦人可依實際餐費請款或多退少補；若超出總預算，差額需由主辦人決定分攤方式並繳回公司。
+    </div>
+  </main>
+
+  <script>
+    const PER_PERSON_LIMIT = 2000;
+    const HALF_RATE = 0.5;
+    const state = { mode: "target" };
+
+    const fullInput = document.getElementById("full");
+    const halfInput = document.getElementById("half");
+    const selfInput = document.getElementById("self");
+    const expenseInput = document.getElementById("expense");
+    const totalPeople = document.getElementById("total-people");
+    const limit = document.getElementById("limit");
+    const halfSelfPay = document.getElementById("half-self-pay");
+    const result = document.getElementById("result");
+    const resultTitle = document.getElementById("result-title");
+    const resultText = document.getElementById("result-text");
+    const status = document.getElementById("status");
+    const copyButton = document.getElementById("copy");
+
+    function parseCount(input) {
+      const value = Number.parseInt(input.value, 10);
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    function parseMoney(input) {
+      const value = Number.parseInt(input.value, 10);
+      return Number.isFinite(value) && value > 0 ? value : 0;
+    }
+
+    function formatCurrency(value) {
+      return `$${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
+    }
+
+    function values() {
+      const full = parseCount(fullInput);
+      const half = parseCount(halfInput);
+      const self = parseCount(selfInput);
+      const expense = parseMoney(expenseInput);
+      const subsidyLimit = (full * PER_PERSON_LIMIT) + (half * PER_PERSON_LIMIT * HALF_RATE);
+      const halfSelfPayAmount = half * PER_PERSON_LIMIT * HALF_RATE;
+      return { full, half, self, expense, subsidyLimit, halfSelfPayAmount };
+    }
+
+    function render() {
+      const data = values();
+      const people = data.full + data.half + data.self;
+      totalPeople.textContent = `${people} 人`;
+      limit.textContent = formatCurrency(data.subsidyLimit);
+      halfSelfPay.textContent = formatCurrency(data.halfSelfPayAmount);
+
+      result.classList.remove("ok", "over");
+
+      if (!data.expense) {
+        result.classList.add("ok");
+        resultTitle.textContent = "尚未輸入餐費";
+        resultText.textContent = `目前可預抓請款上限為 ${formatCurrency(data.subsidyLimit)}。`;
+      } else if (data.expense <= data.subsidyLimit) {
+        const remaining = data.subsidyLimit - data.expense;
+        result.classList.add("ok");
+        resultTitle.textContent = "未超出補助上限";
+        resultText.textContent = `餐費 ${formatCurrency(data.expense)}，補助上限 ${formatCurrency(data.subsidyLimit)}，未使用額度 ${formatCurrency(remaining)}。`;
+      } else {
+        const over = data.expense - data.subsidyLimit;
+        result.classList.add("over");
+        resultTitle.textContent = "已超出補助上限";
+        resultText.textContent = `餐費 ${formatCurrency(data.expense)}，補助上限 ${formatCurrency(data.subsidyLimit)}，超出 ${formatCurrency(over)}。差額需由主辦人決定分攤並繳回公司。`;
+      }
+
+      status.textContent = state.mode === "over"
+        ? "季超標 110%：可另規劃兩小時公假團建活動"
+        : "季達標 100%：每人補助上限 2,000 元";
+    }
+
+    function buildSummary() {
+      const data = values();
+      const people = data.full + data.half + data.self;
+      const lines = [
+        "慶功宴請款試算",
+        "",
+        state.mode === "over" ? "資格：季超標 110%" : "資格：季達標 100%",
+        `完整補助：${data.full} 人`,
+        `半額補助：${data.half} 人`,
+        `自費參加：${data.self} 人`,
+        `總人數：${people} 人`,
+        `補助上限：${formatCurrency(data.subsidyLimit)}`,
+      ];
+
+      if (data.expense) {
+        lines.push(`餐費總額：${formatCurrency(data.expense)}`);
+        if (data.expense <= data.subsidyLimit) {
+          lines.push(`結果：未超出，未使用額度 ${formatCurrency(data.subsidyLimit - data.expense)}`);
+        } else {
+          lines.push(`結果：超出 ${formatCurrency(data.expense - data.subsidyLimit)}`);
+        }
+      }
+
+      if (state.mode === "over") {
+        lines.push("備註：季超標 110% 可另規劃兩小時公假團建活動。");
+      }
+
+      return lines.join("\n");
+    }
+
+    function flashCopy(label) {
+      const original = copyButton.dataset.originalLabel || copyButton.textContent;
+      copyButton.dataset.originalLabel = original;
+      window.clearTimeout(Number(copyButton.dataset.timer || 0));
+      copyButton.textContent = label;
+      copyButton.classList.add("feedback");
+      copyButton.dataset.timer = String(window.setTimeout(() => {
+        copyButton.textContent = original;
+        copyButton.classList.remove("feedback");
+      }, 1500));
+    }
+
+    async function copySummary() {
+      const text = buildSummary();
+      try {
+        await navigator.clipboard.writeText(text);
+        flashCopy("已複製");
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.append(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+        flashCopy("已複製");
+      }
+    }
+
+    document.getElementById("mode-grid").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-mode]");
+      if (!button) return;
+      state.mode = button.dataset.mode;
+      document.querySelectorAll("[data-mode]").forEach((modeButton) => {
+        modeButton.classList.toggle("active", modeButton === button);
+      });
+      render();
+    });
+
+    document.querySelectorAll("[data-step]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.step);
+        const next = Math.max(0, parseCount(input) + Number(button.dataset.delta));
+        input.value = String(next);
+        render();
+      });
+    });
+
+    [fullInput, halfInput, selfInput, expenseInput].forEach((input) => {
+      input.addEventListener("input", render);
+      input.addEventListener("focus", () => setTimeout(() => input.select(), 0));
+      input.addEventListener("click", () => setTimeout(() => input.select(), 0));
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      fullInput.value = "0";
+      halfInput.value = "0";
+      selfInput.value = "0";
+      expenseInput.value = "";
+      render();
+    });
+
+    copyButton.addEventListener("click", copySummary);
+    render();
+  </script>
+</body>
+</html>
