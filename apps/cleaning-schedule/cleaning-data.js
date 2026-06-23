@@ -134,6 +134,17 @@ function normalizeCleaningRecords(data) {
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
 
+function normalizeCelebrationQualifications(data) {
+  return Object.fromEntries(
+    Object.entries(data || {}).map(([staffId, qualification]) => {
+      const type = ["full", "half", "none"].includes(qualification?.type)
+        ? qualification.type
+        : "full";
+      return [staffId, { type }];
+    }),
+  );
+}
+
 async function ensureDefaults(path, defaults) {
   const versionRef = ref(database, `${rootPath}/defaultVersions/${path}`);
   const versionSnapshot = await get(versionRef);
@@ -190,6 +201,18 @@ export function subscribeCleaningRecords(onChange, onError) {
   );
 }
 
+export function subscribeCelebrationQualifications(onChange, onError) {
+  const qualificationsRef = ref(database, `${rootPath}/celebrationQualifications`);
+  return onValue(
+    qualificationsRef,
+    (snapshot) => onChange(normalizeCelebrationQualifications(snapshot.val())),
+    (error) => {
+      console.error("Celebration qualifications read error:", error);
+      onError?.(error);
+    },
+  );
+}
+
 export async function saveStaffMember(member) {
   const id = member.id || slugify(member.name);
   await set(ref(database, `${rootPath}/staff/${id}`), normalizeRecord({ ...member, id }, id));
@@ -206,6 +229,11 @@ export async function deleteStaffMember(id) {
 
 export async function deleteTask(id) {
   await remove(ref(database, `${rootPath}/tasks/${id}`));
+}
+
+export async function saveCelebrationQualification(staffId, type) {
+  const safeType = ["full", "half", "none"].includes(type) ? type : "full";
+  await set(ref(database, `${rootPath}/celebrationQualifications/${staffId}`), { type: safeType });
 }
 
 export async function saveCleaningRecord(record) {
