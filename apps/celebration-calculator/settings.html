@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>慶功宴設定</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+      --gold: #8a5a00;
+      --gold-soft: #fff4d7;
+      --none: #5d6470;
+      --none-soft: #eef1f4;
+      --danger: #b42318;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    select { font: inherit; }
+
+    select {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .shell {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      gap: 8px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.24rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      color: var(--muted);
+      font-size: 0.76rem;
+      min-height: 16px;
+    }
+
+    .button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 850;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      box-shadow: 0 6px 18px rgba(23, 33, 38, 0.05);
+    }
+
+    .section-title {
+      display: grid;
+      gap: 2px;
+    }
+
+    .section-title strong {
+      font-size: 0.95rem;
+    }
+
+    .section-title span,
+    .empty,
+    .note {
+      color: var(--muted);
+      font-size: 0.74rem;
+      line-height: 1.35;
+    }
+
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+      gap: 6px;
+    }
+
+    .staff-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfc;
+      padding: 7px;
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .staff-card.full {
+      border-color: rgba(31, 111, 100, 0.4);
+      background: var(--primary-soft);
+    }
+
+    .staff-card.half {
+      border-color: rgba(138, 90, 0, 0.42);
+      background: var(--gold-soft);
+    }
+
+    .staff-card.none {
+      border-color: #cbd2d8;
+      background: var(--none-soft);
+    }
+
+    .staff-name {
+      font-weight: 900;
+      font-size: 0.84rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
+    select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      padding: 0 8px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 800;
+      min-width: 0;
+    }
+
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
+      outline: none;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      background: #fbfcfc;
+      display: grid;
+      gap: 3px;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .metric strong {
+      font-size: 1rem;
+      line-height: 1.1;
+    }
+
+    @media (max-width: 520px) {
+      .shell { gap: 6px; }
+      .panel { padding: 8px; }
+      .button { min-height: 32px; padding: 0 7px; font-size: 0.78rem; }
+      .staff-grid { grid-template-columns: 1fr 1fr; }
+      .summary { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>慶功宴設定</h1>
+        <div class="status" id="status">讀取同仁資料中...</div>
+      </div>
+      <div class="header-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <a class="button primary" href="index.html">返回</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="section-title">
+        <strong>同仁資格</strong>
+        <span>同仁名單沿用打掃設定；這裡只設定慶功宴補助資格。</span>
+      </div>
+      <div class="summary">
+        <div class="metric">
+          <span>全額補助</span>
+          <strong id="full-count">0 人</strong>
+        </div>
+        <div class="metric">
+          <span>半額補助</span>
+          <strong id="half-count">0 人</strong>
+        </div>
+        <div class="metric">
+          <span>自費</span>
+          <strong id="none-count">0 人</strong>
+        </div>
+      </div>
+      <div class="staff-grid" id="qualification-list"></div>
+      <div class="note">新增、停用或排序同仁請到打掃設定調整；慶功宴主頁會直接套用這裡的資格。</div>
+    </section>
+  </main>
+
+  <script>
+    function markLoadFailure() {
+      const status = document.getElementById("status");
+      if (!status || !status.textContent.includes("讀取")) return;
+      status.textContent = "資料載入失敗，請重新整理";
+      status.style.color = "var(--danger)";
+    }
+
+    window.addEventListener("error", markLoadFailure);
+    window.addEventListener("unhandledrejection", markLoadFailure);
+  </script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getDatabase,
+      onValue,
+      ref,
+      set,
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6aZhiruY_wqBfNPElCsybIQvKByld6_8",
+      authDomain: "money-card-6bf98.firebaseapp.com",
+      databaseURL: "https://money-card-6bf98-default-rtdb.firebaseio.com",
+      projectId: "money-card-6bf98",
+      storageBucket: "money-card-6bf98.firebasestorage.app",
+      messagingSenderId: "245245451690",
+      appId: "1:245245451690:web:e939a519af0009b8d1dfd3",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const rootPath = "users/single-user/cleaningSchedule";
+
+    const staffNames = [
+      "百數",
+      "Jerry",
+      "Oscar",
+      "Addy",
+      "Abao",
+      "Jacob",
+      "Andrew",
+      "Chichi",
+      "A-lin",
+      "Betsy",
+      "阿康",
+      "Jason",
+      "小Q",
+      "Brian",
+      "Stephen",
+      "Jazzy",
+      "Eric",
+      "Otton",
+      "Yula",
+      "Luke",
+      "SuSu",
+      "Emma",
+      "Ryan",
+      "Justin",
+      "Debbi",
+    ];
+
+    const DEFAULT_STAFF = staffNames.map((name, order) => ({
+      id: `staff-${order + 1}`,
+      name,
+      order,
+      active: true,
+    }));
+
+    const state = {
+      staff: DEFAULT_STAFF,
+      qualifications: {},
+      loadedStaff: false,
+      loadedQualifications: false,
+    };
+
+    const status = document.getElementById("status");
+    const qualificationList = document.getElementById("qualification-list");
+    const fullCount = document.getElementById("full-count");
+    const halfCount = document.getElementById("half-count");
+    const noneCount = document.getElementById("none-count");
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function normalizeStaff(data) {
+      return Object.entries(data || {})
+        .map(([id, item]) => {
+          const fallback = DEFAULT_STAFF.find((member) => member.id === id);
+          return {
+            id: String(item.id || id),
+            name: String(item.name || fallback?.name || "未命名"),
+            order: Number.isFinite(Number(item.order)) ? Number(item.order) : fallback?.order || 0,
+            active: item.active !== false,
+          };
+        })
+        .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, "zh-TW"));
+    }
+
+    function normalizeCelebrationQualifications(data) {
+      return Object.fromEntries(
+        Object.entries(data || {}).map(([staffId, qualification]) => {
+          const type = ["full", "half", "none"].includes(qualification?.type)
+            ? qualification.type
+            : "full";
+          return [staffId, { type }];
+        }),
+      );
+    }
+
+    function activeStaff() {
+      return state.staff.filter((member) => member.active !== false);
+    }
+
+    function qualificationFor(staffId) {
+      return state.qualifications[staffId]?.type || "full";
+    }
+
+    function render() {
+      const counts = { full: 0, half: 0, none: 0 };
+      activeStaff().forEach((member) => {
+        counts[qualificationFor(member.id)] += 1;
+      });
+      fullCount.textContent = `${counts.full} 人`;
+      halfCount.textContent = `${counts.half} 人`;
+      noneCount.textContent = `${counts.none} 人`;
+
+      qualificationList.innerHTML = activeStaff().map((member) => {
+        const type = qualificationFor(member.id);
+        return `
+          <div class="staff-card ${type}" data-qualification-card="${member.id}">
+            <div class="staff-name">${escapeHtml(member.name)}</div>
+            <select data-qualification="${member.id}" aria-label="${escapeHtml(member.name)} 慶功宴資格">
+              <option value="full"${type === "full" ? " selected" : ""}>全額補助</option>
+              <option value="half"${type === "half" ? " selected" : ""}>半額補助</option>
+              <option value="none"${type === "none" ? " selected" : ""}>自費</option>
+            </select>
+          </div>
+        `;
+      }).join("") || '<span class="empty">尚無啟用同仁，請先到打掃設定新增或啟用同仁。</span>';
+    }
+
+    qualificationList.addEventListener("change", async (event) => {
+      const select = event.target.closest("[data-qualification]");
+      if (!select) return;
+      const staffId = select.dataset.qualification;
+      state.qualifications[staffId] = { type: select.value };
+      render();
+      try {
+        await set(ref(database, `${rootPath}/celebrationQualifications/${staffId}`), { type: select.value });
+        setStatus("資格已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("資格儲存失敗，請確認網路。", true);
+      }
+    });
+
+    render();
+
+    onValue(
+      ref(database, `${rootPath}/staff`),
+      (snapshot) => {
+        state.staff = snapshot.val() ? normalizeStaff(snapshot.val()) : DEFAULT_STAFF;
+        state.loadedStaff = true;
+        render();
+        if (state.loadedQualifications) setStatus("設定已同步");
+      },
+      () => {
+        state.staff = DEFAULT_STAFF;
+        render();
+        setStatus("同仁讀取失敗，暫用預設名單。", true);
+      },
+    );
+
+    onValue(
+      ref(database, `${rootPath}/celebrationQualifications`),
+      (snapshot) => {
+        state.qualifications = normalizeCelebrationQualifications(snapshot.val());
+        state.loadedQualifications = true;
+        render();
+        if (state.loadedStaff) setStatus("設定已同步");
+      },
+      () => setStatus("資格讀取失敗，暫以全額補助顯示。", true),
+    );
+  </script>
+</body>
+</html>

@@ -71,6 +71,12 @@
       align-items: center;
     }
 
+    .header-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
     h1 {
       margin: 0;
       font-size: 1.28rem;
@@ -180,29 +186,6 @@
       white-space: normal;
     }
 
-    .staff-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-      gap: 6px;
-    }
-
-    .staff-card {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfcfc;
-      padding: 7px;
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .staff-name {
-      font-weight: 900;
-      font-size: 0.84rem;
-      line-height: 1.15;
-      overflow-wrap: anywhere;
-    }
-
     select,
     input {
       width: 100%;
@@ -240,6 +223,28 @@
       font-size: 0.84rem;
     }
 
+    .chip.full {
+      border-color: rgba(31, 111, 100, 0.38);
+    }
+
+    .chip.half {
+      border-color: rgba(138, 90, 0, 0.42);
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .chip.full.selected {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .chip.half.selected {
+      border-color: var(--gold);
+      background: var(--gold);
+      color: #fff;
+    }
+
     .chip .badge {
       border-radius: 999px;
       padding: 1px 6px;
@@ -247,6 +252,11 @@
       color: var(--primary);
       font-size: 0.68rem;
       font-weight: 900;
+    }
+
+    .chip.half .badge {
+      background: #fff;
+      color: var(--gold);
     }
 
     .chip.selected .badge {
@@ -420,7 +430,7 @@
 
     .person-row {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) 92px 116px;
+      grid-template-columns: minmax(82px, 1fr) 64px 104px;
       gap: 6px;
       align-items: center;
     }
@@ -447,10 +457,56 @@
       font-weight: 900;
     }
 
+    .person-name,
+    .person-amount {
+      min-height: 32px;
+      padding: 0 6px;
+      font-size: 0.82rem;
+    }
+
+    .person-amount {
+      text-align: right;
+    }
+
     .actions {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 6px;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .record-row {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfc;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .record-main {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .record-title {
+      font-size: 0.86rem;
+      font-weight: 900;
+      line-height: 1.2;
+      overflow-wrap: anywhere;
+    }
+
+    .record-meta {
+      color: var(--muted);
+      font-size: 0.72rem;
+      line-height: 1.25;
     }
 
     .note,
@@ -469,7 +525,7 @@
       .count-strip { grid-template-columns: 1fr 1fr; }
       .split-grid { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: 1fr; }
-      .actions { grid-template-columns: 1fr; }
+      .actions { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 440px) {
@@ -478,10 +534,19 @@
       .result,
       .manual-panel { padding: 8px; }
       .expense-grid { grid-template-columns: minmax(0, 1fr) 136px; }
-      .staff-grid { grid-template-columns: 1fr 1fr; }
-      .person-row { grid-template-columns: 1fr; }
       .person-row.header { display: none; }
+      .person-row {
+        grid-template-columns: minmax(78px, 1fr) 56px 88px;
+        gap: 4px;
+      }
+      .type-tag,
+      .person-name,
+      .person-amount {
+        min-height: 30px;
+        font-size: 0.76rem;
+      }
       h1 { font-size: 1.18rem; }
+      .record-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -490,9 +555,12 @@
     <header>
       <div>
         <h1>慶功宴計算器</h1>
-        <div class="status" id="status">讀取同仁資料中...</div>
+        <div class="status" id="status">讀取同仁與資格中...</div>
       </div>
-      <a class="button" href="../../index.html">工具箱</a>
+      <div class="header-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <a class="button" href="settings.html">設定</a>
+      </div>
     </header>
 
     <section class="panel">
@@ -510,16 +578,8 @@
 
     <section class="panel">
       <div class="section-title">
-        <strong>同仁資格設定</strong>
-        <span>使用打掃工具的啟用同仁名單；資格會自動儲存，下次計算直接套用。</span>
-      </div>
-      <div class="staff-grid" id="qualification-list"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
         <strong>選擇參加者</strong>
-        <span>點選實際參加慶功宴的人，系統會依上方資格自動統計人數。</span>
+        <span>點選實際參加慶功宴的人，系統會依設定頁資格自動統計人數。</span>
       </div>
       <div class="quick-actions">
         <button class="mini-button" id="select-all" type="button">全選啟用同仁</button>
@@ -531,7 +591,7 @@
     <section class="panel">
       <div class="count-strip">
         <div class="count-pill">
-          <span>完整補助</span>
+          <span>全額補助</span>
           <strong id="full-count">0 人</strong>
         </div>
         <div class="count-pill">
@@ -539,7 +599,7 @@
           <strong id="half-count">0 人</strong>
         </div>
         <div class="count-pill">
-          <span>無補助</span>
+          <span>自費</span>
           <strong id="none-count">0 人</strong>
         </div>
       </div>
@@ -558,16 +618,16 @@
     <section class="panel">
       <div class="section-title">
         <strong>分配模式</strong>
-        <span>「無補助」參加者一律負擔自己的平均餐費，不參與公司補助額度。</span>
+        <span>「自費」參加者一律負擔自己的平均餐費，不參與公司補助額度。</span>
       </div>
       <div class="split-grid" id="split-grid">
         <button class="split-mode" type="button" data-split="shared">
           補助者分攤
-          <span>完整 + 半額只分攤超出額</span>
+          <span>全額 + 半額只分攤超出額</span>
         </button>
         <button class="split-mode active" type="button" data-split="qualified">
           依資格精算
-          <span>完整上限 2,000，半額補助 50%</span>
+          <span>全額上限 2,000，半額補助 50%</span>
         </button>
         <button class="split-mode" type="button" data-split="manual">
           手動輸入
@@ -619,7 +679,7 @@
           <strong id="claim-amount">$0</strong>
         </div>
         <div class="detail">
-          <span>完整補助每人收</span>
+          <span>全額補助每人收</span>
           <strong id="full-collect">$0</strong>
         </div>
         <div class="detail">
@@ -627,7 +687,7 @@
           <strong id="half-collect">$0</strong>
         </div>
         <div class="detail">
-          <span>無補助每人收</span>
+          <span>自費每人收</span>
           <strong id="none-collect">$0</strong>
         </div>
       </div>
@@ -643,12 +703,21 @@
 
     <div class="actions">
       <button class="button" id="reset" type="button">重置</button>
+      <button class="button" id="save-record" type="button">儲存紀錄</button>
       <button class="button" id="copy-claim" type="button">複製請款摘要</button>
       <button class="button primary" id="copy-collect" type="button">複製收款明細</button>
     </div>
 
+    <section class="panel">
+      <div class="section-title">
+        <strong>儲存紀錄</strong>
+        <span>保留最近的慶功宴計算結果，方便回頭查請款與收款金額。</span>
+      </div>
+      <div class="record-list" id="record-list"></div>
+    </section>
+
     <div class="note">
-      公司請款簡化版用來對照規範範例；依資格精算會將半額補助者的 50% 自付一起列入。無補助參加者只計入總人數與個人收款，不計入公司補助上限。
+      公司請款簡化版用來對照規範範例；依資格精算會將半額補助者的 50% 自付一起列入。自費參加者只計入總人數與個人收款，不計入公司補助上限。
     </div>
   </main>
 
@@ -669,6 +738,8 @@
     import {
       getDatabase,
       onValue,
+      push,
+      remove,
       ref,
       set,
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
@@ -747,6 +818,28 @@
       );
     }
 
+    function normalizeCelebrationRecords(data) {
+      return Object.entries(data || {})
+        .map(([id, record]) => ({
+          id,
+          createdAt: record.createdAt || "",
+          mode: record.mode || "target",
+          split: record.split || "qualified",
+          expense: Number(record.expense) || 0,
+          people: Number(record.people) || 0,
+          full: Number(record.full) || 0,
+          half: Number(record.half) || 0,
+          none: Number(record.none) || 0,
+          subsidyLimit: Number(record.subsidyLimit) || 0,
+          average: Number(record.average) || 0,
+          claim: Number(record.claim) || 0,
+          collect: Number(record.collect) || 0,
+          unallocated: Number(record.unallocated) || 0,
+          participants: Array.isArray(record.participants) ? record.participants : [],
+        }))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    }
+
     function subscribeStaff(onChange, onError) {
       return onValue(
         ref(database, `${rootPath}/staff`),
@@ -763,17 +856,12 @@
       );
     }
 
-    async function saveCelebrationQualification(staffId, type) {
-      const safeType = ["full", "half", "none"].includes(type) ? type : "full";
-      await set(ref(database, `${rootPath}/celebrationQualifications/${staffId}`), { type: safeType });
-    }
-
     const PER_PERSON_LIMIT = 2000;
     const HALF_RATE = 0.5;
     const TYPES = {
-      full: { label: "完整補助", short: "完整", limit: PER_PERSON_LIMIT },
+      full: { label: "全額補助", short: "全額", limit: PER_PERSON_LIMIT },
       half: { label: "半額補助", short: "半額", limit: PER_PERSON_LIMIT * HALF_RATE },
-      none: { label: "無補助", short: "無補助", limit: 0 },
+      none: { label: "自費", short: "自費", limit: 0 },
     };
 
     const state = {
@@ -783,12 +871,12 @@
       qualifications: {},
       selectedIds: [],
       manualRows: [],
+      records: [],
       loadedStaff: false,
       loadedQualifications: false,
     };
 
     const status = document.getElementById("status");
-    const qualificationList = document.getElementById("qualification-list");
     const participantList = document.getElementById("participant-list");
     const expenseInput = document.getElementById("expense");
     const fullCount = document.getElementById("full-count");
@@ -812,6 +900,8 @@
     const noneCollect = document.getElementById("none-collect");
     const manualPanel = document.getElementById("manual-panel");
     const personList = document.getElementById("person-list");
+    const recordList = document.getElementById("record-list");
+    const saveRecordButton = document.getElementById("save-record");
     const copyClaimButton = document.getElementById("copy-claim");
     const copyCollectButton = document.getElementById("copy-collect");
 
@@ -969,29 +1059,12 @@
       return qualified;
     }
 
-    function renderQualifications() {
-      const staff = activeStaff();
-      qualificationList.innerHTML = staff.map((member) => {
-        const type = qualificationFor(member.id);
-        return `
-          <div class="staff-card" data-qualification-card="${member.id}">
-            <div class="staff-name">${escapeHtml(member.name)}</div>
-            <select data-qualification="${member.id}" aria-label="${escapeHtml(member.name)} 慶功宴資格">
-              <option value="full"${type === "full" ? " selected" : ""}>完整補助</option>
-              <option value="half"${type === "half" ? " selected" : ""}>半額補助</option>
-              <option value="none"${type === "none" ? " selected" : ""}>無補助</option>
-            </select>
-          </div>
-        `;
-      }).join("") || '<span class="empty">尚無啟用同仁，請先到打掃設定新增或啟用同仁。</span>';
-    }
-
     function renderParticipants() {
       const selected = new Set(state.selectedIds);
       participantList.innerHTML = activeStaff().map((member) => {
         const type = qualificationFor(member.id);
         return `
-          <button class="chip ${selected.has(member.id) ? "selected" : ""} ${type === "none" ? "none" : ""}" type="button" data-participant="${member.id}">
+          <button class="chip ${selected.has(member.id) ? "selected" : ""} ${type}" type="button" data-participant="${member.id}">
             ${escapeHtml(member.name)}
             <span class="badge">${TYPES[type].short}</span>
           </button>
@@ -1068,6 +1141,41 @@
       ].join("");
     }
 
+    function formatDateTime(value) {
+      const date = value ? new Date(value) : null;
+      if (!date || Number.isNaN(date.getTime())) return "未記錄時間";
+      return date.toLocaleString("zh-TW", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    function splitLabel(value) {
+      if (value === "shared") return "補助者分攤";
+      if (value === "manual") return "手動輸入";
+      return "依資格精算";
+    }
+
+    function renderRecords() {
+      const records = state.records.slice(0, 10);
+      recordList.innerHTML = records.map((record) => {
+        const names = record.participants.map((item) => item.name).filter(Boolean).join("、");
+        return `
+          <div class="record-row" data-record-id="${record.id}">
+            <div class="record-main">
+              <div class="record-title">${formatDateTime(record.createdAt)}・${formatCurrency(record.expense)}・${record.people} 人</div>
+              <div class="record-meta">全額 ${record.full}、半額 ${record.half}、自費 ${record.none}｜${splitLabel(record.split)}</div>
+              <div class="record-meta">補助上限 ${formatCurrency(record.subsidyLimit)}｜請款 ${formatCurrency(record.claim)}｜應收 ${formatCurrency(record.collect)}</div>
+              <div class="record-meta">${escapeHtml(names || "未記錄參加者")}</div>
+            </div>
+            <button class="button" type="button" data-delete-record="${record.id}">刪除</button>
+          </div>
+        `;
+      }).join("") || '<span class="empty">尚無儲存紀錄。</span>';
+    }
+
     function render(options = {}) {
       const shouldRenderManualRows = options.renderManualRows !== false;
       const data = values();
@@ -1088,6 +1196,7 @@
       renderCompany(data, qualified);
       renderAllocation(data, allocation);
       if (shouldRenderManualRows) renderManualRows();
+      renderRecords();
     }
 
     function buildClaimSummary() {
@@ -1098,9 +1207,9 @@
         "慶功宴請款試算",
         "",
         state.mode === "over" ? "資格：季超標 110%" : "資格：季達標 100%",
-        `完整補助：${data.full} 人`,
+        `全額補助：${data.full} 人`,
         `半額補助：${data.half} 人`,
-        `無補助：${data.none} 人`,
+        `自費：${data.none} 人`,
         `總人數：${data.people} 人`,
         `參加者：${data.participants.map((member) => member.name).join("、") || "未選擇"}`,
         `補助上限：${formatCurrency(data.subsidyLimit)}`,
@@ -1143,9 +1252,9 @@
           lines.push(`${row.name || TYPES[row.type].label}（${TYPES[row.type].label}）：${formatCurrency(parseMoneyValue(row.amount))}`);
         });
       } else {
-        lines.push(`完整補助者：每人收 ${formatPerPerson(allocation.fullEach, data.full)}`);
+        lines.push(`全額補助者：每人收 ${formatPerPerson(allocation.fullEach, data.full)}`);
         lines.push(`半額補助者：每人收 ${formatPerPerson(allocation.halfEach, data.half)}`);
-        lines.push(`無補助者：每人收 ${formatPerPerson(allocation.noneEach, data.none)}`);
+        lines.push(`自費者：每人收 ${formatPerPerson(allocation.noneEach, data.none)}`);
       }
 
       if (allocation.unallocated > 0) {
@@ -1153,6 +1262,75 @@
       }
 
       return lines.join("\n");
+    }
+
+    function currentRecordSnapshot() {
+      const data = values();
+      const qualified = calculateQualified(data);
+      const allocation = activeAllocation(data, qualified);
+      return {
+        createdAt: new Date().toISOString(),
+        mode: state.mode,
+        split: state.split,
+        expense: roundMoney(data.expense),
+        people: data.people,
+        full: data.full,
+        half: data.half,
+        none: data.none,
+        subsidyLimit: roundMoney(data.subsidyLimit),
+        average: roundMoney(data.average),
+        claim: roundMoney(allocation.claim),
+        collect: roundMoney(allocation.collect),
+        unallocated: roundMoney(allocation.unallocated),
+        participants: data.participants.map((member) => ({
+          id: member.id,
+          name: member.name,
+          type: qualificationFor(member.id),
+          typeLabel: TYPES[qualificationFor(member.id)]?.label || "全額補助",
+        })),
+        manualRows: state.split === "manual"
+          ? state.manualRows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            type: row.type,
+            amount: roundMoney(row.amount),
+          }))
+          : [],
+      };
+    }
+
+    async function saveCurrentRecord() {
+      const data = values();
+      if (!data.people) {
+        setStatus("請先選擇參加者再儲存", true);
+        return;
+      }
+      if (!data.expense) {
+        setStatus("請先輸入餐費再儲存", true);
+        return;
+      }
+
+      saveRecordButton.disabled = true;
+      try {
+        const recordRef = push(ref(database, `${rootPath}/celebrationRecords`));
+        await set(recordRef, currentRecordSnapshot());
+        setStatus("慶功宴紀錄已儲存");
+      } catch (error) {
+        console.error(error);
+        setStatus("紀錄儲存失敗，請確認網路。", true);
+      } finally {
+        saveRecordButton.disabled = false;
+      }
+    }
+
+    async function deleteRecord(id) {
+      try {
+        await remove(ref(database, `${rootPath}/celebrationRecords/${id}`));
+        setStatus("紀錄已刪除");
+      } catch (error) {
+        console.error(error);
+        setStatus("紀錄刪除失敗，請確認網路。", true);
+      }
     }
 
     function flashCopy(button, label) {
@@ -1193,22 +1371,6 @@
         modeButton.classList.toggle("active", modeButton === button);
       });
       render();
-    });
-
-    qualificationList.addEventListener("change", async (event) => {
-      const select = event.target.closest("[data-qualification]");
-      if (!select) return;
-      const staffId = select.dataset.qualification;
-      state.qualifications[staffId] = { type: select.value };
-      renderParticipants();
-      render();
-      try {
-        await saveCelebrationQualification(staffId, select.value);
-        setStatus("資格已儲存");
-      } catch (error) {
-        console.error(error);
-        setStatus("資格儲存失敗，請確認網路。", true);
-      }
     });
 
     participantList.addEventListener("click", (event) => {
@@ -1280,11 +1442,18 @@
       render();
     });
 
+    saveRecordButton.addEventListener("click", saveCurrentRecord);
+
+    recordList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-delete-record]");
+      if (!button) return;
+      deleteRecord(button.dataset.deleteRecord);
+    });
+
     copyClaimButton.addEventListener("click", () => copyText(buildClaimSummary(), copyClaimButton));
     copyCollectButton.addEventListener("click", () => copyText(buildCollectSummary(), copyCollectButton));
 
     function renderAll() {
-      renderQualifications();
       renderParticipants();
       render();
     }
@@ -1312,7 +1481,16 @@
         renderAll();
         if (state.loadedStaff) setStatus("同仁與資格已同步");
       },
-      () => setStatus("資格讀取失敗，暫以完整補助計算。", true),
+      () => setStatus("資格讀取失敗，暫以全額補助計算。", true),
+    );
+
+    onValue(
+      ref(database, `${rootPath}/celebrationRecords`),
+      (snapshot) => {
+        state.records = normalizeCelebrationRecords(snapshot.val());
+        renderRecords();
+      },
+      () => setStatus("紀錄讀取失敗，請確認網路。", true),
     );
   </script>
 </body>
