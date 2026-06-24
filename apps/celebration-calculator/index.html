@@ -54,7 +54,7 @@
     }
 
     .shell {
-      width: min(920px, 100%);
+      width: min(960px, 100%);
       min-height: 100dvh;
       margin: 0 auto;
       padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
@@ -92,7 +92,6 @@
 
     .button,
     .mode,
-    .split-mode,
     .chip,
     .mini-button {
       min-height: 34px;
@@ -116,7 +115,6 @@
 
     .button.primary,
     .mode.active,
-    .split-mode.active,
     .chip.selected {
       border-color: var(--primary);
       background: var(--primary);
@@ -131,7 +129,7 @@
 
     .panel,
     .result,
-    .manual-panel {
+    .detail-panel {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface);
@@ -149,26 +147,24 @@
       font-size: 0.95rem;
     }
 
-    .section-title span {
+    .section-title span,
+    .empty,
+    .note {
       color: var(--muted);
       font-size: 0.74rem;
-      line-height: 1.25;
+      line-height: 1.35;
     }
 
     .mode-grid,
-    .split-grid,
-    .quick-actions {
+    .quick-actions,
+    .temp-grid,
+    .total-input-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 6px;
     }
 
-    .split-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .mode,
-    .split-mode {
+    .mode {
       min-height: 44px;
       padding: 4px 8px;
       flex-direction: column;
@@ -178,16 +174,15 @@
       text-align: center;
     }
 
-    .mode span,
-    .split-mode span {
+    .mode span {
       font-size: 0.72rem;
       font-weight: 700;
       opacity: 0.86;
       white-space: normal;
     }
 
-    select,
-    input {
+    input,
+    select {
       width: 100%;
       min-height: 34px;
       border: 1px solid #b8c6cc;
@@ -233,6 +228,10 @@
       color: var(--gold);
     }
 
+    .chip.none {
+      border-color: #cbd2d8;
+    }
+
     .chip.full.selected {
       border-color: var(--primary);
       background: var(--primary);
@@ -242,6 +241,12 @@
     .chip.half.selected {
       border-color: var(--gold);
       background: var(--gold);
+      color: #fff;
+    }
+
+    .chip.none.selected {
+      border-color: var(--none);
+      background: var(--none);
       color: #fff;
     }
 
@@ -259,18 +264,14 @@
       color: var(--gold);
     }
 
+    .chip.none .badge {
+      background: var(--none-soft);
+      color: var(--none);
+    }
+
     .chip.selected .badge {
       background: rgba(255, 255, 255, 0.2);
       color: #fff;
-    }
-
-    .chip.none {
-      border-color: #cbd2d8;
-    }
-
-    .chip.none.selected {
-      border-color: var(--none);
-      background: var(--none);
     }
 
     .mini-button {
@@ -280,29 +281,6 @@
       color: var(--primary);
       background: var(--primary-soft);
       border-color: transparent;
-    }
-
-    .expense-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 150px;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .label {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .label strong {
-      font-size: 0.95rem;
-    }
-
-    .label span {
-      color: var(--muted);
-      font-size: 0.72rem;
-      line-height: 1.2;
     }
 
     .summary {
@@ -387,91 +365,84 @@
       line-height: 1.45;
     }
 
-    .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .detail {
-      border: 1px solid rgba(220, 228, 232, 0.95);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.72);
-      padding: 8px;
-      display: grid;
-      gap: 3px;
-      min-width: 0;
-    }
-
-    .detail span {
-      color: var(--muted);
-      font-size: 0.72rem;
-    }
-
-    .detail strong {
-      font-size: 0.96rem;
-      line-height: 1.12;
-      word-break: break-word;
-    }
-
-    .manual-panel {
+    .detail-panel {
       display: none;
       gap: 8px;
     }
 
-    .manual-panel.show {
+    .detail-panel.show {
       display: grid;
     }
 
-    .person-list {
+    .detail-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 120px;
+      gap: 6px;
+      align-items: end;
+    }
+
+    .meal-list {
       display: grid;
       gap: 6px;
     }
 
-    .person-row {
+    .meal-row {
       display: grid;
-      grid-template-columns: minmax(82px, 1fr) 64px 104px;
+      grid-template-columns: minmax(92px, 1fr) 100px 86px 64px 96px;
       gap: 6px;
       align-items: center;
     }
 
-    .person-row.header {
+    .meal-row.header {
       color: var(--muted);
       font-size: 0.72rem;
-      font-weight: 800;
+      font-weight: 850;
     }
 
-    .person-row.header span {
+    .meal-row.header span {
       padding: 0 4px;
     }
 
+    .person-name {
+      font-weight: 900;
+      font-size: 0.82rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
+
     .type-tag {
-      min-height: 34px;
+      min-height: 32px;
       border-radius: 8px;
       background: var(--none-soft);
       color: var(--none);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.78rem;
+      font-size: 0.76rem;
       font-weight: 900;
     }
 
-    .person-name,
-    .person-amount {
+    .type-tag.full {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .type-tag.half {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .meal-cost,
+    .service-rate {
       min-height: 32px;
       padding: 0 6px;
       font-size: 0.82rem;
     }
 
-    .person-amount {
+    .pay-amount {
       text-align: right;
-    }
-
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 6px;
+      font-weight: 900;
+      font-size: 0.84rem;
     }
 
     .record-list {
@@ -509,41 +480,40 @@
       line-height: 1.25;
     }
 
-    .note,
-    .empty {
-      color: var(--muted);
-      font-size: 0.72rem;
-      line-height: 1.35;
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
     }
 
-    .note {
-      padding: 0 2px;
+    .temp-grid {
+      grid-template-columns: minmax(0, 1fr) 118px 60px;
+      align-items: center;
     }
 
-    @media (max-width: 680px) {
+    @media (max-width: 720px) {
       .summary,
       .count-strip { grid-template-columns: 1fr 1fr; }
-      .split-grid { grid-template-columns: 1fr; }
-      .detail-grid { grid-template-columns: 1fr; }
       .actions { grid-template-columns: 1fr 1fr; }
+      .meal-row { grid-template-columns: minmax(78px, 1fr) 76px 62px 50px 78px; gap: 4px; }
+      .detail-controls { grid-template-columns: 1fr; }
     }
 
-    @media (max-width: 440px) {
+    @media (max-width: 460px) {
       .shell { gap: 6px; }
       .panel,
       .result,
-      .manual-panel { padding: 8px; }
-      .expense-grid { grid-template-columns: minmax(0, 1fr) 136px; }
-      .person-row.header { display: none; }
-      .person-row {
-        grid-template-columns: minmax(78px, 1fr) 56px 88px;
-        gap: 4px;
-      }
-      .type-tag,
+      .detail-panel { padding: 8px; }
+      .temp-grid { grid-template-columns: 1fr 96px 52px; gap: 4px; }
+      .meal-row.header { display: none; }
+      .meal-row { grid-template-columns: minmax(74px, 1fr) 72px 56px 48px 72px; }
       .person-name,
-      .person-amount {
+      .meal-cost,
+      .service-rate,
+      .type-tag,
+      .pay-amount {
         min-height: 30px;
-        font-size: 0.76rem;
+        font-size: 0.72rem;
       }
       h1 { font-size: 1.18rem; }
       .record-row { grid-template-columns: 1fr; }
@@ -579,13 +549,22 @@
     <section class="panel">
       <div class="section-title">
         <strong>選擇參加者</strong>
-        <span>點選實際參加慶功宴的人，系統會依設定頁資格自動統計人數。</span>
+        <span>點選實際參加慶功宴的人；臨時人員只會加入本次計算與儲存紀錄。</span>
       </div>
       <div class="quick-actions">
         <button class="mini-button" id="select-all" type="button">全選啟用同仁</button>
         <button class="mini-button" id="clear-selected" type="button">清除參加者</button>
       </div>
       <div class="chip-list" id="participant-list"></div>
+      <div class="temp-grid">
+        <input id="temp-name" type="text" placeholder="臨時人員姓名" aria-label="臨時人員姓名">
+        <select id="temp-type" aria-label="臨時人員資格">
+          <option value="full">全額補助</option>
+          <option value="half">半額補助</option>
+          <option value="none">自費</option>
+        </select>
+        <button class="mini-button" id="add-temp" type="button">新增</button>
+      </div>
     </section>
 
     <section class="panel">
@@ -606,118 +585,75 @@
     </section>
 
     <section class="panel">
-      <div class="expense-grid">
-        <div class="label">
-          <strong>最後餐費總金額</strong>
-          <span>可貼上 10,875 這類含逗號金額</span>
-        </div>
-        <input id="expense" type="text" inputmode="numeric" placeholder="0" aria-label="最後餐費總金額">
-      </div>
-    </section>
-
-    <section class="panel">
       <div class="section-title">
-        <strong>分配模式</strong>
-        <span>「自費」參加者一律負擔自己的平均餐費，不參與公司補助額度。</span>
+        <strong>總額計算</strong>
+        <span>輸入餐費總金額後，即時計算補助金額與超出額度。</span>
       </div>
-      <div class="split-grid" id="split-grid">
-        <button class="split-mode" type="button" data-split="shared">
-          補助者分攤
-          <span>全額 + 半額只分攤超出額</span>
-        </button>
-        <button class="split-mode active" type="button" data-split="qualified">
-          依資格精算
-          <span>全額上限 2,000，半額補助 50%</span>
-        </button>
-        <button class="split-mode" type="button" data-split="manual">
-          手動輸入
-          <span>逐人調整收款金額</span>
-        </button>
+      <div class="total-input-grid">
+        <div class="metric">
+          <span>輸入餐費總金額</span>
+          <input id="expense" type="text" inputmode="numeric" placeholder="0" aria-label="輸入餐費總金額">
+        </div>
+        <div class="metric">
+          <span>超出額度</span>
+          <strong id="over-amount">$0</strong>
+        </div>
       </div>
     </section>
 
-    <section class="summary" aria-label="計算摘要">
+    <section class="summary" aria-label="總額摘要">
       <div class="metric">
         <span>總人數</span>
         <strong id="total-people">0 人</strong>
       </div>
       <div class="metric">
-        <span>補助上限</span>
+        <span>補助金額</span>
         <strong id="limit">$0</strong>
       </div>
       <div class="metric">
-        <span>每人平均</span>
-        <strong id="average-cost">$0</strong>
+        <span>餐費總金額</span>
+        <strong id="expense-total">$0</strong>
       </div>
       <div class="metric">
-        <span>應收總額</span>
+        <span>餐費明細應收</span>
         <strong id="collect-total">$0</strong>
       </div>
     </section>
 
-    <section class="result ok" id="company-result">
-      <div class="result-title" id="company-title">尚未輸入餐費</div>
-      <div class="result-text" id="company-text">目前可預抓請款上限為 $0。</div>
-      <div class="detail-grid">
-        <div class="detail">
-          <span>公司請款簡化版</span>
-          <strong id="simple-claim">$0</strong>
-        </div>
-        <div class="detail">
-          <span>依資格精算請款</span>
-          <strong id="qualified-claim">$0</strong>
-        </div>
-      </div>
+    <section class="result ok" id="total-result">
+      <div class="result-title" id="total-title">尚未輸入餐費</div>
+      <div class="result-text" id="total-text">請先選擇參加者並輸入餐費總金額。</div>
     </section>
 
-    <section class="result ok" id="allocation-result">
-      <div class="result-title" id="allocation-title">收款明細</div>
-      <div class="result-text" id="allocation-text">選擇參加者與分配模式後，這裡會顯示主辦人應收與公司建議請款。</div>
-      <div class="detail-grid">
-        <div class="detail">
-          <span>公司建議請款</span>
-          <strong id="claim-amount">$0</strong>
-        </div>
-        <div class="detail">
-          <span>全額補助每人收</span>
-          <strong id="full-collect">$0</strong>
-        </div>
-        <div class="detail">
-          <span>半額補助每人收</span>
-          <strong id="half-collect">$0</strong>
-        </div>
-        <div class="detail">
-          <span>自費每人收</span>
-          <strong id="none-collect">$0</strong>
-        </div>
-      </div>
-    </section>
-
-    <section class="manual-panel" id="manual-panel">
+    <section class="detail-panel" id="meal-panel">
       <div class="section-title">
-        <strong>手動收款明細</strong>
-        <span>預設帶入依資格精算結果；可逐人調整收款金額，系統會重新檢查未分配差額。</span>
+        <strong>餐費明細</strong>
+        <span>超出補助金額時可逐人輸入餐費，系統會依資格計算每位同仁需補付金額。</span>
       </div>
-      <div class="person-list" id="person-list"></div>
+      <div class="detail-controls">
+        <span class="note">全域服務費有輸入時會套用所有人；留空時可逐人填服務費。</span>
+        <input id="global-service" type="text" inputmode="decimal" placeholder="服務費%" aria-label="全域服務費百分比">
+      </div>
+      <div class="meal-list" id="meal-list"></div>
     </section>
 
     <div class="actions">
       <button class="button" id="reset" type="button">重置</button>
       <button class="button" id="save-record" type="button">儲存紀錄</button>
       <button class="button" id="copy-claim" type="button">複製請款摘要</button>
-      <button class="button primary" id="copy-collect" type="button">複製收款明細</button>
+      <button class="button primary" id="copy-collect" type="button">複製餐費明細</button>
     </div>
 
     <section class="panel">
       <div class="section-title">
         <strong>儲存紀錄</strong>
-        <span>保留最近的慶功宴計算結果，方便回頭查請款與收款金額。</span>
+        <span>保留最近的慶功宴計算結果，方便回頭查補助、超出額與餐費明細。</span>
       </div>
       <div class="record-list" id="record-list"></div>
     </section>
 
     <div class="note">
-      公司請款簡化版用來對照規範範例；依資格精算會將半額補助者的 50% 自付一起列入。自費參加者只計入總人數與個人收款，不計入公司補助上限。
+      全額補助每人上限 2,000 元；半額補助為餐費 50%，上限 1,000 元；自費人員不列入補助金額。
     </div>
   </main>
 
@@ -793,6 +729,64 @@
       active: true,
     }));
 
+    const PER_PERSON_LIMIT = 2000;
+    const HALF_RATE = 0.5;
+    const TYPES = {
+      full: { label: "全額補助", short: "全額" },
+      half: { label: "半額補助", short: "半額" },
+      none: { label: "自費", short: "自費" },
+    };
+
+    const state = {
+      mode: "target",
+      staff: DEFAULT_STAFF,
+      qualifications: {},
+      selectedIds: [],
+      tempPeople: [],
+      mealRows: [],
+      records: [],
+      tempSeq: 1,
+      loadedStaff: false,
+      loadedQualifications: false,
+    };
+
+    const status = document.getElementById("status");
+    const participantList = document.getElementById("participant-list");
+    const tempNameInput = document.getElementById("temp-name");
+    const tempTypeSelect = document.getElementById("temp-type");
+    const expenseInput = document.getElementById("expense");
+    const globalServiceInput = document.getElementById("global-service");
+    const fullCount = document.getElementById("full-count");
+    const halfCount = document.getElementById("half-count");
+    const noneCount = document.getElementById("none-count");
+    const totalPeople = document.getElementById("total-people");
+    const limit = document.getElementById("limit");
+    const expenseTotal = document.getElementById("expense-total");
+    const overAmount = document.getElementById("over-amount");
+    const collectTotal = document.getElementById("collect-total");
+    const totalResult = document.getElementById("total-result");
+    const totalTitle = document.getElementById("total-title");
+    const totalText = document.getElementById("total-text");
+    const mealPanel = document.getElementById("meal-panel");
+    const mealList = document.getElementById("meal-list");
+    const recordList = document.getElementById("record-list");
+    const saveRecordButton = document.getElementById("save-record");
+    const copyClaimButton = document.getElementById("copy-claim");
+    const copyCollectButton = document.getElementById("copy-collect");
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
     function normalizeStaff(data) {
       return Object.entries(data || {})
         .map(([id, item]) => {
@@ -824,98 +818,18 @@
           id,
           createdAt: record.createdAt || "",
           mode: record.mode || "target",
-          split: record.split || "qualified",
           expense: Number(record.expense) || 0,
           people: Number(record.people) || 0,
           full: Number(record.full) || 0,
           half: Number(record.half) || 0,
           none: Number(record.none) || 0,
           subsidyLimit: Number(record.subsidyLimit) || 0,
-          average: Number(record.average) || 0,
-          claim: Number(record.claim) || 0,
+          over: Number(record.over) || 0,
           collect: Number(record.collect) || 0,
-          unallocated: Number(record.unallocated) || 0,
           participants: Array.isArray(record.participants) ? record.participants : [],
+          mealRows: Array.isArray(record.mealRows) ? record.mealRows : [],
         }))
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    }
-
-    function subscribeStaff(onChange, onError) {
-      return onValue(
-        ref(database, `${rootPath}/staff`),
-        (snapshot) => onChange(snapshot.val() ? normalizeStaff(snapshot.val()) : DEFAULT_STAFF),
-        onError,
-      );
-    }
-
-    function subscribeCelebrationQualifications(onChange, onError) {
-      return onValue(
-        ref(database, `${rootPath}/celebrationQualifications`),
-        (snapshot) => onChange(normalizeCelebrationQualifications(snapshot.val())),
-        onError,
-      );
-    }
-
-    const PER_PERSON_LIMIT = 2000;
-    const HALF_RATE = 0.5;
-    const TYPES = {
-      full: { label: "全額補助", short: "全額", limit: PER_PERSON_LIMIT },
-      half: { label: "半額補助", short: "半額", limit: PER_PERSON_LIMIT * HALF_RATE },
-      none: { label: "自費", short: "自費", limit: 0 },
-    };
-
-    const state = {
-      mode: "target",
-      split: "qualified",
-      staff: DEFAULT_STAFF,
-      qualifications: {},
-      selectedIds: [],
-      manualRows: [],
-      records: [],
-      loadedStaff: false,
-      loadedQualifications: false,
-    };
-
-    const status = document.getElementById("status");
-    const participantList = document.getElementById("participant-list");
-    const expenseInput = document.getElementById("expense");
-    const fullCount = document.getElementById("full-count");
-    const halfCount = document.getElementById("half-count");
-    const noneCount = document.getElementById("none-count");
-    const totalPeople = document.getElementById("total-people");
-    const limit = document.getElementById("limit");
-    const averageCost = document.getElementById("average-cost");
-    const collectTotal = document.getElementById("collect-total");
-    const companyResult = document.getElementById("company-result");
-    const companyTitle = document.getElementById("company-title");
-    const companyText = document.getElementById("company-text");
-    const simpleClaim = document.getElementById("simple-claim");
-    const qualifiedClaim = document.getElementById("qualified-claim");
-    const allocationResult = document.getElementById("allocation-result");
-    const allocationTitle = document.getElementById("allocation-title");
-    const allocationText = document.getElementById("allocation-text");
-    const claimAmount = document.getElementById("claim-amount");
-    const fullCollect = document.getElementById("full-collect");
-    const halfCollect = document.getElementById("half-collect");
-    const noneCollect = document.getElementById("none-collect");
-    const manualPanel = document.getElementById("manual-panel");
-    const personList = document.getElementById("person-list");
-    const recordList = document.getElementById("record-list");
-    const saveRecordButton = document.getElementById("save-record");
-    const copyClaimButton = document.getElementById("copy-claim");
-    const copyCollectButton = document.getElementById("copy-collect");
-
-    function setStatus(message, isError = false) {
-      status.textContent = message;
-      status.style.color = isError ? "var(--danger)" : "var(--muted)";
-    }
-
-    function escapeHtml(value) {
-      return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
     }
 
     function activeStaff() {
@@ -926,18 +840,20 @@
       return state.qualifications[staffId]?.type || "full";
     }
 
-    function selectedStaff() {
-      const activeIds = new Set(activeStaff().map((member) => member.id));
-      state.selectedIds = state.selectedIds.filter((id) => activeIds.has(id));
-      return state.selectedIds
-        .map((id) => activeStaff().find((member) => member.id === id))
-        .filter(Boolean);
-    }
-
     function parseMoneyValue(value) {
       const cleaned = String(value || "").replace(/,/g, "").replace(/[^\d.]/g, "");
       const number = Number.parseFloat(cleaned);
       return Number.isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function parsePercentValue(value) {
+      const cleaned = String(value || "").replace(/[^\d.]/g, "");
+      const number = Number.parseFloat(cleaned);
+      return Number.isFinite(number) && number >= 0 ? number : 0;
+    }
+
+    function hasPercentValue(value) {
+      return String(value || "").trim() !== "";
     }
 
     function roundMoney(value) {
@@ -953,115 +869,80 @@
       })}`;
     }
 
-    function formatPerPerson(value, count) {
-      return count > 0 ? formatCurrency(value) : "-";
+    function participantObjects() {
+      const activeById = new Map(activeStaff().map((member) => [member.id, member]));
+      state.selectedIds = state.selectedIds.filter((id) => activeById.has(id));
+      const selectedStaff = state.selectedIds
+        .map((id) => activeById.get(id))
+        .filter(Boolean)
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          type: qualificationFor(member.id),
+          temporary: false,
+        }));
+      return [...selectedStaff, ...state.tempPeople];
+    }
+
+    function subsidyLimitFor(type) {
+      if (type === "full") return PER_PERSON_LIMIT;
+      if (type === "half") return PER_PERSON_LIMIT * HALF_RATE;
+      return 0;
+    }
+
+    function subsidyFor(type, total) {
+      if (type === "full") return Math.min(total, PER_PERSON_LIMIT);
+      if (type === "half") return Math.min(total * HALF_RATE, PER_PERSON_LIMIT * HALF_RATE);
+      return 0;
     }
 
     function values() {
-      const participants = selectedStaff();
+      const participants = participantObjects();
       const counts = { full: 0, half: 0, none: 0 };
-      participants.forEach((member) => {
-        counts[qualificationFor(member.id)] += 1;
+      participants.forEach((person) => {
+        counts[person.type] += 1;
       });
       const expense = parseMoneyValue(expenseInput.value);
-      const people = participants.length;
-      const average = people > 0 && expense > 0 ? expense / people : 0;
-      const subsidyLimit = (counts.full * PER_PERSON_LIMIT) + (counts.half * PER_PERSON_LIMIT * HALF_RATE);
-      return { ...counts, participants, expense, people, average, subsidyLimit };
+      const subsidyLimit = participants.reduce((sum, person) => sum + subsidyLimitFor(person.type), 0);
+      const over = Math.max(0, expense - subsidyLimit);
+      return { ...counts, participants, expense, people: participants.length, subsidyLimit, over };
     }
 
-    function calculateQualified(data) {
-      const fullEach = Math.max(0, data.average - PER_PERSON_LIMIT);
-      const halfSubsidy = Math.min(data.average * HALF_RATE, PER_PERSON_LIMIT * HALF_RATE);
-      const halfEach = data.half > 0 ? Math.max(0, data.average - halfSubsidy) : 0;
-      const noneEach = data.none > 0 ? data.average : 0;
-      const fullCompany = data.full * Math.min(data.average, PER_PERSON_LIMIT);
-      const halfCompany = data.half * halfSubsidy;
-      const claim = Math.min(data.subsidyLimit, fullCompany + halfCompany, data.expense);
-      const collect = (data.full * fullEach) + (data.half * halfEach) + (data.none * noneEach);
-      return {
-        modeLabel: "依資格精算",
-        claim,
-        collect,
-        fullEach,
-        halfEach,
-        noneEach,
-        unallocated: Math.max(0, data.expense - claim - collect),
-      };
-    }
-
-    function calculateShared(data) {
-      const subsidizedPeople = data.full + data.half;
-      const noneEach = data.none > 0 ? data.average : 0;
-      const noneTotal = data.none * noneEach;
-      const subsidizedExpense = data.average * subsidizedPeople;
-      const over = Math.max(0, subsidizedExpense - data.subsidyLimit);
-      const sharedEach = subsidizedPeople > 0 ? over / subsidizedPeople : 0;
-      const claim = Math.min(data.subsidyLimit, Math.max(0, data.expense - noneTotal));
-      const collect = noneTotal + (sharedEach * subsidizedPeople);
-      return {
-        modeLabel: "補助者分攤",
-        claim,
-        collect,
-        fullEach: data.full > 0 ? sharedEach : 0,
-        halfEach: data.half > 0 ? sharedEach : 0,
-        noneEach,
-        unallocated: Math.max(0, data.expense - claim - collect),
-      };
-    }
-
-    function syncManualRows(data, qualified) {
-      const selectedIds = new Set(data.participants.map((member) => member.id));
-      const existing = new Map(state.manualRows.map((row) => [row.id, row]));
-      state.manualRows = data.participants.map((member) => {
-        const type = qualificationFor(member.id);
-        const defaultAmount = type === "full"
-          ? qualified.fullEach
-          : type === "half"
-            ? qualified.halfEach
-            : qualified.noneEach;
-        const row = existing.get(member.id);
+    function syncMealRows(data) {
+      const existing = new Map(state.mealRows.map((row) => [row.id, row]));
+      state.mealRows = data.participants.map((person) => {
+        const row = existing.get(person.id);
         return {
-          id: member.id,
-          name: member.name,
-          type,
-          amount: row?.touched ? row.amount : roundMoney(defaultAmount),
-          touched: row?.touched || false,
+          id: person.id,
+          name: person.name,
+          type: person.type,
+          cost: row?.cost || "",
+          serviceRate: row?.serviceRate || "",
         };
-      }).filter((row) => selectedIds.has(row.id));
+      });
     }
 
-    function calculateManual(data) {
-      const manualCollect = state.manualRows.reduce((sum, row) => sum + parseMoneyValue(row.amount), 0);
-      const claim = Math.min(Math.max(0, data.expense - manualCollect), data.subsidyLimit);
-      const unallocated = Math.max(0, data.expense - claim - manualCollect);
-      const byType = { full: [], half: [], none: [] };
-      state.manualRows.forEach((row) => byType[row.type].push(parseMoneyValue(row.amount)));
-      const averageByType = (type) => {
-        const rows = byType[type];
-        if (!rows.length) return 0;
-        return rows.reduce((sum, amount) => sum + amount, 0) / rows.length;
-      };
-      return {
-        modeLabel: "手動輸入",
-        claim,
-        collect: manualCollect,
-        fullEach: averageByType("full"),
-        halfEach: averageByType("half"),
-        noneEach: averageByType("none"),
-        unallocated,
-      };
+    function mealTotal(row) {
+      const cost = parseMoneyValue(row.cost);
+      const globalService = globalServiceInput.value;
+      const rate = hasPercentValue(globalService)
+        ? parsePercentValue(globalService)
+        : parsePercentValue(row.serviceRate);
+      return cost * (1 + (rate / 100));
     }
 
-    function activeAllocation(data, qualified) {
-      if (state.split === "shared") return calculateShared(data);
-      if (state.split === "manual") return calculateManual(data);
-      return qualified;
+    function mealDue(row) {
+      const total = mealTotal(row);
+      return Math.max(0, total - subsidyFor(row.type, total));
+    }
+
+    function mealCollectTotal() {
+      return state.mealRows.reduce((sum, row) => sum + mealDue(row), 0);
     }
 
     function renderParticipants() {
       const selected = new Set(state.selectedIds);
-      participantList.innerHTML = activeStaff().map((member) => {
+      const staffChips = activeStaff().map((member) => {
         const type = qualificationFor(member.id);
         return `
           <button class="chip ${selected.has(member.id) ? "selected" : ""} ${type}" type="button" data-participant="${member.id}">
@@ -1069,73 +950,58 @@
             <span class="badge">${TYPES[type].short}</span>
           </button>
         `;
-      }).join("") || '<span class="empty">尚無啟用同仁，請先到打掃設定新增或啟用同仁。</span>';
+      }).join("");
+      const tempChips = state.tempPeople.map((person) => `
+        <button class="chip selected ${person.type}" type="button" data-temp-remove="${person.id}">
+          ${escapeHtml(person.name)}
+          <span class="badge">${TYPES[person.type].short} ×</span>
+        </button>
+      `).join("");
+      participantList.innerHTML = staffChips + tempChips || '<span class="empty">尚無啟用同仁，請先到打掃設定新增或啟用同仁。</span>';
     }
 
-    function renderCompany(data, qualified) {
-      const simpleClaimAmount = data.expense ? Math.min(data.expense, data.subsidyLimit) : data.subsidyLimit;
-      const over = Math.max(0, data.expense - data.subsidyLimit);
-      simpleClaim.textContent = formatCurrency(simpleClaimAmount);
-      qualifiedClaim.textContent = formatCurrency(data.expense ? qualified.claim : 0);
-
-      companyResult.classList.remove("ok", "over", "warn");
+    function renderTotalResult(data) {
+      totalResult.classList.remove("ok", "over", "warn");
+      if (!data.people) {
+        totalResult.classList.add("warn");
+        totalTitle.textContent = "尚未選擇參加者";
+        totalText.textContent = "請先點選參加者，或新增臨時人員。";
+        return;
+      }
       if (!data.expense) {
-        companyResult.classList.add("ok");
-        companyTitle.textContent = "尚未輸入餐費";
-        companyText.textContent = `目前可預抓請款上限為 ${formatCurrency(data.subsidyLimit)}。`;
-      } else if (!data.people) {
-        companyResult.classList.add("warn");
-        companyTitle.textContent = "尚未選擇參加者";
-        companyText.textContent = "請先點選實際參加慶功宴的人，才能計算每人平均與收款明細。";
-      } else if (over <= 0) {
-        companyResult.classList.add("ok");
-        companyTitle.textContent = "公司請款簡化版：未超出";
-        companyText.textContent = `餐費 ${formatCurrency(data.expense)}，補助上限 ${formatCurrency(data.subsidyLimit)}，未使用額度 ${formatCurrency(data.subsidyLimit - data.expense)}。`;
-      } else {
-        companyResult.classList.add("over");
-        companyTitle.textContent = "公司請款簡化版：已超出";
-        companyText.textContent = `餐費 ${formatCurrency(data.expense)}，補助上限 ${formatCurrency(data.subsidyLimit)}，超出 ${formatCurrency(over)}。`;
-      }
-    }
-
-    function renderAllocation(data, allocation) {
-      claimAmount.textContent = formatCurrency(data.expense ? allocation.claim : 0);
-      fullCollect.textContent = formatPerPerson(allocation.fullEach, data.full);
-      halfCollect.textContent = formatPerPerson(allocation.halfEach, data.half);
-      noneCollect.textContent = formatPerPerson(allocation.noneEach, data.none);
-      collectTotal.textContent = formatCurrency(data.expense ? allocation.collect : 0);
-
-      allocationResult.classList.remove("ok", "over", "warn");
-      if (!data.expense || !data.people) {
-        allocationResult.classList.add("ok");
-        allocationTitle.textContent = "收款明細";
-        allocationText.textContent = "選擇參加者與餐費後，這裡會顯示公司建議請款與個人應收金額。";
+        totalResult.classList.add("ok");
+        totalTitle.textContent = "尚未輸入餐費";
+        totalText.textContent = `目前補助金額為 ${formatCurrency(data.subsidyLimit)}。`;
         return;
       }
-
-      if (allocation.unallocated > 0) {
-        allocationResult.classList.add("warn");
-        allocationTitle.textContent = `${allocation.modeLabel}：尚有未分配差額`;
-        allocationText.textContent = `公司建議請款 ${formatCurrency(allocation.claim)}，應收總額 ${formatCurrency(allocation.collect)}，尚未分配 ${formatCurrency(allocation.unallocated)}。`;
+      if (data.over > 0) {
+        totalResult.classList.add("over");
+        totalTitle.textContent = "已超出補助金額";
+        totalText.textContent = `餐費總金額 ${formatCurrency(data.expense)}，補助金額 ${formatCurrency(data.subsidyLimit)}，超出 ${formatCurrency(data.over)}。`;
         return;
       }
-
-      allocationResult.classList.add(allocation.claim >= data.subsidyLimit && data.expense > data.subsidyLimit ? "over" : "ok");
-      allocationTitle.textContent = `${allocation.modeLabel}：已完成分配`;
-      allocationText.textContent = `公司建議請款 ${formatCurrency(allocation.claim)}，主辦人應收總額 ${formatCurrency(allocation.collect)}。`;
+      totalResult.classList.add("ok");
+      totalTitle.textContent = "未超出補助金額";
+      totalText.textContent = `餐費總金額 ${formatCurrency(data.expense)}，補助金額 ${formatCurrency(data.subsidyLimit)}，剩餘 ${formatCurrency(data.subsidyLimit - data.expense)}。`;
     }
 
-    function renderManualRows() {
-      manualPanel.classList.toggle("show", state.split === "manual");
-      if (state.split !== "manual") return;
-
-      personList.innerHTML = [
-        `<div class="person-row header"><span>姓名</span><span>資格</span><span>收款金額</span></div>`,
-        ...state.manualRows.map((row) => `
-          <div class="person-row" data-row-id="${row.id}">
-            <input class="person-name" type="text" value="${escapeHtml(row.name)}" aria-label="姓名">
-            <span class="type-tag">${TYPES[row.type].short}</span>
-            <input class="person-amount" type="text" inputmode="numeric" value="${row.amount || ""}" aria-label="收款金額">
+    function renderMealRows(data) {
+      const showDetails = data.over > 0;
+      mealPanel.classList.toggle("show", showDetails);
+      if (!showDetails) {
+        mealList.innerHTML = "";
+        return;
+      }
+      const globalServiceOn = hasPercentValue(globalServiceInput.value);
+      mealList.innerHTML = [
+        `<div class="meal-row header"><span>名字</span><span>餐費</span><span>服務費%</span><span>資格</span><span>需付金額</span></div>`,
+        ...state.mealRows.map((row) => `
+          <div class="meal-row" data-meal-id="${row.id}">
+            <div class="person-name">${escapeHtml(row.name)}</div>
+            <input class="meal-cost" type="text" inputmode="numeric" value="${escapeHtml(row.cost)}" aria-label="${escapeHtml(row.name)} 餐費">
+            <input class="service-rate" type="text" inputmode="decimal" value="${escapeHtml(row.serviceRate)}" ${globalServiceOn ? "disabled" : ""} aria-label="${escapeHtml(row.name)} 服務費百分比">
+            <span class="type-tag ${row.type}">${TYPES[row.type].short}</span>
+            <div class="pay-amount">${formatCurrency(mealDue(row))}</div>
           </div>
         `),
       ].join("");
@@ -1152,12 +1018,6 @@
       });
     }
 
-    function splitLabel(value) {
-      if (value === "shared") return "補助者分攤";
-      if (value === "manual") return "手動輸入";
-      return "依資格精算";
-    }
-
     function renderRecords() {
       const records = state.records.slice(0, 10);
       recordList.innerHTML = records.map((record) => {
@@ -1166,8 +1026,8 @@
           <div class="record-row" data-record-id="${record.id}">
             <div class="record-main">
               <div class="record-title">${formatDateTime(record.createdAt)}・${formatCurrency(record.expense)}・${record.people} 人</div>
-              <div class="record-meta">全額 ${record.full}、半額 ${record.half}、自費 ${record.none}｜${splitLabel(record.split)}</div>
-              <div class="record-meta">補助上限 ${formatCurrency(record.subsidyLimit)}｜請款 ${formatCurrency(record.claim)}｜應收 ${formatCurrency(record.collect)}</div>
+              <div class="record-meta">全額 ${record.full}、半額 ${record.half}、自費 ${record.none}｜超出 ${formatCurrency(record.over)}</div>
+              <div class="record-meta">補助金額 ${formatCurrency(record.subsidyLimit)}｜餐費明細應收 ${formatCurrency(record.collect)}</div>
               <div class="record-meta">${escapeHtml(names || "未記錄參加者")}</div>
             </div>
             <button class="button" type="button" data-delete-record="${record.id}">刪除</button>
@@ -1176,33 +1036,35 @@
       }).join("") || '<span class="empty">尚無儲存紀錄。</span>';
     }
 
-    function render(options = {}) {
-      const shouldRenderManualRows = options.renderManualRows !== false;
+    function render() {
       const data = values();
-      const qualified = calculateQualified(data);
-      syncManualRows(data, qualified);
-      const allocation = activeAllocation(data, qualified);
-
+      syncMealRows(data);
+      const collect = mealCollectTotal();
       fullCount.textContent = `${data.full} 人`;
       halfCount.textContent = `${data.half} 人`;
       noneCount.textContent = `${data.none} 人`;
       totalPeople.textContent = `${data.people} 人`;
       limit.textContent = formatCurrency(data.subsidyLimit);
-      averageCost.textContent = formatCurrency(data.average);
+      expenseTotal.textContent = formatCurrency(data.expense);
+      overAmount.textContent = formatCurrency(data.over);
+      collectTotal.textContent = formatCurrency(collect);
       status.textContent = state.mode === "over"
         ? "季超標 110%：可另規劃兩小時公假團建活動"
         : "季達標 100%：每人補助上限 2,000 元";
 
-      renderCompany(data, qualified);
-      renderAllocation(data, allocation);
-      if (shouldRenderManualRows) renderManualRows();
+      renderTotalResult(data);
+      renderMealRows(data);
       renderRecords();
+    }
+
+    function updateMealTotals(rowElement, row) {
+      const amount = rowElement?.querySelector(".pay-amount");
+      if (amount) amount.textContent = formatCurrency(mealDue(row));
+      collectTotal.textContent = formatCurrency(mealCollectTotal());
     }
 
     function buildClaimSummary() {
       const data = values();
-      const qualified = calculateQualified(data);
-      const simpleOver = Math.max(0, data.expense - data.subsidyLimit);
       const lines = [
         "慶功宴請款試算",
         "",
@@ -1211,91 +1073,67 @@
         `半額補助：${data.half} 人`,
         `自費：${data.none} 人`,
         `總人數：${data.people} 人`,
-        `參加者：${data.participants.map((member) => member.name).join("、") || "未選擇"}`,
-        `補助上限：${formatCurrency(data.subsidyLimit)}`,
+        `參加者：${data.participants.map((person) => person.name).join("、") || "未選擇"}`,
+        `補助金額：${formatCurrency(data.subsidyLimit)}`,
+        `餐費總金額：${formatCurrency(data.expense)}`,
+        `超出額度：${formatCurrency(data.over)}`,
       ];
-
-      if (data.expense) {
-        lines.push(`餐費總額：${formatCurrency(data.expense)}`);
-        lines.push(`每人平均：${formatCurrency(data.average)}`);
-        lines.push(simpleOver > 0
-          ? `公司請款簡化版：超出 ${formatCurrency(simpleOver)}`
-          : `公司請款簡化版：未超出，未使用額度 ${formatCurrency(data.subsidyLimit - data.expense)}`);
-        lines.push(`依資格精算請款：${formatCurrency(qualified.claim)}`);
-      }
-
       if (state.mode === "over") {
         lines.push("備註：季超標 110% 可另規劃兩小時公假團建活動。");
       }
-
       return lines.join("\n");
     }
 
     function buildCollectSummary() {
       const data = values();
-      const qualified = calculateQualified(data);
-      const allocation = activeAllocation(data, qualified);
       const lines = [
-        "慶功宴收款明細",
+        "慶功宴餐費明細",
         "",
-        `分配模式：${allocation.modeLabel}`,
-        `餐費總額：${formatCurrency(data.expense)}`,
-        `每人平均：${formatCurrency(data.average)}`,
-        `公司建議請款：${formatCurrency(allocation.claim)}`,
-        `應收總額：${formatCurrency(allocation.collect)}`,
+        `餐費總金額：${formatCurrency(data.expense)}`,
+        `補助金額：${formatCurrency(data.subsidyLimit)}`,
+        `超出額度：${formatCurrency(data.over)}`,
+        `餐費明細應收：${formatCurrency(mealCollectTotal())}`,
       ];
-
-      if (state.split === "manual") {
+      if (data.over > 0) {
         lines.push("");
         lines.push("個人明細：");
-        state.manualRows.forEach((row) => {
-          lines.push(`${row.name || TYPES[row.type].label}（${TYPES[row.type].label}）：${formatCurrency(parseMoneyValue(row.amount))}`);
+        state.mealRows.forEach((row) => {
+          lines.push(`${row.name}（${TYPES[row.type].label}）：餐費 ${formatCurrency(parseMoneyValue(row.cost))}，需付 ${formatCurrency(mealDue(row))}`);
         });
-      } else {
-        lines.push(`全額補助者：每人收 ${formatPerPerson(allocation.fullEach, data.full)}`);
-        lines.push(`半額補助者：每人收 ${formatPerPerson(allocation.halfEach, data.half)}`);
-        lines.push(`自費者：每人收 ${formatPerPerson(allocation.noneEach, data.none)}`);
       }
-
-      if (allocation.unallocated > 0) {
-        lines.push(`尚未分配：${formatCurrency(allocation.unallocated)}`);
-      }
-
       return lines.join("\n");
     }
 
     function currentRecordSnapshot() {
       const data = values();
-      const qualified = calculateQualified(data);
-      const allocation = activeAllocation(data, qualified);
       return {
         createdAt: new Date().toISOString(),
         mode: state.mode,
-        split: state.split,
         expense: roundMoney(data.expense),
         people: data.people,
         full: data.full,
         half: data.half,
         none: data.none,
         subsidyLimit: roundMoney(data.subsidyLimit),
-        average: roundMoney(data.average),
-        claim: roundMoney(allocation.claim),
-        collect: roundMoney(allocation.collect),
-        unallocated: roundMoney(allocation.unallocated),
-        participants: data.participants.map((member) => ({
-          id: member.id,
-          name: member.name,
-          type: qualificationFor(member.id),
-          typeLabel: TYPES[qualificationFor(member.id)]?.label || "全額補助",
+        over: roundMoney(data.over),
+        collect: roundMoney(mealCollectTotal()),
+        participants: data.participants.map((person) => ({
+          id: person.id,
+          name: person.name,
+          type: person.type,
+          typeLabel: TYPES[person.type]?.label || "全額補助",
+          temporary: Boolean(person.temporary),
         })),
-        manualRows: state.split === "manual"
-          ? state.manualRows.map((row) => ({
-            id: row.id,
-            name: row.name,
-            type: row.type,
-            amount: roundMoney(row.amount),
-          }))
-          : [],
+        mealRows: state.mealRows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          cost: roundMoney(parseMoneyValue(row.cost)),
+          serviceRate: hasPercentValue(globalServiceInput.value)
+            ? parsePercentValue(globalServiceInput.value)
+            : parsePercentValue(row.serviceRate),
+          due: roundMoney(mealDue(row)),
+        })),
       };
     }
 
@@ -1306,10 +1144,9 @@
         return;
       }
       if (!data.expense) {
-        setStatus("請先輸入餐費再儲存", true);
+        setStatus("請先輸入餐費總金額再儲存", true);
         return;
       }
-
       saveRecordButton.disabled = true;
       try {
         const recordRef = push(ref(database, `${rootPath}/celebrationRecords`));
@@ -1363,6 +1200,11 @@
       }
     }
 
+    function renderAll() {
+      renderParticipants();
+      render();
+    }
+
     document.getElementById("mode-grid").addEventListener("click", (event) => {
       const button = event.target.closest("[data-mode]");
       if (!button) return;
@@ -1374,6 +1216,14 @@
     });
 
     participantList.addEventListener("click", (event) => {
+      const removeTemp = event.target.closest("[data-temp-remove]");
+      if (removeTemp) {
+        state.tempPeople = state.tempPeople.filter((person) => person.id !== removeTemp.dataset.tempRemove);
+        state.mealRows = state.mealRows.filter((row) => row.id !== removeTemp.dataset.tempRemove);
+        renderAll();
+        return;
+      }
+
       const button = event.target.closest("[data-participant]");
       if (!button) return;
       const id = button.dataset.participant;
@@ -1382,7 +1232,7 @@
       } else {
         state.selectedIds.push(id);
       }
-      state.manualRows = state.manualRows.filter((row) => state.selectedIds.includes(row.id));
+      state.mealRows = state.mealRows.filter((row) => state.selectedIds.includes(row.id) || state.tempPeople.some((person) => person.id === row.id));
       renderParticipants();
       render();
     });
@@ -1395,49 +1245,54 @@
 
     document.getElementById("clear-selected").addEventListener("click", () => {
       state.selectedIds = [];
-      state.manualRows = [];
+      state.tempPeople = [];
+      state.mealRows = [];
       renderParticipants();
       render();
     });
 
-    document.getElementById("split-grid").addEventListener("click", (event) => {
-      const button = event.target.closest("[data-split]");
-      if (!button) return;
-      state.split = button.dataset.split;
-      document.querySelectorAll("[data-split]").forEach((modeButton) => {
-        modeButton.classList.toggle("active", modeButton === button);
-      });
-      render();
+    document.getElementById("add-temp").addEventListener("click", () => {
+      const name = tempNameInput.value.trim();
+      if (!name) {
+        setStatus("請輸入臨時人員姓名", true);
+        return;
+      }
+      const person = {
+        id: `temp-${Date.now()}-${state.tempSeq++}`,
+        name,
+        type: tempTypeSelect.value,
+        temporary: true,
+      };
+      state.tempPeople.push(person);
+      tempNameInput.value = "";
+      setStatus("臨時人員已加入");
+      renderAll();
     });
 
-    expenseInput.addEventListener("input", render);
-    expenseInput.addEventListener("focus", () => setTimeout(() => expenseInput.select(), 0));
-    expenseInput.addEventListener("click", () => setTimeout(() => expenseInput.select(), 0));
+    [expenseInput, globalServiceInput].forEach((input) => {
+      input.addEventListener("input", render);
+      input.addEventListener("focus", () => setTimeout(() => input.select(), 0));
+      input.addEventListener("click", () => setTimeout(() => input.select(), 0));
+    });
 
-    personList.addEventListener("input", (event) => {
-      const rowElement = event.target.closest("[data-row-id]");
+    mealList.addEventListener("input", (event) => {
+      const rowElement = event.target.closest("[data-meal-id]");
       if (!rowElement) return;
-      const row = state.manualRows.find((item) => item.id === rowElement.dataset.rowId);
+      const row = state.mealRows.find((item) => item.id === rowElement.dataset.mealId);
       if (!row) return;
-
-      if (event.target.classList.contains("person-name")) {
-        row.name = event.target.value;
-      }
-      if (event.target.classList.contains("person-amount")) {
-        row.amount = parseMoneyValue(event.target.value);
-        row.touched = true;
-      }
-      render({ renderManualRows: false });
+      if (event.target.classList.contains("meal-cost")) row.cost = event.target.value;
+      if (event.target.classList.contains("service-rate")) row.serviceRate = event.target.value;
+      updateMealTotals(rowElement, row);
     });
 
     document.getElementById("reset").addEventListener("click", () => {
       state.selectedIds = [];
-      state.manualRows = [];
-      state.split = "qualified";
+      state.tempPeople = [];
+      state.mealRows = [];
       expenseInput.value = "";
-      document.querySelectorAll("[data-split]").forEach((modeButton) => {
-        modeButton.classList.toggle("active", modeButton.dataset.split === "qualified");
-      });
+      globalServiceInput.value = "";
+      tempNameInput.value = "";
+      tempTypeSelect.value = "full";
       renderParticipants();
       render();
     });
@@ -1453,16 +1308,12 @@
     copyClaimButton.addEventListener("click", () => copyText(buildClaimSummary(), copyClaimButton));
     copyCollectButton.addEventListener("click", () => copyText(buildCollectSummary(), copyCollectButton));
 
-    function renderAll() {
-      renderParticipants();
-      render();
-    }
-
     renderAll();
 
-    subscribeStaff(
-      (loadedStaff) => {
-        state.staff = loadedStaff;
+    onValue(
+      ref(database, `${rootPath}/staff`),
+      (snapshot) => {
+        state.staff = snapshot.val() ? normalizeStaff(snapshot.val()) : DEFAULT_STAFF;
         state.loadedStaff = true;
         renderAll();
         if (state.loadedQualifications) setStatus("同仁與資格已同步");
@@ -1474,9 +1325,10 @@
       },
     );
 
-    subscribeCelebrationQualifications(
-      (loadedQualifications) => {
-        state.qualifications = loadedQualifications;
+    onValue(
+      ref(database, `${rootPath}/celebrationQualifications`),
+      (snapshot) => {
+        state.qualifications = normalizeCelebrationQualifications(snapshot.val());
         state.loadedQualifications = true;
         renderAll();
         if (state.loadedStaff) setStatus("同仁與資格已同步");
