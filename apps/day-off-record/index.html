@@ -381,12 +381,18 @@
     const resultPanel = document.getElementById("result-panel");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
+    const MONTH_STORAGE_KEY = "dayOffRecordSelectedMonth";
 
     function pad2(value) {
       return String(value).padStart(2, "0");
     }
 
     function setDefaultMonth() {
+      const savedMonth = localStorage.getItem(MONTH_STORAGE_KEY);
+      if (/^\d{4}-\d{2}$/.test(savedMonth || "")) {
+        monthInput.value = savedMonth;
+        return;
+      }
       const now = new Date();
       monthInput.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
     }
@@ -597,6 +603,11 @@
     setDefaultMonth();
     keywordsInput.value = DEFAULT_KEYWORDS.join("、");
     [monthInput, plannedInput, keywordsInput, sheetInput].forEach((input) => input.addEventListener("input", render));
+    monthInput.addEventListener("input", () => {
+      if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
+        localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
+      }
+    });
     document.getElementById("clear-button").addEventListener("click", () => {
       sheetInput.value = "";
       render();
