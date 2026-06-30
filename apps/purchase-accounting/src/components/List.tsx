@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Trash2, MoreVertical, Undo, Archive as ArchiveIcon, ArrowUpDown, Camera } from 'lucide-react';
 import { List as ListType, ExpenseCard as ExpenseCardType, Tag, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
 import { ExpenseCard } from './ExpenseCard';
@@ -56,10 +56,17 @@ export function List({
   const [tempName, setTempName] = useState(list.name);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
+  const suggestionStorageKey = `purchase-suggestions-open:${list.id}`;
+  const [areSuggestionsOpen, setAreSuggestionsOpen] = useState(false);
 
   const { setNodeRef } = useDroppable({
     id: list.id,
   });
+
+  useEffect(() => {
+    const savedState = window.localStorage.getItem(suggestionStorageKey);
+    setAreSuggestionsOpen(savedState === 'open');
+  }, [suggestionStorageKey]);
 
   // 排除 excluded 狀態的卡片計算總額
   const totalAmount = list.cards
@@ -123,6 +130,14 @@ export function List({
       })
       .map(({ card }, index) => ({ ...card, order: index }));
     onUpdateList(list.id, { cards: sortedCards });
+  };
+
+  const handleToggleSuggestions = () => {
+    setAreSuggestionsOpen((current) => {
+      const next = !current;
+      window.localStorage.setItem(suggestionStorageKey, next ? 'open' : 'closed');
+      return next;
+    });
   };
 
   const handleScreenshot = async () => {
@@ -420,26 +435,34 @@ export function List({
 
       {purchaseSuggestions.length > 0 && (
         <div className="mx-4 mt-3 flex-shrink-0 rounded-lg border border-primary/30 bg-primary/5 p-2">
-          <div className="mb-1 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={handleToggleSuggestions}
+            className="flex w-full items-center justify-between gap-2 text-left"
+          >
             <div className="text-xs font-bold text-primary">本月建議採購</div>
-            <div className="text-[10px] text-muted-foreground">{purchaseSuggestions.length} 項</div>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {purchaseSuggestions.map((suggestion) => (
-              <button
-                key={suggestion.itemName}
-                type="button"
-                onClick={() => onAddSuggestedCard?.(suggestion)}
-                className="max-w-full rounded-md border border-primary/30 bg-background px-2 py-1 text-left text-xs font-semibold text-foreground shadow-sm active:scale-[0.99]"
-                title={`預估 ${suggestion.nextPurchaseDate.getMonth() + 1}/${suggestion.nextPurchaseDate.getDate()}，平均 ${suggestion.averageDaysBetween} 天`}
-              >
-                <span className="block truncate">+ {suggestion.itemName}</span>
-                <span className="block text-[10px] font-medium text-muted-foreground">
-                  預估 {suggestion.nextPurchaseDate.getMonth() + 1}/{suggestion.nextPurchaseDate.getDate()}
-                </span>
-              </button>
-            ))}
-          </div>
+            <div className="text-[10px] text-muted-foreground">
+              {purchaseSuggestions.length} 項 · {areSuggestionsOpen ? '收起' : '展開'}
+            </div>
+          </button>
+          {areSuggestionsOpen && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {purchaseSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.itemName}
+                  type="button"
+                  onClick={() => onAddSuggestedCard?.(suggestion)}
+                  className="max-w-full rounded-md border border-primary/30 bg-background px-2 py-1 text-left text-xs font-semibold text-foreground shadow-sm active:scale-[0.99]"
+                  title={`預估 ${suggestion.nextPurchaseDate.getMonth() + 1}/${suggestion.nextPurchaseDate.getDate()}，平均 ${suggestion.averageDaysBetween} 天`}
+                >
+                  <span className="block truncate">+ {suggestion.itemName}</span>
+                  <span className="block text-[10px] font-medium text-muted-foreground">
+                    預估 {suggestion.nextPurchaseDate.getMonth() + 1}/{suggestion.nextPurchaseDate.getDate()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

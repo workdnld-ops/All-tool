@@ -54,11 +54,12 @@ function parsePurchaseDate(value: string, today: Date) {
   return purchaseDate;
 }
 
-export function usePurchaseFrequency(lists: List[]) {
+export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] = []) {
   const itemFrequencies = useMemo(() => {
     const itemMap = new Map<string, PurchaseRecord[]>();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const trackedNames = new Set(trackedItemNames.map(normalizeItemName).filter(Boolean));
 
     // 收集所有卡片記錄
     lists.forEach(list => {
@@ -69,6 +70,7 @@ export function usePurchaseFrequency(lists: List[]) {
 
         const itemName = normalizeItemName(card.content);
         if (!itemName || !card.date) return;
+        if (trackedNames.size > 0 && !trackedNames.has(itemName)) return;
 
         const purchaseDate = parsePurchaseDate(card.date, today);
         if (!purchaseDate) return;
@@ -156,7 +158,7 @@ export function usePurchaseFrequency(lists: List[]) {
       }
       return a.itemName.localeCompare(b.itemName, 'zh-TW');
     });
-  }, [lists]);
+  }, [lists, trackedItemNames]);
 
   return itemFrequencies;
 }

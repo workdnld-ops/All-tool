@@ -1,9 +1,10 @@
 import { build, defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { VitePWA } from "vite-plugin-pwa";
 
-const root = process.cwd();
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 await build(defineConfig({
   configFile: false,

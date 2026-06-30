@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { List, type PurchaseSuggestion } from '@/components/List';
 import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
-import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget } from '@/hooks/useFirebase';
+import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
 import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -64,6 +64,7 @@ const Index = () => {
   const { tags: firebaseTags, loading: tagsLoading, saveTags } = useFirebaseTags();
   const { archivedLists: firebaseArchivedLists, loading: archivedLoading, saveArchivedLists } = useFirebaseArchivedLists();
   const { snackBudget, loading: budgetLoading } = useFirebaseSnackBudget();
+  const { trackedItems, loading: trackedItemsLoading } = useFirebaseTrackedPurchaseItems();
   
   // Local state
   const [lists, setLists] = useState<ListType[]>([]);
@@ -77,7 +78,7 @@ const Index = () => {
   const [selectedListsToDelete, setSelectedListsToDelete] = useState<Set<string>>(new Set());
   const swiperRef = useRef<SwiperType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists]);
+  const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems);
   const suggestionsByListId = useMemo(() => {
     const suggestionMap: Record<string, PurchaseSuggestion[]> = {};
 
@@ -502,7 +503,7 @@ const Index = () => {
     : null;
 
   // 顯示 loading 狀態
-  if (listsLoading || tagsLoading || archivedLoading || budgetLoading) {
+  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

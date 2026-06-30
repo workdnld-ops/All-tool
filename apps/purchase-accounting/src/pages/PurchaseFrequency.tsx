@@ -1,17 +1,38 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Calendar, AlertCircle, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useFirebaseArchivedLists, useFirebaseLists } from '@/hooks/useFirebase';
-import { usePurchaseFrequency, ItemFrequency } from '@/hooks/usePurchaseFrequency';
+import { Input } from '@/components/ui/input';
+import { useFirebaseArchivedLists, useFirebaseLists, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
+import { normalizeItemName, usePurchaseFrequency, ItemFrequency } from '@/hooks/usePurchaseFrequency';
+import { toast } from 'sonner';
 
 const PurchaseFrequency = () => {
   const navigate = useNavigate();
   const { lists, loading: listsLoading } = useFirebaseLists();
   const { archivedLists, loading: archivedLoading } = useFirebaseArchivedLists();
+  const { trackedItems, loading: trackedItemsLoading, saveTrackedItems } = useFirebaseTrackedPurchaseItems();
+  const [newItemName, setNewItemName] = useState('');
   
-  const frequencies = usePurchaseFrequency([...lists, ...archivedLists]);
+  const frequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems);
+
+  const handleAddTrackedItem = async () => {
+    const name = normalizeItemName(newItemName);
+    if (!name) return;
+    const exists = trackedItems.some((item) => normalizeItemName(item) === name);
+    if (exists) {
+      toast.info('這個品項已經在統計清單裡');
+      return;
+    }
+    await saveTrackedItems([...trackedItems, name]);
+    setNewItemName('');
+  };
+
+  const handleRemoveTrackedItem = async (name: string) => {
+    await saveTrackedItems(trackedItems.filter((item) => normalizeItemName(item) !== normalizeItemName(name)));
+  };
 
   const formatDate = (date: Date) => {
     const month = date.getMonth() + 1;
@@ -64,7 +85,49 @@ const PurchaseFrequency = () => {
       </header>
 
       <div className="flex-1 overflow-auto p-4">
-        {listsLoading || archivedLoading ? (
+        <Card className="mb-3">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">統計品項設定</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={newItemName}
+                onChange={(event) => setNewItemName(event.target.value)}
+                onKeyDown={(event) => event.key === 'Enter' && handleAddTrackedItem()}
+                placeholder="輸入要統計的品項名稱"
+                className="h-9"
+              />
+              <Button type="button" size="sm" className="h-9 px-3" onClick={handleAddTrackedItem}>
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {trackedItems.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                尚未指定品項，目前會統計所有月份卡匣內的品項。新增品項後，統計與本月建議只會顯示指定品項。
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {trackedItems.map((item) => (
+                  <Badge key={item} variant="secondary" className="gap-1 pr-1">
+                    {item}
+                    <button
+                      type="button"
+                      className="ml-1 rounded-full p-0.5 hover:bg-background/70"
+                      onClick={() => handleRemoveTrackedItem(item)}
+                      aria-label={`移除 ${item}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {listsLoading || archivedLoading || trackedItemsLoading ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <div className="mb-4 h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />

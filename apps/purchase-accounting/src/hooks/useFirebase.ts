@@ -362,3 +362,43 @@ export function useFirebaseSnackBudget() {
 
   return { snackBudget, loading, saveSnackBudget };
 }
+
+export function useFirebaseTrackedPurchaseItems() {
+  const [trackedItems, setTrackedItems] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const userId = getUserId();
+
+  useEffect(() => {
+    const trackedRef = ref(database, `users/${userId}/trackedPurchaseItems`);
+
+    const unsubscribe = onValue(
+      trackedRef,
+      (snapshot) => {
+        const data = snapshot.val();
+        setTrackedItems(Array.isArray(data) ? data.filter(Boolean) : []);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Firebase tracked purchase items read error:', err);
+        setLoading(false);
+      }
+    );
+
+    return () => off(trackedRef, 'value', unsubscribe);
+  }, [userId]);
+
+  const saveTrackedItems = useCallback(async (items: string[]) => {
+    try {
+      const trackedRef = ref(database, `users/${userId}/trackedPurchaseItems`);
+      const normalized = Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+      await set(trackedRef, normalized);
+      toast.success('統計品項已儲存');
+    } catch (err) {
+      console.error('Error saving tracked purchase items:', err);
+      toast.error('統計品項儲存失敗');
+      throw err;
+    }
+  }, [userId]);
+
+  return { trackedItems, loading, saveTrackedItems };
+}
