@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, type WheelEvent } from 'react';
 import { Header } from '@/components/Header';
 import { List, type PurchaseSuggestion } from '@/components/List';
 import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
@@ -6,6 +6,8 @@ import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebas
 import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   DndContext,
   DragEndEvent,
@@ -30,7 +32,9 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Swiper as SwiperType } from 'swiper';
+import { Keyboard, Scrollbar } from 'swiper/modules';
 import 'swiper/css';
+import 'swiper/css/scrollbar';
 
 function formatMonthListName(date: Date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}月`;
@@ -76,8 +80,11 @@ const Index = () => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedListsToDelete, setSelectedListsToDelete] = useState<Set<string>>(new Set());
+  const [swiperNavState, setSwiperNavState] = useState({ isBeginning: true, isEnd: true });
   const swiperRef = useRef<SwiperType | null>(null);
+  const wheelLockRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sortedLists = useMemo(() => [...lists].sort((a, b) => a.order - b.order), [lists]);
   const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems);
   const suggestionsByListId = useMemo(() => {
     const suggestionMap: Record<string, PurchaseSuggestion[]> = {};
@@ -155,6 +162,57 @@ const Index = () => {
       },
     })
   );
+
+  const syncSwiperState = (swiper: SwiperType) => {
+    setCurrentSlideIndex(swiper.activeIndex);
+    setSwiperNavState({
+      isBeginning: swiper.isBeginning,
+      isEnd: swiper.isEnd,
+    });
+  };
+
+  useEffect(() => {
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    swiper.update();
+    syncSwiperState(swiper);
+  }, [sortedLists.length]);
+
+  const handleDeckWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const swiper = swiperRef.current;
+    if (!swiper || swiper.destroyed) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest('input, textarea, select, button, [role="dialog"]')) return;
+
+    const verticalDelta = event.deltaY;
+    const horizontalDelta = event.deltaX;
+    const mainDelta = Math.abs(horizontalDelta) > Math.abs(verticalDelta)
+      ? horizontalDelta
+      : verticalDelta;
+
+    if (Math.abs(mainDelta) < 12) return;
+
+    const scrollArea = target.closest('[data-card-scroll="true"]') as HTMLElement | null;
+    if (scrollArea && Math.abs(verticalDelta) >= Math.abs(horizontalDelta)) {
+      const canScrollDown = scrollArea.scrollTop + scrollArea.clientHeight < scrollArea.scrollHeight - 2;
+      const canScrollUp = scrollArea.scrollTop > 2;
+      if ((verticalDelta > 0 && canScrollDown) || (verticalDelta < 0 && canScrollUp)) {
+        return;
+      }
+    }
+
+    event.preventDefault();
+    const now = Date.now();
+    if (now - wheelLockRef.current < 280) return;
+    wheelLockRef.current = now;
+
+    if (mainDelta > 0) {
+      swiper.slideNext();
+    } else {
+      swiper.slidePrev();
+    }
+  };
 
   const handleAddList = async () => {
     const newList: ListType = {
@@ -584,68 +642,102 @@ const Index = () => {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <Swiper
-            spaceBetween={16}
-            slidesPerView={1}
-            centeredSlides={false}
-            onSwiper={(swiper) => (swiperRef.current = swiper)}
-            onSlideChange={(swiper) => setCurrentSlideIndex(swiper.activeIndex)}
-            className="h-full min-h-0 px-4 py-2"
-            threshold={12}
-            touchAngle={35}
-            resistanceRatio={0.35}
-            touchStartPreventDefault={false}
-            touchMoveStopPropagation={false}
-            preventClicks={true}
-            preventClicksPropagation={true}
-            nested={true}
-            slideToClickedSlide={false}
-            breakpoints={{
-              320: {
-                slidesPerView: 1,
-                centeredSlides: false,
-              },
-              768: {
-                slidesPerView: 2,
-                centeredSlides: false,
-              },
-              1280: {
-                slidesPerView: 3,
-                centeredSlides: false,
-              },
-              1536: {
-                slidesPerView: 4,
-                centeredSlides: false,
-              },
-              1920: {
-                slidesPerView: 6,
-                centeredSlides: false,
-              },
-            }}
-          >
-            {lists
-              .sort((a, b) => a.order - b.order)
-              .map((list) => (
-                <SwiperSlide key={list.id} className="h-full min-h-0">
-                  <List
-                    list={list}
-                    tags={tags}
-                    snackBudget={snackBudget}
-                    purchaseSuggestions={suggestionsByListId[list.id] || []}
-                    onUpdateList={handleUpdateList}
-                    onAddCard={() => handleAddCard(list.id)}
-                    onAddSuggestedCard={(suggestion) => handleAddSuggestedCard(list.id, suggestion)}
-                    onUpdateCard={(cardId, updates) =>
-                      handleUpdateCard(list.id, cardId, updates)
-                    }
-                    onDeleteCards={(cardIds) => handleDeleteCards(list.id, cardIds)}
-                    onRestoreCard={() => handleRestoreCard(list.id)}
-                    canRestoreCard={(deletedCards[list.id] || []).length > 0}
-                    onArchive={() => handleArchiveList(list.id)}
-                  />
-                </SwiperSlide>
-              ))}
-          </Swiper>
+          <div className="relative h-full min-h-0" onWheel={handleDeckWheel}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute left-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 rounded-full shadow-md md:flex"
+              onClick={() => swiperRef.current?.slidePrev()}
+              disabled={swiperNavState.isBeginning}
+              aria-label="上一個卡匣"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="absolute right-2 top-1/2 z-20 hidden h-9 w-9 -translate-y-1/2 rounded-full shadow-md md:flex"
+              onClick={() => swiperRef.current?.slideNext()}
+              disabled={swiperNavState.isEnd}
+              aria-label="下一個卡匣"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </Button>
+
+            <Swiper
+              modules={[Keyboard, Scrollbar]}
+              spaceBetween={16}
+              slidesPerView={1}
+              centeredSlides={false}
+              onSwiper={(swiper) => {
+                swiperRef.current = swiper;
+                syncSwiperState(swiper);
+              }}
+              onSlideChange={syncSwiperState}
+              onResize={syncSwiperState}
+              onReachBeginning={syncSwiperState}
+              onReachEnd={syncSwiperState}
+              onFromEdge={syncSwiperState}
+              className="h-full min-h-0 px-4 pb-6 pt-2"
+              threshold={12}
+              touchAngle={35}
+              resistanceRatio={0.35}
+              touchStartPreventDefault={false}
+              touchMoveStopPropagation={false}
+              preventClicks={true}
+              preventClicksPropagation={true}
+              nested={true}
+              slideToClickedSlide={false}
+              keyboard={{ enabled: true }}
+              scrollbar={{ draggable: true, hide: false }}
+              breakpoints={{
+                320: {
+                  slidesPerView: 1,
+                  centeredSlides: false,
+                },
+                768: {
+                  slidesPerView: 2,
+                  centeredSlides: false,
+                },
+                1280: {
+                  slidesPerView: 3,
+                  centeredSlides: false,
+                },
+                1536: {
+                  slidesPerView: 4,
+                  centeredSlides: false,
+                },
+                1920: {
+                  slidesPerView: 6,
+                  centeredSlides: false,
+                },
+              }}
+            >
+              {sortedLists.map((list) => (
+                  <SwiperSlide key={list.id} className="h-full min-h-0">
+                    <List
+                      list={list}
+                      tags={tags}
+                      snackBudget={snackBudget}
+                      purchaseSuggestions={suggestionsByListId[list.id] || []}
+                      onUpdateList={handleUpdateList}
+                      onAddCard={() => handleAddCard(list.id)}
+                      onAddSuggestedCard={(suggestion) => handleAddSuggestedCard(list.id, suggestion)}
+                      onUpdateCard={(cardId, updates) =>
+                        handleUpdateCard(list.id, cardId, updates)
+                      }
+                      onDeleteCards={(cardIds) => handleDeleteCards(list.id, cardIds)}
+                      onRestoreCard={() => handleRestoreCard(list.id)}
+                      canRestoreCard={(deletedCards[list.id] || []).length > 0}
+                      onArchive={() => handleArchiveList(list.id)}
+                    />
+                  </SwiperSlide>
+                ))}
+            </Swiper>
+          </div>
 
           <DragOverlay>
             {activeCard && (

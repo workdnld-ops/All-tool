@@ -466,7 +466,11 @@ export function List({
         </div>
       )}
 
-      <div ref={setNodeRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2 touch-pan-y">
+      <div
+        ref={setNodeRef}
+        data-card-scroll="true"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2 touch-pan-y"
+      >
         <SortableContext items={list.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {list.cards.map((card) => (
             <ExpenseCard
