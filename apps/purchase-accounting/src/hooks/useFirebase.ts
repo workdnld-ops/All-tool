@@ -375,7 +375,13 @@ export function useFirebaseTrackedPurchaseItems() {
       trackedRef,
       (snapshot) => {
         const data = snapshot.val();
-        setTrackedItems(Array.isArray(data) ? data.filter(Boolean) : []);
+        if (Array.isArray(data)) {
+          setTrackedItems(data.filter(Boolean));
+        } else if (data && typeof data === 'object') {
+          setTrackedItems(Object.values(data).filter(Boolean) as string[]);
+        } else {
+          setTrackedItems([]);
+        }
         setLoading(false);
       },
       (err) => {
@@ -390,7 +396,8 @@ export function useFirebaseTrackedPurchaseItems() {
   const saveTrackedItems = useCallback(async (items: string[]) => {
     try {
       const trackedRef = ref(database, `users/${userId}/trackedPurchaseItems`);
-      const normalized = Array.from(new Set(items.map((item) => item.trim()).filter(Boolean)));
+      const normalized = Array.from(new Set(items.map((item) => item.trim().replace(/\s+/g, ' ')).filter(Boolean)));
+      setTrackedItems(normalized);
       await set(trackedRef, normalized);
       toast.success('統計品項已儲存');
     } catch (err) {

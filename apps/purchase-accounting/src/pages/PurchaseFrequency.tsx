@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, Calendar, AlertCircle, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useFirebaseArchivedLists, useFirebaseLists, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
-import { normalizeItemName, usePurchaseFrequency, ItemFrequency } from '@/hooks/usePurchaseFrequency';
+import { normalizeItemName, usePurchaseFrequency, usePurchaseItemNames, ItemFrequency } from '@/hooks/usePurchaseFrequency';
 import { toast } from 'sonner';
 
 const PurchaseFrequency = () => {
@@ -15,8 +15,14 @@ const PurchaseFrequency = () => {
   const { archivedLists, loading: archivedLoading } = useFirebaseArchivedLists();
   const { trackedItems, loading: trackedItemsLoading, saveTrackedItems } = useFirebaseTrackedPurchaseItems();
   const [newItemName, setNewItemName] = useState('');
-  
-  const frequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems);
+  const allLists = useMemo(() => [...lists, ...archivedLists], [lists, archivedLists]);
+  const availableItemNames = usePurchaseItemNames(allLists);
+  const frequencies = usePurchaseFrequency(allLists, trackedItems);
+  const trackedNameSet = useMemo(
+    () => new Set(trackedItems.map(normalizeItemName).filter(Boolean)),
+    [trackedItems]
+  );
+  const availableUntrackedItems = availableItemNames.filter((item) => !trackedNameSet.has(normalizeItemName(item)));
 
   const handleAddTrackedItem = async () => {
     const name = normalizeItemName(newItemName);
@@ -30,8 +36,23 @@ const PurchaseFrequency = () => {
     setNewItemName('');
   };
 
+  const handleAddExistingItem = async (name: string) => {
+    const normalized = normalizeItemName(name);
+    if (!normalized || trackedNameSet.has(normalized)) return;
+    await saveTrackedItems([...trackedItems, normalized]);
+  };
+
   const handleRemoveTrackedItem = async (name: string) => {
     await saveTrackedItems(trackedItems.filter((item) => normalizeItemName(item) !== normalizeItemName(name)));
+  };
+
+  const handleExcludeFrequencyItem = async (name: string) => {
+    const normalized = normalizeItemName(name);
+    if (trackedItems.length === 0) {
+      await saveTrackedItems(availableItemNames.filter((item) => normalizeItemName(item) !== normalized));
+      return;
+    }
+    await handleRemoveTrackedItem(normalized);
   };
 
   const formatDate = (date: Date) => {
@@ -108,20 +129,41 @@ const PurchaseFrequency = () => {
                 尚未指定品項，目前會統計所有月份卡匣內的品項。新增品項後，統計與本月建議只會顯示指定品項。
               </p>
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {trackedItems.map((item) => (
-                  <Badge key={item} variant="secondary" className="gap-1 pr-1">
-                    {item}
+              <div className="space-y-1.5">
+                <div className="text-xs font-medium text-muted-foreground">目前統計</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {trackedItems.map((item) => (
+                    <Badge key={item} variant="secondary" className="gap-1 pr-1">
+                      {item}
+                      <button
+                        type="button"
+                        className="ml-1 rounded-full p-0.5 hover:bg-background/70"
+                        onClick={() => handleRemoveTrackedItem(item)}
+                        aria-label={`移除 ${item}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {availableUntrackedItems.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="text-xs font-medium text-muted-foreground">歷屆紀錄找到的品項</div>
+                <div className="flex max-h-24 flex-wrap gap-1.5 overflow-y-auto">
+                  {availableUntrackedItems.map((item) => (
                     <button
+                      key={item}
                       type="button"
-                      className="ml-1 rounded-full p-0.5 hover:bg-background/70"
-                      onClick={() => handleRemoveTrackedItem(item)}
-                      aria-label={`移除 ${item}`}
+                      className="rounded-full border border-border bg-background px-2 py-1 text-xs font-medium text-foreground active:scale-[0.98]"
+                      onClick={() => handleAddExistingItem(item)}
                     >
-                      <X className="w-3 h-3" />
+                      + {item}
                     </button>
-                  </Badge>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
@@ -151,7 +193,18 @@ const PurchaseFrequency = () => {
                     <CardTitle className="text-base font-semibold">
                       {item.itemName}
                     </CardTitle>
-                    {getStatusBadge(item.status)}
+                    <div className="flex flex-shrink-0 items-center gap-1">
+                      {getStatusBadge(item.status)}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => handleExcludeFrequencyItem(item.itemName)}
+                      >
+                        解除統計
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

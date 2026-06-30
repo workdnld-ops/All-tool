@@ -36,6 +36,27 @@ export function parseMonthListName(name: string) {
   return { year, month };
 }
 
+export function usePurchaseItemNames(lists: List[]) {
+  return useMemo(() => {
+    const itemNames = new Set<string>();
+
+    lists.forEach(list => {
+      if (!parseMonthListName(list.name)) return;
+
+      list.cards.forEach(card => {
+        if (card.status === 'excluded') return;
+
+        const itemName = normalizeItemName(card.content);
+        if (itemName) {
+          itemNames.add(itemName);
+        }
+      });
+    });
+
+    return Array.from(itemNames).sort((a, b) => a.localeCompare(b, 'zh-TW'));
+  }, [lists]);
+}
+
 function parsePurchaseDate(value: string, today: Date) {
   const [month, day] = value.split('/').map(Number);
   if (!month || !day) return null;
