@@ -151,7 +151,7 @@
     }
 
     .form-grid {
-      grid-template-columns: 148px minmax(0, 1fr);
+      grid-template-columns: 148px 92px minmax(0, 1fr);
       align-items: end;
     }
 
@@ -165,6 +165,19 @@
       color: var(--muted);
       font-size: 0.76rem;
       font-weight: 850;
+    }
+
+    .checkbox-label {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 9px;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 7px;
+      background: #fbfcfc;
+      color: var(--ink);
+      font-size: 0.9rem;
     }
 
     input,
@@ -181,6 +194,15 @@
     input {
       min-height: 36px;
       padding: 0 9px;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      min-height: 18px;
+      padding: 0;
+      accent-color: var(--primary);
     }
 
     textarea {
@@ -293,6 +315,10 @@
           月份
           <input id="month-input" type="month" aria-label="月份">
         </label>
+        <label class="checkbox-label">
+          <input id="planned-input" type="checkbox">
+          預計
+        </label>
         <label>
           休假文字
           <input id="keywords-input" type="text" aria-label="休假文字">
@@ -344,6 +370,7 @@
     const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 
     const monthInput = document.getElementById("month-input");
+    const plannedInput = document.getElementById("planned-input");
     const keywordsInput = document.getElementById("keywords-input");
     const sheetInput = document.getElementById("sheet-input");
     const keywordList = document.getElementById("keyword-list");
@@ -475,6 +502,14 @@
         .join("\n");
     }
 
+    function formatOutput(dates) {
+      const groupedDates = formatDateGroups(dates);
+      if (!groupedDates) return "";
+      const { month } = parseMonthValue();
+      const title = plannedInput.checked ? `${month}月預計休假：` : `${month}月休假：`;
+      return `${title}\n${groupedDates}`;
+    }
+
     function parseRows() {
       const rawText = sheetInput.value.replace(/\r/g, "").replace(/\n$/g, "");
       const rawRows = rawText ? rawText.split("\n") : [];
@@ -514,7 +549,7 @@
     function render() {
       renderKeywords();
       const result = parseRows();
-      const text = formatDateGroups(result.dates);
+      const text = formatOutput(result.dates);
       rowCount.textContent = `${result.rows.length} 列`;
       dayCount.textContent = `${result.dates.length} 天`;
       dateSource.textContent = result.explicitDateCount > 0 ? "表格" : "月份";
@@ -561,7 +596,7 @@
 
     setDefaultMonth();
     keywordsInput.value = DEFAULT_KEYWORDS.join("、");
-    [monthInput, keywordsInput, sheetInput].forEach((input) => input.addEventListener("input", render));
+    [monthInput, plannedInput, keywordsInput, sheetInput].forEach((input) => input.addEventListener("input", render));
     document.getElementById("clear-button").addEventListener("click", () => {
       sheetInput.value = "";
       render();
