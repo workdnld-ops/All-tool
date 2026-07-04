@@ -85,8 +85,9 @@
     }
 
     .button,
+    .mode-button,
     .week-button,
-    .chip {
+    .checkbox-label {
       min-height: 34px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -102,7 +103,8 @@
       touch-action: manipulation;
     }
 
-    .button {
+    .button,
+    .mode-button {
       padding: 0 10px;
     }
 
@@ -122,6 +124,7 @@
     }
 
     .button.primary,
+    .mode-button.active,
     .week-button.active {
       border-color: var(--primary);
       background: var(--primary);
@@ -162,10 +165,16 @@
     }
 
     .top-actions,
+    .mode-grid,
     .form-grid,
     .week-grid,
-    .action-grid,
+    .action-grid {
+      display: grid;
+      gap: 6px;
+    }
+
     .top-actions,
+    .mode-grid,
     .action-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -179,12 +188,32 @@
       grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
+    .view {
+      display: grid;
+      gap: 8px;
+    }
+
+    .view[hidden] {
+      display: none;
+    }
+
     label {
       display: grid;
       gap: 4px;
       color: var(--muted);
       font-size: 0.76rem;
       font-weight: 850;
+    }
+
+    .checkbox-label {
+      min-height: 32px;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 7px;
+      padding: 0 9px;
+      background: #fbfcfc;
+      color: var(--ink);
+      font-size: 0.9rem;
     }
 
     input,
@@ -201,6 +230,15 @@
     input {
       min-height: 36px;
       padding: 0 9px;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      min-height: 18px;
+      padding: 0;
+      accent-color: var(--primary);
     }
 
     textarea {
@@ -255,6 +293,7 @@
       .form-grid { grid-template-columns: 1fr; }
       .week-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
       .button,
+      .mode-button,
       .week-button { padding: 0 3px; }
       textarea { min-height: 96px; }
       .output {
@@ -278,20 +317,33 @@
     </header>
 
     <section class="panel">
+      <div class="mode-grid" aria-label="模式">
+        <button class="mode-button active" type="button" data-mode="schedule">排班</button>
+        <button class="mode-button" type="button" data-mode="dayoff">排休</button>
+      </div>
       <div class="form-grid">
         <label>
           月份
           <input id="month-input" type="month" aria-label="月份">
         </label>
       </div>
-      <div class="week-grid" aria-label="週次">
-        <button class="week-button" type="button" data-week="1">wk1</button>
-        <button class="week-button" type="button" data-week="2">wk2</button>
-        <button class="week-button" type="button" data-week="3">wk3</button>
-        <button class="week-button" type="button" data-week="4">wk4</button>
-        <button class="week-button" type="button" data-week="5">wk5</button>
+      <div class="view" id="schedule-view">
+        <div class="week-grid" aria-label="週次">
+          <button class="week-button" type="button" data-week="1">wk1</button>
+          <button class="week-button" type="button" data-week="2">wk2</button>
+          <button class="week-button" type="button" data-week="3">wk3</button>
+          <button class="week-button" type="button" data-week="4">wk4</button>
+          <button class="week-button" type="button" data-week="5">wk5</button>
+        </div>
+        <textarea id="schedule-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
       </div>
-      <textarea id="sheet-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
+      <div class="view" id="dayoff-view" hidden>
+        <label class="checkbox-label">
+          <input id="planned-input" type="checkbox">
+          預計
+        </label>
+        <textarea id="dayoff-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="貼上排休欄位內容" aria-label="貼上排休內容"></textarea>
+      </div>
     </section>
 
     <section class="result empty" id="result-panel" aria-label="輸出結果">
@@ -322,16 +374,25 @@
     const MONTH_STORAGE_KEY = "scheduleRecordSelectedMonth";
     const STATE_STORAGE_KEY = "scheduleRecordWeeks";
     const LAST_INPUT_STORAGE_KEY = "scheduleRecordLastInput";
+    const MODE_STORAGE_KEY = "scheduleRecordMode";
+    const DAYOFF_INPUT_STORAGE_KEY = "scheduleRecordDayOffInput";
+    const DAYOFF_PLANNED_STORAGE_KEY = "scheduleRecordDayOffPlanned";
 
     const monthInput = document.getElementById("month-input");
-    const sheetInput = document.getElementById("sheet-input");
+    const scheduleInput = document.getElementById("schedule-input");
+    const dayOffInput = document.getElementById("dayoff-input");
+    const plannedInput = document.getElementById("planned-input");
+    const scheduleView = document.getElementById("schedule-view");
+    const dayOffView = document.getElementById("dayoff-view");
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
     const weekButtons = Array.from(document.querySelectorAll("[data-week]"));
+    const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 
     const state = {
+      mode: "schedule",
       weeks: {},
       activeWeek: 1,
     };
@@ -357,12 +418,19 @@
       } catch {
         state.weeks = {};
       }
-      sheetInput.value = localStorage.getItem(LAST_INPUT_STORAGE_KEY) || "";
+      scheduleInput.value = localStorage.getItem(LAST_INPUT_STORAGE_KEY) || "";
+      dayOffInput.value = localStorage.getItem(DAYOFF_INPUT_STORAGE_KEY) || "";
+      plannedInput.checked = localStorage.getItem(DAYOFF_PLANNED_STORAGE_KEY) === "true";
+      const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
+      if (savedMode === "schedule" || savedMode === "dayoff") state.mode = savedMode;
     }
 
     function saveState() {
       localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state.weeks));
-      localStorage.setItem(LAST_INPUT_STORAGE_KEY, sheetInput.value);
+      localStorage.setItem(LAST_INPUT_STORAGE_KEY, scheduleInput.value);
+      localStorage.setItem(DAYOFF_INPUT_STORAGE_KEY, dayOffInput.value);
+      localStorage.setItem(DAYOFF_PLANNED_STORAGE_KEY, String(plannedInput.checked));
+      localStorage.setItem(MODE_STORAGE_KEY, state.mode);
     }
 
     function normalizeText(value) {
@@ -388,6 +456,15 @@
         return { year: now.getFullYear(), month: now.getMonth() + 1 };
       }
       return { year: Number(match[1]), month: Number(match[2]) };
+    }
+
+    function daysInMonth(year, month) {
+      return new Date(year, month, 0).getDate();
+    }
+
+    function isValidDate(year, month, day) {
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
     }
 
     function dateForWeekDay(week, index) {
@@ -437,6 +514,31 @@
       return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
     }
 
+    function parseDateFromCells(cells, fallbackYear, fallbackMonth) {
+      const joined = cells.map(normalizeText).join(" ");
+      const full = joined.match(/(?<!\d)(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})(?!\d)/);
+      if (full) {
+        const year = Number(full[1]);
+        const month = Number(full[2]);
+        const day = Number(full[3]);
+        if (isValidDate(year, month, day)) return { year, month, day };
+      }
+      const monthDay = joined.match(/(?<!\d)(\d{1,2})\s*(?:\/|月)\s*(\d{1,2})\s*(?:日)?(?!\d)/);
+      if (monthDay) {
+        const month = Number(monthDay[1]);
+        const day = Number(monthDay[2]);
+        if (isValidDate(fallbackYear, month, day)) return { year: fallbackYear, month, day };
+      }
+      const dayOnly = joined.match(/(?<!\d)(\d{1,2})\s*日(?!\d)/);
+      if (dayOnly) {
+        const day = Number(dayOnly[1]);
+        if (isValidDate(fallbackYear, fallbackMonth, day)) {
+          return { year: fallbackYear, month: fallbackMonth, day };
+        }
+      }
+      return null;
+    }
+
     function parseWeekRows(rawText, week) {
       const values = rawText
         .replace(/\r/g, "")
@@ -473,6 +575,69 @@
       return `${dateText} 休假`;
     }
 
+    function formatDate(dateInfo) {
+      const date = new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day);
+      return `${dateInfo.month}/${dateInfo.day}(${WEEKDAYS[date.getDay()]})`;
+    }
+
+    function dateTime(dateInfo) {
+      return new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day).getTime();
+    }
+
+    function formatDateGroups(dates) {
+      const groups = [];
+      let currentGroup = [];
+      dates.forEach((dateInfo) => {
+        const previous = currentGroup[currentGroup.length - 1];
+        const isContinuous = previous && dateTime(dateInfo) - dateTime(previous) === 86400000;
+        if (!previous || isContinuous) {
+          currentGroup.push(dateInfo);
+          return;
+        }
+        groups.push(currentGroup);
+        currentGroup = [dateInfo];
+      });
+      if (currentGroup.length > 0) groups.push(currentGroup);
+      return groups.map((group) => group.map(formatDate).join("、")).join("\n");
+    }
+
+    function dayOffDates() {
+      const rawText = dayOffInput.value.replace(/\r/g, "").replace(/\n+$/g, "");
+      const rawRows = rawText ? rawText.split("\n") : [];
+      const rows = rawRows.map((line) => line.split("\t"));
+      const { year, month } = parseMonthValue();
+      const maxDay = daysInMonth(year, month);
+      const dates = [];
+      rows.forEach((cells, index) => {
+        if (!hasLeaveText(cells)) return;
+        let dateInfo = parseDateFromCells(cells, year, month);
+        if (!dateInfo) {
+          const day = index + 1;
+          if (day < 1 || day > maxDay) return;
+          dateInfo = { year, month, day };
+        }
+        dates.push(dateInfo);
+      });
+      const unique = [];
+      const seen = new Set();
+      dates.forEach((dateInfo) => {
+        const key = `${dateInfo.year}-${dateInfo.month}-${dateInfo.day}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        unique.push(dateInfo);
+      });
+      return unique.sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function formatDayOffOutput() {
+      const dates = dayOffDates();
+      const groupedDates = formatDateGroups(dates);
+      if (!groupedDates) return "";
+      const { month } = parseMonthValue();
+      const title = plannedInput.checked ? `${month}月預計休假：` : `${month}月休假：`;
+      return `${title}\n${groupedDates}`;
+    }
+
     function renderWeeks() {
       weekButtons.forEach((button) => {
         const week = button.dataset.week;
@@ -481,13 +646,28 @@
       });
     }
 
+    function renderMode() {
+      scheduleView.hidden = state.mode !== "schedule";
+      dayOffView.hidden = state.mode !== "dayoff";
+      modeButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.mode === state.mode);
+      });
+    }
+
     function render() {
+      renderMode();
       renderWeeks();
-      const parsedRecords = records();
-      const text = parsedRecords.map(formatRecord).join("\n");
-      output.textContent = text || "尚無排班資料";
+      const text = state.mode === "schedule"
+        ? records().map(formatRecord).join("\n")
+        : formatDayOffOutput();
+      output.textContent = text || (state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期");
       resultPanel.classList.toggle("empty", !text);
-      status.textContent = text ? `已整理 ${parsedRecords.length} 筆資料` : "選擇週次後會讀取剪貼簿內容";
+      status.style.color = "var(--muted)";
+      if (text) {
+        status.textContent = state.mode === "schedule" ? "排班文字已整理" : "排休文字已整理";
+      } else {
+        status.textContent = state.mode === "schedule" ? "選擇週次後會讀取剪貼簿內容" : "貼上排休內容後會自動整理";
+      }
     }
 
     function flashButton(button, label, isError = false) {
@@ -515,7 +695,7 @@
     async function importWeek(week, button) {
       state.activeWeek = Number(week);
       const clipboardText = await readClipboardText();
-      const text = clipboardText || sheetInput.value;
+      const text = clipboardText || scheduleInput.value;
       if (!normalizeText(text)) {
         status.textContent = "剪貼簿沒有內容，可先貼到文字框再按週次";
         status.style.color = "var(--danger)";
@@ -523,7 +703,7 @@
         renderWeeks();
         return;
       }
-      sheetInput.value = text;
+      scheduleInput.value = text;
       state.weeks[String(week)] = text;
       saveState();
       status.style.color = "var(--muted)";
@@ -532,7 +712,8 @@
     }
 
     async function copyOutput() {
-      const text = output.textContent === "尚無排班資料" ? "" : output.textContent;
+      const emptyText = state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期";
+      const text = output.textContent === emptyText ? "" : output.textContent;
       if (!text) {
         flashButton(copyButton, "沒有內容", true);
         return;
@@ -562,16 +743,35 @@
       }
       render();
     });
-    sheetInput.addEventListener("input", saveState);
+    modeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        state.mode = button.dataset.mode;
+        saveState();
+        render();
+      });
+    });
+    scheduleInput.addEventListener("input", saveState);
+    dayOffInput.addEventListener("input", () => {
+      saveState();
+      render();
+    });
+    plannedInput.addEventListener("input", () => {
+      saveState();
+      render();
+    });
     weekButtons.forEach((button) => {
       button.addEventListener("click", () => importWeek(button.dataset.week, button));
     });
     document.getElementById("clear-button").addEventListener("click", () => {
-      state.weeks = {};
-      sheetInput.value = "";
+      if (state.mode === "schedule") {
+        state.weeks = {};
+        scheduleInput.value = "";
+      } else {
+        dayOffInput.value = "";
+      }
       saveState();
       render();
-      sheetInput.focus();
+      (state.mode === "schedule" ? scheduleInput : dayOffInput).focus();
     });
     copyButton.addEventListener("click", copyOutput);
     render();
