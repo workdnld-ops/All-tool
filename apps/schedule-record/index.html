@@ -102,9 +102,23 @@
       touch-action: manipulation;
     }
 
-    .button,
-    .week-button {
+    .button {
       padding: 0 10px;
+    }
+
+    .week-button {
+      min-height: 30px;
+      padding: 0 4px;
+      font-size: 0.82rem;
+      position: relative;
+      gap: 3px;
+    }
+
+    .week-button.saved::after {
+      content: "✓";
+      font-size: 0.72rem;
+      line-height: 1;
+      font-weight: 900;
     }
 
     .button.primary,
@@ -151,27 +165,18 @@
     .form-grid,
     .week-grid,
     .action-grid,
-    .summary-grid {
-      display: grid;
-      gap: 6px;
-    }
-
     .top-actions,
     .action-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .form-grid {
-      grid-template-columns: 148px minmax(0, 1fr);
+      grid-template-columns: 148px;
       align-items: end;
     }
 
     .week-grid {
       grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .summary-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     label {
@@ -199,7 +204,7 @@
     }
 
     textarea {
-      min-height: 168px;
+      min-height: 104px;
       resize: vertical;
       padding: 9px;
       line-height: 1.35;
@@ -211,42 +216,6 @@
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
       outline: none;
-    }
-
-    .chip-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .chip {
-      min-height: 30px;
-      padding: 0 9px;
-      color: var(--blue);
-      background: var(--blue-soft);
-      border-color: transparent;
-      font-size: 0.78rem;
-    }
-
-    .metric {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 8px;
-      display: grid;
-      gap: 3px;
-      background: #fbfcfc;
-      min-width: 0;
-    }
-
-    .metric span {
-      color: var(--muted);
-      font-size: 0.72rem;
-    }
-
-    .metric strong {
-      font-size: 1rem;
-      line-height: 1.15;
-      word-break: break-word;
     }
 
     .result {
@@ -275,18 +244,24 @@
       font-weight: 900;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+      max-height: 360px;
+      overflow-y: auto;
       -webkit-user-select: text;
       user-select: text;
     }
 
     @media (max-width: 620px) {
       h1 { font-size: 1.18rem; }
-      .form-grid,
-      .summary-grid { grid-template-columns: 1fr; }
-      .week-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .form-grid { grid-template-columns: 1fr; }
+      .week-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
       .button,
-      .week-button { padding: 0 8px; }
-      textarea { min-height: 150px; }
+      .week-button { padding: 0 3px; }
+      textarea { min-height: 96px; }
+      .output {
+        max-height: 312px;
+        font-size: 0.98rem;
+        line-height: 1.45;
+      }
     }
   </style>
 </head>
@@ -308,10 +283,6 @@
           月份
           <input id="month-input" type="month" aria-label="月份">
         </label>
-        <label>
-          休假文字
-          <input id="keywords-input" type="text" aria-label="休假文字">
-        </label>
       </div>
       <div class="week-grid" aria-label="週次">
         <button class="week-button" type="button" data-week="1">wk1</button>
@@ -321,22 +292,6 @@
         <button class="week-button" type="button" data-week="5">wk5</button>
       </div>
       <textarea id="sheet-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
-      <div class="chip-list" id="keyword-list" aria-label="休假文字清單"></div>
-    </section>
-
-    <section class="summary-grid" aria-label="摘要">
-      <div class="metric">
-        <span>已輸入週次</span>
-        <strong id="week-count">0 週</strong>
-      </div>
-      <div class="metric">
-        <span>班表天數</span>
-        <strong id="shift-count">0 天</strong>
-      </div>
-      <div class="metric">
-        <span>休假天數</span>
-        <strong id="leave-count">0 天</strong>
-      </div>
     </section>
 
     <section class="result empty" id="result-panel" aria-label="輸出結果">
@@ -351,7 +306,7 @@
   </main>
 
   <script>
-    const DEFAULT_KEYWORDS = [
+    const LEAVE_KEYWORDS = [
       "特休",
       "優先",
       "次優",
@@ -369,13 +324,8 @@
     const LAST_INPUT_STORAGE_KEY = "scheduleRecordLastInput";
 
     const monthInput = document.getElementById("month-input");
-    const keywordsInput = document.getElementById("keywords-input");
     const sheetInput = document.getElementById("sheet-input");
-    const keywordList = document.getElementById("keyword-list");
     const status = document.getElementById("status");
-    const weekCount = document.getElementById("week-count");
-    const shiftCount = document.getElementById("shift-count");
-    const leaveCount = document.getElementById("leave-count");
     const resultPanel = document.getElementById("result-panel");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
@@ -420,20 +370,6 @@
         .normalize("NFKC")
         .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
         .trim();
-    }
-
-    function keywords() {
-      const entered = keywordsInput.value
-        .split(/[、,\s]+/g)
-        .map(normalizeText)
-        .filter(Boolean);
-      return entered.length > 0 ? entered : DEFAULT_KEYWORDS;
-    }
-
-    function renderKeywords() {
-      keywordList.innerHTML = keywords()
-        .map((keyword) => `<span class="chip">${escapeHtml(keyword)}</span>`)
-        .join("");
     }
 
     function escapeHtml(value) {
@@ -496,9 +432,9 @@
       return times.length >= 2 ? `${times[0]}-${times[1]}` : "";
     }
 
-    function hasLeaveText(cells, leaveKeywords) {
+    function hasLeaveText(cells) {
       const text = normalizeText(cells.join(" "));
-      return leaveKeywords.some((keyword) => text.includes(keyword));
+      return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
     }
 
     function parseWeekRows(rawText, week) {
@@ -507,13 +443,12 @@
         .split(/\n|\t/g)
         .map(normalizeText);
       const dataValues = values.slice(4);
-      const leaveKeywords = keywords();
       return Array.from({ length: 7 }, (_, index) => {
         const cells = dataValues.slice(index * 25, (index + 1) * 25);
         const text = normalizeText(cells.join(" "));
         const date = dateForWeekDay(week, index);
         const time = findShiftTime(cells);
-        const isLeave = !time && hasLeaveText(cells, leaveKeywords);
+        const isLeave = !time && hasLeaveText(cells);
         return {
           ...date,
           week: Number(week),
@@ -547,15 +482,9 @@
     }
 
     function render() {
-      renderKeywords();
       renderWeeks();
       const parsedRecords = records();
-      const shiftTotal = parsedRecords.filter((record) => record.type === "shift").length;
-      const leaveTotal = parsedRecords.filter((record) => record.type === "leave").length;
       const text = parsedRecords.map(formatRecord).join("\n");
-      weekCount.textContent = `${Object.keys(state.weeks).length} 週`;
-      shiftCount.textContent = `${shiftTotal} 天`;
-      leaveCount.textContent = `${leaveTotal} 天`;
       output.textContent = text || "尚無排班資料";
       resultPanel.classList.toggle("empty", !text);
       status.textContent = text ? `已整理 ${parsedRecords.length} 筆資料` : "選擇週次後會讀取剪貼簿內容";
@@ -627,16 +556,11 @@
 
     setDefaultMonth();
     loadState();
-    keywordsInput.value = DEFAULT_KEYWORDS.join("、");
     monthInput.addEventListener("input", () => {
       if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
         localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
       }
       render();
-    });
-    keywordsInput.addEventListener("input", () => {
-      render();
-      saveState();
     });
     sheetInput.addEventListener("input", saveState);
     weekButtons.forEach((button) => {

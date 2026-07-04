@@ -14,7 +14,6 @@ const copyItems = [
   ["apps/drink-calculator", "apps/drink-calculator"],
   ["apps/cleaning-schedule", "apps/cleaning-schedule"],
   ["apps/celebration-calculator", "apps/celebration-calculator"],
-  ["apps/day-off-record", "apps/day-off-record"],
   ["apps/schedule-record", "apps/schedule-record"],
 ];
 

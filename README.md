@@ -7,7 +7,6 @@
 - `apps/credit-card-slip-stats`：信用卡簽單紙消耗統計。
 - `apps/purchase-accounting`：採購記帳，Cloudflare 會使用 build 後的 `apps/purchase-accounting/dist/`。
 - `apps/drink-calculator`：飲料計算器，包含計算頁、品項設定頁與 Firebase 歷史訂單。
-- `apps/day-off-record`：排休紀錄，貼上 Google Sheet 排休欄位後輸出 Line 可用文字。
 - `apps/schedule-record`：排班紀錄，貼上 Google Sheet 週班表後輸出 Line 可用文字。
 
 ## Cloudflare Pages 設定
