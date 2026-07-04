@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>排班紀錄</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+      --blue: #245b9b;
+      --blue-soft: #e7f0fb;
+      --rose: #9a3d55;
+      --rose-soft: #fbe8ee;
+      --danger: #b42318;
+      --danger-soft: #fff5f4;
+      --shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    input,
+    textarea { font: inherit; }
+
+    input,
+    textarea {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .shell {
+      width: min(860px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    header {
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .button,
+    .week-button,
+    .chip {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 850;
+      text-decoration: none;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+
+    .button,
+    .week-button {
+      padding: 0 10px;
+    }
+
+    .button.primary,
+    .week-button.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.feedback,
+    .week-button.saved {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .week-button.active.saved {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.feedback-error {
+      border-color: var(--danger);
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .panel,
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .top-actions,
+    .form-grid,
+    .week-grid,
+    .action-grid,
+    .summary-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .top-actions,
+    .action-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-grid {
+      grid-template-columns: 148px minmax(0, 1fr);
+      align-items: end;
+    }
+
+    .week-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .summary-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 750;
+      min-width: 0;
+    }
+
+    input {
+      min-height: 36px;
+      padding: 0 9px;
+    }
+
+    textarea {
+      min-height: 168px;
+      resize: vertical;
+      padding: 9px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
+      outline: none;
+    }
+
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      min-height: 30px;
+      padding: 0 9px;
+      color: var(--blue);
+      background: var(--blue-soft);
+      border-color: transparent;
+      font-size: 0.78rem;
+    }
+
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      display: grid;
+      gap: 3px;
+      background: #fbfcfc;
+      min-width: 0;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .metric strong {
+      font-size: 1rem;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+
+    .result {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border-color: rgba(31, 111, 100, 0.35);
+      background: var(--primary-soft);
+    }
+
+    .result.empty {
+      border-color: rgba(154, 61, 85, 0.28);
+      background: var(--rose-soft);
+    }
+
+    .result-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .output {
+      min-height: 42px;
+      font-size: 1.08rem;
+      line-height: 1.55;
+      font-weight: 900;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    @media (max-width: 620px) {
+      h1 { font-size: 1.18rem; }
+      .form-grid,
+      .summary-grid { grid-template-columns: 1fr; }
+      .week-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .button,
+      .week-button { padding: 0 8px; }
+      textarea { min-height: 150px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>排班紀錄</h1>
+        <div class="status" id="status">選擇週次後會讀取剪貼簿內容</div>
+      </div>
+      <div class="top-actions">
+        <a class="button" href="../../index.html">工具箱</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="form-grid">
+        <label>
+          月份
+          <input id="month-input" type="month" aria-label="月份">
+        </label>
+        <label>
+          休假文字
+          <input id="keywords-input" type="text" aria-label="休假文字">
+        </label>
+      </div>
+      <div class="week-grid" aria-label="週次">
+        <button class="week-button" type="button" data-week="1">wk1</button>
+        <button class="week-button" type="button" data-week="2">wk2</button>
+        <button class="week-button" type="button" data-week="3">wk3</button>
+        <button class="week-button" type="button" data-week="4">wk4</button>
+        <button class="week-button" type="button" data-week="5">wk5</button>
+      </div>
+      <textarea id="sheet-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
+      <div class="chip-list" id="keyword-list" aria-label="休假文字清單"></div>
+    </section>
+
+    <section class="summary-grid" aria-label="摘要">
+      <div class="metric">
+        <span>已輸入週次</span>
+        <strong id="week-count">0 週</strong>
+      </div>
+      <div class="metric">
+        <span>班表天數</span>
+        <strong id="shift-count">0 天</strong>
+      </div>
+      <div class="metric">
+        <span>休假天數</span>
+        <strong id="leave-count">0 天</strong>
+      </div>
+    </section>
+
+    <section class="result empty" id="result-panel" aria-label="輸出結果">
+      <div class="result-title">Line 文字</div>
+      <div class="output" id="output">尚無排班資料</div>
+    </section>
+
+    <div class="action-grid">
+      <button class="button" id="clear-button" type="button">清空</button>
+      <button class="button primary" id="copy-button" type="button">複製</button>
+    </div>
+  </main>
+
+  <script>
+    const DEFAULT_KEYWORDS = [
+      "特休",
+      "優先",
+      "次優",
+      "排休",
+      "公假",
+      "事假休",
+      "滑雪假休",
+      "年假例休",
+      "家庭照護假",
+    ];
+
+    const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+    const MONTH_STORAGE_KEY = "scheduleRecordSelectedMonth";
+    const STATE_STORAGE_KEY = "scheduleRecordWeeks";
+    const LAST_INPUT_STORAGE_KEY = "scheduleRecordLastInput";
+
+    const monthInput = document.getElementById("month-input");
+    const keywordsInput = document.getElementById("keywords-input");
+    const sheetInput = document.getElementById("sheet-input");
+    const keywordList = document.getElementById("keyword-list");
+    const status = document.getElementById("status");
+    const weekCount = document.getElementById("week-count");
+    const shiftCount = document.getElementById("shift-count");
+    const leaveCount = document.getElementById("leave-count");
+    const resultPanel = document.getElementById("result-panel");
+    const output = document.getElementById("output");
+    const copyButton = document.getElementById("copy-button");
+    const weekButtons = Array.from(document.querySelectorAll("[data-week]"));
+
+    const state = {
+      weeks: {},
+      activeWeek: 1,
+    };
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function setDefaultMonth() {
+      const savedMonth = localStorage.getItem(MONTH_STORAGE_KEY);
+      if (/^\d{4}-\d{2}$/.test(savedMonth || "")) {
+        monthInput.value = savedMonth;
+        return;
+      }
+      const now = new Date();
+      monthInput.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STATE_STORAGE_KEY) || "{}");
+        if (saved && typeof saved === "object") state.weeks = saved;
+      } catch {
+        state.weeks = {};
+      }
+      sheetInput.value = localStorage.getItem(LAST_INPUT_STORAGE_KEY) || "";
+    }
+
+    function saveState() {
+      localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state.weeks));
+      localStorage.setItem(LAST_INPUT_STORAGE_KEY, sheetInput.value);
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFKC")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+        .trim();
+    }
+
+    function keywords() {
+      const entered = keywordsInput.value
+        .split(/[、,\s]+/g)
+        .map(normalizeText)
+        .filter(Boolean);
+      return entered.length > 0 ? entered : DEFAULT_KEYWORDS;
+    }
+
+    function renderKeywords() {
+      keywordList.innerHTML = keywords()
+        .map((keyword) => `<span class="chip">${escapeHtml(keyword)}</span>`)
+        .join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function parseMonthValue() {
+      const match = /^(\d{4})-(\d{2})$/.exec(monthInput.value);
+      if (!match) {
+        const now = new Date();
+        return { year: now.getFullYear(), month: now.getMonth() + 1 };
+      }
+      return { year: Number(match[1]), month: Number(match[2]) };
+    }
+
+    function dateForWeekDay(week, index) {
+      const { year, month } = parseMonthValue();
+      const day = ((Number(week) - 1) * 7) + index + 1;
+      const date = new Date(year, month - 1, day);
+      return {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        weekday: WEEKDAYS[date.getDay()],
+        time: date.getTime(),
+      };
+    }
+
+    function normalizeTime(hour, minute = "00") {
+      const parsedHour = Number(hour);
+      if (!Number.isInteger(parsedHour) || parsedHour > 23) return "";
+      return `${pad2(parsedHour)}:${minute}`;
+    }
+
+    function findShiftTime(cells) {
+      const values = cells.map(normalizeText).filter(Boolean);
+      const joined = values.join(" ");
+      const rangeText = normalizeText(joined)
+        .replace(/[~～至]/g, "-")
+        .replace(/\s+/g, " ");
+      const range = rangeText.match(/(\d{1,2})(?::?(\d{2}))\s*-\s*(\d{1,2})(?::?(\d{2}))/);
+      if (range) {
+        const start = normalizeTime(range[1], range[2]);
+        const end = normalizeTime(range[3], range[4]);
+        if (start && end) return `${start}-${end}`;
+      }
+      const times = [];
+      for (const value of values) {
+        const match = value.match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) continue;
+        const time = normalizeTime(match[1], match[2]);
+        if (time) times.push(time);
+        if (times.length >= 2) break;
+      }
+      return times.length >= 2 ? `${times[0]}-${times[1]}` : "";
+    }
+
+    function hasLeaveText(cells, leaveKeywords) {
+      const text = normalizeText(cells.join(" "));
+      return leaveKeywords.some((keyword) => text.includes(keyword));
+    }
+
+    function parseWeekRows(rawText, week) {
+      const values = rawText
+        .replace(/\r/g, "")
+        .split(/\n|\t/g)
+        .map(normalizeText);
+      const dataValues = values.slice(4);
+      const leaveKeywords = keywords();
+      return Array.from({ length: 7 }, (_, index) => {
+        const cells = dataValues.slice(index * 25, (index + 1) * 25);
+        const text = normalizeText(cells.join(" "));
+        const date = dateForWeekDay(week, index);
+        const time = findShiftTime(cells);
+        const isLeave = !time && hasLeaveText(cells, leaveKeywords);
+        return {
+          ...date,
+          week: Number(week),
+          rowIndex: index,
+          text,
+          time,
+          type: time ? "shift" : isLeave ? "leave" : "empty",
+        };
+      });
+    }
+
+    function records() {
+      return Object.entries(state.weeks)
+        .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
+        .filter((record) => record.type !== "empty")
+        .sort((a, b) => a.time - b.time);
+    }
+
+    function formatRecord(record) {
+      const dateText = `${record.month}/${record.day} (${record.weekday})`;
+      if (record.type === "shift") return `${dateText} ${record.time}`;
+      return `${dateText} 休假`;
+    }
+
+    function renderWeeks() {
+      weekButtons.forEach((button) => {
+        const week = button.dataset.week;
+        button.classList.toggle("active", Number(week) === state.activeWeek);
+        button.classList.toggle("saved", Boolean(state.weeks[week]));
+      });
+    }
+
+    function render() {
+      renderKeywords();
+      renderWeeks();
+      const parsedRecords = records();
+      const shiftTotal = parsedRecords.filter((record) => record.type === "shift").length;
+      const leaveTotal = parsedRecords.filter((record) => record.type === "leave").length;
+      const text = parsedRecords.map(formatRecord).join("\n");
+      weekCount.textContent = `${Object.keys(state.weeks).length} 週`;
+      shiftCount.textContent = `${shiftTotal} 天`;
+      leaveCount.textContent = `${leaveTotal} 天`;
+      output.textContent = text || "尚無排班資料";
+      resultPanel.classList.toggle("empty", !text);
+      status.textContent = text ? `已整理 ${parsedRecords.length} 筆資料` : "選擇週次後會讀取剪貼簿內容";
+    }
+
+    function flashButton(button, label, isError = false) {
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      window.clearTimeout(Number(button.dataset.feedbackTimer || 0));
+      button.textContent = label;
+      button.classList.toggle("feedback", !isError);
+      button.classList.toggle("feedback-error", isError);
+      button.dataset.feedbackTimer = String(window.setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("feedback", "feedback-error");
+      }, 1500));
+    }
+
+    async function readClipboardText() {
+      if (!navigator.clipboard?.readText) return "";
+      try {
+        return await navigator.clipboard.readText();
+      } catch {
+        return "";
+      }
+    }
+
+    async function importWeek(week, button) {
+      state.activeWeek = Number(week);
+      const clipboardText = await readClipboardText();
+      const text = clipboardText || sheetInput.value;
+      if (!normalizeText(text)) {
+        status.textContent = "剪貼簿沒有內容，可先貼到文字框再按週次";
+        status.style.color = "var(--danger)";
+        flashButton(button, "無內容", true);
+        renderWeeks();
+        return;
+      }
+      sheetInput.value = text;
+      state.weeks[String(week)] = text;
+      saveState();
+      status.style.color = "var(--muted)";
+      flashButton(button, "已覆蓋");
+      render();
+    }
+
+    async function copyOutput() {
+      const text = output.textContent === "尚無排班資料" ? "" : output.textContent;
+      if (!text) {
+        flashButton(copyButton, "沒有內容", true);
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        flashButton(copyButton, "已複製");
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.append(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        flashButton(copyButton, copied ? "已複製" : "複製失敗", !copied);
+      }
+    }
+
+    setDefaultMonth();
+    loadState();
+    keywordsInput.value = DEFAULT_KEYWORDS.join("、");
+    monthInput.addEventListener("input", () => {
+      if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
+        localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
+      }
+      render();
+    });
+    keywordsInput.addEventListener("input", () => {
+      render();
+      saveState();
+    });
+    sheetInput.addEventListener("input", saveState);
+    weekButtons.forEach((button) => {
+      button.addEventListener("click", () => importWeek(button.dataset.week, button));
+    });
+    document.getElementById("clear-button").addEventListener("click", () => {
+      state.weeks = {};
+      sheetInput.value = "";
+      saveState();
+      render();
+      sheetInput.focus();
+    });
+    copyButton.addEventListener("click", copyOutput);
+    render();
+  </script>
+</body>
+</html>
