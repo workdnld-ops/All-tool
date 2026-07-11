@@ -347,7 +347,7 @@
     </section>
 
     <section class="result empty" id="result-panel" aria-label="輸出結果">
-      <div class="result-title">Line 文字</div>
+      <div class="result-title" id="result-title">Line 文字</div>
       <div class="output" id="output">尚無排班資料</div>
     </section>
 
@@ -377,6 +377,7 @@
     const MODE_STORAGE_KEY = "scheduleRecordMode";
     const DAYOFF_INPUT_STORAGE_KEY = "scheduleRecordDayOffInput";
     const DAYOFF_PLANNED_STORAGE_KEY = "scheduleRecordDayOffPlanned";
+    const CHANGED_KEYS_STORAGE_KEY = "scheduleRecordChangedKeys";
 
     const monthInput = document.getElementById("month-input");
     const scheduleInput = document.getElementById("schedule-input");
@@ -386,6 +387,7 @@
     const dayOffView = document.getElementById("dayoff-view");
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
+    const resultTitle = document.getElementById("result-title");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
     const weekButtons = Array.from(document.querySelectorAll("[data-week]"));
@@ -395,6 +397,7 @@
       mode: "schedule",
       weeks: {},
       activeWeek: 1,
+      changedKeys: [],
     };
 
     function pad2(value) {
@@ -418,6 +421,12 @@
       } catch {
         state.weeks = {};
       }
+      try {
+        const savedChangedKeys = JSON.parse(localStorage.getItem(CHANGED_KEYS_STORAGE_KEY) || "[]");
+        if (Array.isArray(savedChangedKeys)) state.changedKeys = savedChangedKeys;
+      } catch {
+        state.changedKeys = [];
+      }
       scheduleInput.value = localStorage.getItem(LAST_INPUT_STORAGE_KEY) || "";
       dayOffInput.value = localStorage.getItem(DAYOFF_INPUT_STORAGE_KEY) || "";
       plannedInput.checked = localStorage.getItem(DAYOFF_PLANNED_STORAGE_KEY) === "true";
@@ -431,6 +440,7 @@
       localStorage.setItem(DAYOFF_INPUT_STORAGE_KEY, dayOffInput.value);
       localStorage.setItem(DAYOFF_PLANNED_STORAGE_KEY, String(plannedInput.checked));
       localStorage.setItem(MODE_STORAGE_KEY, state.mode);
+      localStorage.setItem(CHANGED_KEYS_STORAGE_KEY, JSON.stringify(state.changedKeys));
     }
 
     function normalizeText(value) {
@@ -569,10 +579,40 @@
         .sort((a, b) => a.time - b.time);
     }
 
+    function recordKey(record) {
+      return `${record.year}-${record.month}-${record.day}`;
+    }
+
     function formatRecord(record) {
       const dateText = `${record.month}/${record.day} (${record.weekday})`;
       if (record.type === "shift") return `${dateText} ${record.time}`;
       return `${dateText} 休假`;
+    }
+
+    function formatScheduleOutput() {
+      const changedKeys = new Set(state.changedKeys);
+      return records()
+        .map((record) => `${changedKeys.has(recordKey(record)) ? "★ " : ""}${formatRecord(record)}`)
+        .join("\n");
+    }
+
+    function recordsByKey(rawText, week) {
+      return new Map(
+        parseWeekRows(rawText, week)
+          .filter((record) => record.type !== "empty")
+          .map((record) => [recordKey(record), formatRecord(record)]),
+      );
+    }
+
+    function weekDateKeys(week) {
+      return Array.from({ length: 7 }, (_, index) => recordKey(dateForWeekDay(week, index)));
+    }
+
+    function changedKeysForOverwrite(oldText, newText, week) {
+      const before = recordsByKey(oldText, week);
+      const after = recordsByKey(newText, week);
+      const keys = new Set([...before.keys(), ...after.keys()]);
+      return [...keys].filter((key) => after.has(key) && before.get(key) !== after.get(key));
     }
 
     function formatDate(dateInfo) {
@@ -658,8 +698,10 @@
       renderMode();
       renderWeeks();
       const text = state.mode === "schedule"
-        ? records().map(formatRecord).join("\n")
+        ? formatScheduleOutput()
         : formatDayOffOutput();
+      const hasChanged = state.mode === "schedule" && state.changedKeys.length > 0;
+      resultTitle.textContent = hasChanged ? "Line 文字（★為異動）" : "Line 文字";
       output.textContent = text || (state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期");
       resultPanel.classList.toggle("empty", !text);
       status.style.color = "var(--muted)";
@@ -704,11 +746,20 @@
         return;
       }
       scheduleInput.value = text;
+      const oldText = state.weeks[String(week)];
+      const nextChangedKeys = oldText ? changedKeysForOverwrite(oldText, text, week) : [];
+      const currentChangedKeys = new Set(state.changedKeys);
+      weekDateKeys(week).forEach((key) => currentChangedKeys.delete(key));
+      nextChangedKeys.forEach((key) => currentChangedKeys.add(key));
+      state.changedKeys = [...currentChangedKeys];
       state.weeks[String(week)] = text;
       saveState();
       status.style.color = "var(--muted)";
       flashButton(button, "已覆蓋");
       render();
+      status.textContent = oldText
+        ? `已覆蓋 wk${week}，${nextChangedKeys.length} 筆異動以 ★ 標記`
+        : `已輸入 wk${week}`;
     }
 
     async function copyOutput() {
@@ -765,6 +816,7 @@
     document.getElementById("clear-button").addEventListener("click", () => {
       if (state.mode === "schedule") {
         state.weeks = {};
+        state.changedKeys = [];
         scheduleInput.value = "";
       } else {
         dayOffInput.value = "";
