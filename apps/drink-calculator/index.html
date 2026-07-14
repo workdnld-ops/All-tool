@@ -196,7 +196,7 @@
       min-height: 78px;
       padding: 7px 8px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 74px;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
       align-items: center;
     }
@@ -248,8 +248,29 @@
       cursor: not-allowed;
     }
 
-    .quantity {
-      width: 74px;
+    .count-fields {
+      display: grid;
+      grid-template-columns: repeat(2, 62px);
+      gap: 5px;
+      align-items: end;
+    }
+
+    .count-field {
+      display: grid;
+      gap: 2px;
+      color: var(--muted);
+      font-size: 0.68rem;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .count-field span {
+      line-height: 1;
+    }
+
+    .quantity,
+    .stock {
+      width: 62px;
       min-height: 42px;
       border: 1px solid #b8c6cc;
       border-radius: 8px;
@@ -260,13 +281,21 @@
       background: #fff;
     }
 
-    .quantity:focus {
+    .quantity:disabled,
+    .stock:disabled {
+      opacity: 0.55;
+      background: #f1f5f6;
+    }
+
+    .quantity:focus,
+    .stock:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
       outline: none;
     }
 
-    .quantity.limit-hit {
+    .quantity.limit-hit,
+    .stock.limit-hit {
       border-color: var(--danger);
       box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
     }
@@ -362,12 +391,14 @@
       .store-tab { min-height: 30px; font-size: 0.86rem; }
       .metric { min-height: 48px; padding: 6px 8px; }
       .metric strong { font-size: 1.08rem; }
-      .item { min-height: 66px; padding: 5px 7px; grid-template-columns: minmax(0, 1fr) 66px; }
+      .item { min-height: 66px; padding: 5px 7px; }
       .item h2 { font-size: 0.88rem; }
       .item-meta { font-size: 0.66rem; }
       .subtotal { font-size: 0.82rem; }
       .suggestion-button { min-height: 22px; font-size: 0.66rem; }
-      .quantity { width: 66px; min-height: 34px; }
+      .count-fields { grid-template-columns: repeat(2, 54px); gap: 4px; }
+      .quantity,
+      .stock { width: 54px; min-height: 34px; }
       .history-panel,
       .history-panel summary { min-height: 30px; }
     }
@@ -463,6 +494,7 @@
     let orders = [];
     let selectedStoreId = localStorage.getItem("drinkCalculatorStore") || STORE_OPTIONS[0].id;
     let quantitiesByStore = Object.fromEntries(STORE_OPTIONS.map((store) => [store.id, {}]));
+    let inventoryByStore = Object.fromEntries(STORE_OPTIONS.map((store) => [store.id, {}]));
     let currentTotals = { boxes: 0, price: 0, lines: [] };
 
     function activeItems() {
@@ -472,6 +504,15 @@
     function quantities() {
       quantitiesByStore[selectedStoreId] ||= {};
       return quantitiesByStore[selectedStoreId];
+    }
+
+    function inventories() {
+      inventoryByStore[selectedStoreId] ||= {};
+      return inventoryByStore[selectedStoreId];
+    }
+
+    function hasFixedLimit(limit) {
+      return Number.isFinite(Number(limit));
     }
 
     function pricePerBottle(item) {
@@ -543,6 +584,7 @@
     function renderItems() {
       const visibleItems = activeItems();
       const currentQuantities = quantities();
+      const currentInventories = inventories();
       if (visibleItems.length === 0) {
         itemList.innerHTML = '<div class="empty">目前沒有啟用中的飲料品項，請先到設定新增或啟用品項。</div>';
         calculateTotals();
@@ -551,14 +593,18 @@
 
       itemList.innerHTML = visibleItems.map((item) => {
         const limit = getStoreLimit(selectedStoreId, item.id);
+        const fixedLimit = hasFixedLimit(limit);
         const stats = getConsumptionStats(item.id);
         const displayName = item.name;
+        const inventoryValue = fixedLimit
+          ? currentInventories[item.id] || (currentQuantities[item.id] ? String(Math.max(0, limit - parseNonNegativeInteger(currentQuantities[item.id]))) : "")
+          : "";
         return `
           <article class="item">
             <div>
               <h2>${escapeHtml(displayName)}</h2>
               <div class="item-meta">
-                上限 ${limit} 箱 · 近${stats.count || 0}筆平均 ${stats.average.toFixed(1)} 箱 · 建議 ${stats.suggestion} 箱
+                上限 ${fixedLimit ? limit : "未設定"} 箱 · 近${stats.count || 0}筆平均 ${stats.average.toFixed(1)} 箱 · 建議 ${stats.suggestion} 箱
               </div>
               <div class="item-tools">
                 <div class="subtotal" id="subtotal-${item.id}">$0</div>
@@ -572,23 +618,123 @@
                 </button>
               </div>
             </div>
-            <input
-              class="quantity"
-              id="quantity-${item.id}"
-              data-id="${item.id}"
-              type="number"
-              min="0"
-              max="${limit}"
-              step="1"
-              inputmode="numeric"
-              placeholder="0"
-              value="${currentQuantities[item.id] || ""}"
-              aria-label="${escapeHtml(item.name)} 箱數"
-            >
+            <div class="count-fields">
+              <label class="count-field">
+                <span>庫存</span>
+                <input
+                  class="stock"
+                  id="inventory-${item.id}"
+                  data-id="${item.id}"
+                  data-role="inventory"
+                  type="number"
+                  min="0"
+                  max="${fixedLimit ? limit : ""}"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="0"
+                  value="${inventoryValue}"
+                  ${fixedLimit ? "" : "disabled"}
+                  aria-label="${escapeHtml(item.name)} 庫存"
+                >
+              </label>
+              <label class="count-field">
+                <span>叫貨</span>
+                <input
+                  class="quantity"
+                  id="quantity-${item.id}"
+                  data-id="${item.id}"
+                  data-role="quantity"
+                  type="number"
+                  min="0"
+                  max="${fixedLimit ? limit : ""}"
+                  step="1"
+                  inputmode="numeric"
+                  placeholder="0"
+                  value="${currentQuantities[item.id] || ""}"
+                  aria-label="${escapeHtml(item.name)} 叫貨箱數"
+                >
+              </label>
+            </div>
           </article>
         `;
       }).join("");
       calculateTotals();
+    }
+
+    function updatePairInputs(itemId, quantity, inventory, isLimitHit = false) {
+      const quantityInput = document.getElementById(`quantity-${itemId}`);
+      const inventoryInput = document.getElementById(`inventory-${itemId}`);
+      const quantityValue = quantity ? String(quantity) : "";
+      const inventoryValue = inventory ? String(inventory) : "";
+
+      if (quantityInput) {
+        quantityInput.value = quantityValue;
+        quantityInput.classList.toggle("limit-hit", isLimitHit);
+      }
+
+      if (inventoryInput) {
+        inventoryInput.value = inventoryValue;
+        inventoryInput.classList.toggle("limit-hit", isLimitHit);
+      }
+    }
+
+    function clearItemValues(itemId) {
+      delete quantities()[itemId];
+      delete inventories()[itemId];
+      updatePairInputs(itemId, 0, 0, false);
+    }
+
+    function setQuantityValue(itemId, value, shouldWarn = false) {
+      if (String(value || "").trim() === "") {
+        clearItemValues(itemId);
+        return;
+      }
+
+      const limit = getStoreLimit(selectedStoreId, itemId);
+      const fixedLimit = hasFixedLimit(limit);
+      const rawQuantity = parseNonNegativeInteger(value);
+      const quantity = fixedLimit ? Math.min(rawQuantity, limit) : rawQuantity;
+      const inventory = fixedLimit ? Math.max(0, limit - quantity) : 0;
+      const isLimitHit = fixedLimit && rawQuantity > limit;
+
+      if (isLimitHit && shouldWarn) {
+        const item = items.find((candidate) => candidate.id === itemId);
+        const displayName = item?.name || "";
+        setStatus(`${getStore(selectedStoreId).shortName} ${displayName} 上限 ${limit} 箱，已自動調整`, true);
+      }
+
+      quantities()[itemId] = quantity ? String(quantity) : "";
+      if (fixedLimit) {
+        inventories()[itemId] = inventory ? String(inventory) : "";
+      } else {
+        delete inventories()[itemId];
+      }
+      updatePairInputs(itemId, quantity, inventory, isLimitHit);
+    }
+
+    function setInventoryValue(itemId, value, shouldWarn = false) {
+      if (String(value || "").trim() === "") {
+        clearItemValues(itemId);
+        return;
+      }
+
+      const limit = getStoreLimit(selectedStoreId, itemId);
+      if (!hasFixedLimit(limit)) return;
+
+      const rawInventory = parseNonNegativeInteger(value);
+      const inventory = Math.min(rawInventory, limit);
+      const quantity = Math.max(0, limit - inventory);
+      const isLimitHit = rawInventory > limit;
+
+      if (isLimitHit && shouldWarn) {
+        const item = items.find((candidate) => candidate.id === itemId);
+        const displayName = item?.name || "";
+        setStatus(`${getStore(selectedStoreId).shortName} ${displayName} 上限 ${limit} 箱，已自動調整`, true);
+      }
+
+      quantities()[itemId] = quantity ? String(quantity) : "";
+      inventories()[itemId] = inventory ? String(inventory) : "";
+      updatePairInputs(itemId, quantity, inventory, isLimitHit);
     }
 
     function clampQuantity(itemId, value, shouldWarn = false) {
@@ -607,6 +753,7 @@
 
     function calculateTotals() {
       const currentQuantities = quantities();
+      const currentInventories = inventories();
       const lines = [];
       let boxes = 0;
       let price = 0;
@@ -614,13 +761,24 @@
       activeItems().forEach((item) => {
         const input = document.getElementById(`quantity-${item.id}`);
         const quantity = clampQuantity(item.id, input?.value || currentQuantities[item.id]);
+        const limit = getStoreLimit(selectedStoreId, item.id);
+        const fixedLimit = hasFixedLimit(limit);
+        const inventory = fixedLimit && quantity > 0 ? Math.max(0, limit - quantity) : parseNonNegativeInteger(currentInventories[item.id]);
         const subtotal = quantity * item.pricePerCase;
         currentQuantities[item.id] = quantity ? String(quantity) : "";
+        if (fixedLimit) {
+          currentInventories[item.id] = inventory ? String(inventory) : "";
+        }
         boxes += quantity;
         price += subtotal;
 
         if (input && input.value !== currentQuantities[item.id]) {
           input.value = currentQuantities[item.id];
+        }
+
+        const inventoryInput = document.getElementById(`inventory-${item.id}`);
+        if (inventoryInput && inventoryInput.value !== (currentInventories[item.id] || "")) {
+          inventoryInput.value = currentInventories[item.id] || "";
         }
 
         const subtotalElement = document.getElementById(`subtotal-${item.id}`);
@@ -648,7 +806,8 @@
 
     function resetForm() {
       quantitiesByStore[selectedStoreId] = {};
-      document.querySelectorAll(".quantity").forEach((input) => {
+      inventoryByStore[selectedStoreId] = {};
+      document.querySelectorAll(".quantity, .stock").forEach((input) => {
         input.value = "";
         input.classList.remove("limit-hit");
       });
@@ -774,18 +933,17 @@
       if (!(event.target instanceof HTMLInputElement)) return;
       const id = event.target.dataset.id;
       if (!id) return;
-      const limit = getStoreLimit(selectedStoreId, id);
-      const rawQuantity = parseNonNegativeInteger(event.target.value);
-      const nextValue = clampQuantity(id, event.target.value, true);
-      quantities()[id] = nextValue ? String(nextValue) : "";
-      event.target.value = quantities()[id];
-      event.target.classList.toggle("limit-hit", rawQuantity > limit);
+      if (event.target.dataset.role === "inventory") {
+        setInventoryValue(id, event.target.value, true);
+      } else {
+        setQuantityValue(id, event.target.value, true);
+      }
       calculateTotals();
     });
 
     itemList.addEventListener("focusin", (event) => {
       if (!(event.target instanceof HTMLInputElement)) return;
-      if (!event.target.classList.contains("quantity")) return;
+      if (!event.target.classList.contains("quantity") && !event.target.classList.contains("stock")) return;
       setTimeout(() => event.target.select(), 0);
     });
 
@@ -794,15 +952,13 @@
       if (suggestionButton) {
         const itemId = suggestionButton.dataset.suggestion;
         const suggestion = getSuggestion(itemId);
-        quantities()[itemId] = suggestion ? String(suggestion) : "";
-        const input = document.getElementById(`quantity-${itemId}`);
-        if (input) input.value = quantities()[itemId];
+        setQuantityValue(itemId, suggestion ? String(suggestion) : "");
         calculateTotals();
         return;
       }
 
       if (!(event.target instanceof HTMLInputElement)) return;
-      if (!event.target.classList.contains("quantity")) return;
+      if (!event.target.classList.contains("quantity") && !event.target.classList.contains("stock")) return;
       setTimeout(() => event.target.select(), 0);
     });
 
