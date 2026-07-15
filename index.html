@@ -38,6 +38,11 @@
       touch-action: manipulation;
     }
 
+    body.reordering {
+      overflow: hidden;
+      touch-action: none;
+    }
+
     a,
     button,
     .tool,
@@ -77,6 +82,31 @@
       flex: 0 0 auto;
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .edit-button {
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--surface);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 800;
+      box-shadow: var(--shadow);
+    }
+
+    .edit-button.active {
+      color: #fff;
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
     h1 {
       margin: 0;
       font-size: 1.45rem;
@@ -109,7 +139,8 @@
       text-align: center;
       text-decoration: none;
       box-shadow: var(--shadow);
-      cursor: grab;
+      cursor: pointer;
+      position: relative;
       transition: opacity 140ms ease, transform 140ms ease, border-color 140ms ease;
     }
 
@@ -122,6 +153,40 @@
       border-color: var(--primary);
       transform: scale(0.98);
       cursor: grabbing;
+    }
+
+    .drag-handle {
+      width: 30px;
+      height: 30px;
+      display: none;
+      place-items: center;
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--primary);
+      background: rgba(255, 255, 255, 0.95);
+      cursor: grab;
+      touch-action: none;
+      z-index: 2;
+      font: inherit;
+      font-size: 1rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .grid.editing .tool {
+      cursor: default;
+      padding-top: 18px;
+    }
+
+    .grid.editing .drag-handle {
+      display: grid;
     }
 
     .grid.dragging {
@@ -188,6 +253,7 @@
     @media (max-width: 420px) {
       .shell { padding-left: 10px; padding-right: 10px; }
       header { align-items: flex-start; flex-direction: column; }
+      .header-actions { width: 100%; justify-content: space-between; }
       .date { white-space: normal; }
       .tool { min-height: 84px; padding: 9px 5px; gap: 6px; }
       .icon { width: 36px; height: 36px; }
@@ -203,7 +269,10 @@
         <img src="assets/toolbox-icon.svg" alt="">
         <h1>庶務工具箱</h1>
       </div>
-      <div class="date" id="today"></div>
+      <div class="header-actions">
+        <div class="date" id="today"></div>
+        <button class="edit-button" id="edit-tools" type="button">編輯</button>
+      </div>
     </header>
 
     <section class="grid" id="tool-grid" aria-label="工具清單">
@@ -311,7 +380,9 @@
     document.getElementById("today").textContent = today;
 
     const toolGrid = document.getElementById("tool-grid");
+    const editButton = document.getElementById("edit-tools");
     const TOOL_ORDER_KEY = "opsToolboxToolOrder";
+    let editMode = false;
     let dragState = null;
 
     function toolLinks() {
@@ -342,12 +413,39 @@
       }
     }
 
+    function installDragHandles() {
+      toolLinks().forEach((link) => {
+        if (link.querySelector(".drag-handle")) return;
+        const handle = document.createElement("span");
+        handle.className = "drag-handle";
+        handle.textContent = "↕";
+        handle.setAttribute("role", "button");
+        handle.setAttribute("tabindex", "0");
+        handle.setAttribute("aria-label", `拖曳排序：${link.textContent.trim()}`);
+        link.append(handle);
+      });
+    }
+
+    function setEditMode(nextMode) {
+      editMode = nextMode;
+      toolGrid.classList.toggle("editing", editMode);
+      editButton.classList.toggle("active", editMode);
+      editButton.textContent = editMode ? "完成" : "編輯";
+      if (!editMode) finishDrag();
+    }
+
     function finishDrag() {
       if (!dragState) return;
-      const { link, didDrag } = dragState;
+      const { link, handle, didDrag, pointerId } = dragState;
+      try {
+        handle.releasePointerCapture(pointerId);
+      } catch {
+        // Pointer capture may already be released by the browser.
+      }
       link.classList.remove("dragging");
       link.dataset.dragging = didDrag ? "true" : "";
       toolGrid.classList.remove("dragging");
+      document.body.classList.remove("reordering");
       if (didDrag) {
         saveToolOrder();
         window.setTimeout(() => {
@@ -358,24 +456,34 @@
     }
 
     applyToolOrder();
+    installDragHandles();
 
     toolLinks().forEach((link) => {
-      link.addEventListener("pointerdown", (event) => {
+      const handle = link.querySelector(".drag-handle");
+
+      handle.addEventListener("pointerdown", (event) => {
+        if (!editMode) return;
         if (event.pointerType === "mouse" && event.button !== 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        handle.setPointerCapture(event.pointerId);
         dragState = {
           link,
+          handle,
+          pointerId: event.pointerId,
           startX: event.clientX,
           startY: event.clientY,
           didDrag: false,
         };
-      });
+        document.body.classList.add("reordering");
+      }, { passive: false });
 
       link.addEventListener("dragstart", (event) => {
         event.preventDefault();
       });
 
       link.addEventListener("click", (event) => {
-        if (link.dataset.dragging === "true") {
+        if (editMode || link.dataset.dragging === "true") {
           event.preventDefault();
           return;
         }
@@ -386,10 +494,15 @@
       });
     });
 
+    editButton.addEventListener("click", () => {
+      setEditMode(!editMode);
+    });
+
     window.addEventListener("pointermove", (event) => {
       if (!dragState) return;
+      if (event.pointerId !== dragState.pointerId) return;
       const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
-      if (!dragState.didDrag && distance < 10) return;
+      if (!dragState.didDrag && distance < 4) return;
 
       dragState.didDrag = true;
       dragState.link.classList.add("dragging");
