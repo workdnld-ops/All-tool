@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>待辦事項</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <meta name="theme-color" content="#2f6f5e">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f7;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #66727c;
+      --line: #dce4e8;
+      --primary: #2f6f5e;
+      --primary-soft: #e5f1ed;
+      --blue: #285f9b;
+      --blue-soft: #e7f0fb;
+      --gold: #8a5a00;
+      --gold-soft: #fff4d8;
+      --danger: #b42318;
+      --danger-soft: #fff5f4;
+      --shadow: 0 7px 18px rgba(23, 33, 38, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    input,
+    select,
+    textarea { font: inherit; }
+
+    input,
+    select,
+    textarea {
+      min-width: 0;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    input,
+    select {
+      min-height: 36px;
+      padding: 0 9px;
+    }
+
+    textarea {
+      min-height: 76px;
+      padding: 9px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      min-height: 18px;
+      padding: 0;
+      accent-color: var(--primary);
+    }
+
+    .shell {
+      width: min(980px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: start;
+      gap: 9px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .actions,
+    .month-bar,
+    .tab-strip,
+    .tab-grid,
+    .form-grid,
+    .repeat-grid,
+    .weekday-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .month-bar {
+      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      align-items: center;
+    }
+
+    .tab-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .title-line {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      min-width: 0;
+      flex-wrap: wrap;
+    }
+
+    .button,
+    .icon-button,
+    .tab-button,
+    .box-tab,
+    .chip {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 850;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .button {
+      padding: 0 10px;
+    }
+
+    .tab-button {
+      padding: 0 10px;
+    }
+
+    .tab-strip {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-top: 1px;
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+    }
+
+    .tab-strip::-webkit-scrollbar {
+      display: none;
+    }
+
+    .box-tab,
+    .tab-button {
+      min-height: 40px;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      padding: 0 14px;
+      font-size: 10pt;
+      line-height: 1;
+      box-shadow: none;
+    }
+
+    .box-tab {
+      flex: 0 0 auto;
+      max-width: 176px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      touch-action: pan-x;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+    }
+
+    #new-box {
+      min-width: 44px;
+      padding: 0 12px;
+    }
+
+    .box-tab.dragging {
+      opacity: 0.62;
+      transform: translateY(-1px);
+    }
+
+    .tab-grid.tab-strip {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      overflow: visible;
+    }
+
+    .tab-grid.tab-strip .tab-button {
+      width: 100%;
+    }
+
+    .icon-button {
+      padding: 0;
+      font-size: 1.25rem;
+    }
+
+    .button.primary,
+    .chip.selected,
+    .box-tab.active,
+    .tab-button.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .button.blue {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .button.danger {
+      border-color: var(--danger);
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .panel,
+    .card,
+    .modal-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .month-title {
+      margin: 0;
+      text-align: center;
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    .tray-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .version {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 850;
+    }
+
+    .title-line .status {
+      min-height: 0;
+      font-size: 0.72rem;
+    }
+
+    .board {
+      display: grid;
+      gap: 8px;
+    }
+
+    .card-list {
+      display: grid;
+      gap: 8px;
+      min-height: 48px;
+    }
+
+    .card {
+      padding: 10px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .card.completed {
+      opacity: 0.48;
+      background: #f7f8f9;
+    }
+
+    .card.target {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(47, 111, 94, 0.18);
+    }
+
+    .card-head {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 8px;
+    }
+
+    .done {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 2px solid var(--primary);
+      background: #fff;
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
+      font-weight: 950;
+    }
+
+    .card-title {
+      font-weight: 950;
+      line-height: 1.28;
+      overflow-wrap: anywhere;
+    }
+
+    .card-meta,
+    .card-notes,
+    .empty {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .tag {
+      min-height: 24px;
+      padding: 3px 7px;
+      border-radius: 8px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 850;
+    }
+
+    .tag.gold {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      background: rgba(23, 33, 38, 0.42);
+      overflow-y: auto;
+    }
+
+    .modal.open {
+      display: grid;
+      align-items: start;
+    }
+
+    .modal-card {
+      width: min(680px, 100%);
+      margin: 0 auto;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.04rem;
+      line-height: 1.2;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    .form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    .switch-row {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--ink);
+      font-weight: 850;
+    }
+
+    .repeat-grid {
+      grid-template-columns: minmax(0, 1fr) 92px;
+    }
+
+    .weekday-grid {
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .chip {
+      min-height: 30px;
+      padding: 0 5px;
+      font-size: 0.78rem;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .settings {
+      display: grid;
+      gap: 6px;
+    }
+
+    .view[hidden] {
+      display: none;
+    }
+
+    @media (max-width: 620px) {
+      h1 { font-size: 1.18rem; }
+      .form-grid,
+      .repeat-grid,
+      .modal-actions { grid-template-columns: 1fr; }
+      .button { padding: 0 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <div class="title-line">
+          <h1>待辦事項</h1>
+          <span class="version">v7.15.3</span>
+          <span class="status" id="status">讀取待辦卡片中...</span>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="button" href="../../index.html">工具箱</a>
+        <button class="icon-button" id="settings-button" type="button" aria-label="提醒設定">⚙</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="tab-strip" id="box-tabs" aria-label="卡箱分頁"></div>
+      <div class="month-bar">
+        <button class="icon-button" id="newer-month" type="button" aria-label="新的日期">‹</button>
+        <h2 class="month-title" id="month-title"></h2>
+        <button class="icon-button" id="older-month" type="button" aria-label="舊的日期">›</button>
+      </div>
+      <button class="button primary" id="new-card" type="button">新增卡片任務</button>
+    </section>
+
+    <section class="panel board" aria-label="卡匣區">
+      <div class="tab-grid tab-strip" role="tablist" aria-label="卡匣分頁">
+        <button class="tab-button active" id="open-tab" type="button" data-tab="open">待辦任務</button>
+        <button class="tab-button" id="done-tab" type="button" data-tab="done">已完成</button>
+      </div>
+      <div class="card-list view" id="open-list"></div>
+      <div class="card-list view" id="done-list" hidden></div>
+    </section>
+  </main>
+
+  <section class="modal" id="settings-modal" aria-modal="true" role="dialog">
+    <section class="modal-card">
+      <div class="modal-head">
+        <h2>提醒設定</h2>
+        <button class="icon-button" id="close-settings" type="button" aria-label="關閉">×</button>
+      </div>
+      <label>
+        推播服務網址
+        <input id="push-worker-url" type="url" placeholder="https://todo-reminders.your-account.workers.dev">
+      </label>
+      <button class="button blue" id="enable-push" type="button">啟用提醒</button>
+      <div class="card-meta">iOS 需先把 PWA 加到主畫面，再允許通知。</div>
+    </section>
+  </section>
+
+  <section class="modal" id="modal" aria-modal="true" role="dialog">
+    <form class="modal-card" id="card-form">
+      <div class="modal-head">
+        <h2 id="modal-title">新增卡片任務</h2>
+        <button class="icon-button" id="close-modal" type="button" aria-label="關閉">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="full">
+          標題
+          <input id="title-input" required maxlength="80" autocomplete="off">
+        </label>
+        <label>
+          日期
+          <input id="due-input" type="date" required>
+        </label>
+        <label>
+          提醒時間
+          <input id="reminder-time-input" type="time" value="09:00">
+        </label>
+        <label class="full">
+          備註
+          <textarea id="notes-input" maxlength="600"></textarea>
+        </label>
+        <label class="switch-row">
+          <input id="reminder-enabled-input" type="checkbox">
+          開啟提醒
+        </label>
+        <label>
+          提前幾日提醒
+          <input id="days-before-input" type="number" min="0" max="365" value="0">
+        </label>
+        <label class="switch-row full">
+          <input id="repeat-reminder-input" type="checkbox">
+          到期後重複提醒直到完成
+        </label>
+      </div>
+
+      <div class="panel">
+        <div class="tray-title">週期</div>
+        <div class="repeat-grid">
+          <label>
+            類型
+            <select id="recurrence-type-input">
+              <option value="none">無週期</option>
+              <option value="daily">每 N 天</option>
+              <option value="weekly">每 N 週</option>
+              <option value="monthly">每 N 月</option>
+              <option value="yearly">每年</option>
+            </select>
+          </label>
+          <label>
+            間隔
+            <input id="recurrence-interval-input" type="number" min="1" max="36" value="1">
+          </label>
+        </div>
+        <label id="month-mode-wrap">
+          每月模式
+          <select id="month-mode-input">
+            <option value="same-day">同一天</option>
+            <option value="end-of-month">月底</option>
+          </select>
+        </label>
+        <div id="weekday-wrap">
+          <div class="card-meta">每週指定星期</div>
+          <div class="weekday-grid" id="weekday-grid"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="button danger" id="delete-card" type="button">刪除</button>
+        <button class="button" id="cancel-card" type="button">取消</button>
+        <button class="button primary" type="submit">儲存</button>
+      </div>
+    </form>
+  </section>
+
+  <script type="module">
+    import {
+      DEFAULT_BOX,
+      DEFAULT_RECURRENCE,
+      addCompletion,
+      deleteCard,
+      monthKeyFromDateKey,
+      normalizeCard,
+      saveCard,
+      saveBox,
+      savePushSubscription,
+      subscribeBoxes,
+      subscribeCards,
+      subscribeCompletions,
+      todayKey,
+      updateCard,
+    } from "./todo-data.js";
+
+    const TAIPEI_TZ = "Asia/Taipei";
+    const PUSH_WORKER_STORAGE_KEY = "todoBoardPushWorkerUrl";
+    const DEFAULT_PUSH_WORKER_URL = "https://todo-reminders.workrbao.workers.dev";
+    const CARD_CACHE_KEY = "todoBoardCachedCards";
+    const BOX_CACHE_KEY = "todoBoardCachedBoxes";
+    const ACTIVE_BOX_STORAGE_KEY = "todoBoardActiveBox";
+    const ACTIVE_TAB_STORAGE_KEY = "todoBoardActiveTab";
+    const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+
+    const status = document.getElementById("status");
+    const monthTitle = document.getElementById("month-title");
+    const boxTabs = document.getElementById("box-tabs");
+    const openList = document.getElementById("open-list");
+    const doneList = document.getElementById("done-list");
+    const modal = document.getElementById("modal");
+    const settingsModal = document.getElementById("settings-modal");
+    const form = document.getElementById("card-form");
+    const modalTitle = document.getElementById("modal-title");
+    const deleteButton = document.getElementById("delete-card");
+    const workerUrlInput = document.getElementById("push-worker-url");
+    const weekdayGrid = document.getElementById("weekday-grid");
+
+    const fields = {
+      title: document.getElementById("title-input"),
+      dueDate: document.getElementById("due-input"),
+      notes: document.getElementById("notes-input"),
+      reminderEnabled: document.getElementById("reminder-enabled-input"),
+      reminderTime: document.getElementById("reminder-time-input"),
+      daysBefore: document.getElementById("days-before-input"),
+      repeatReminder: document.getElementById("repeat-reminder-input"),
+      recurrenceType: document.getElementById("recurrence-type-input"),
+      recurrenceInterval: document.getElementById("recurrence-interval-input"),
+      monthMode: document.getElementById("month-mode-input"),
+    };
+
+    const state = {
+      boxes: [DEFAULT_BOX],
+      cards: [],
+      completions: [],
+      activeMonth: todayKey().slice(0, 7),
+      activeBoxId: localStorage.getItem(ACTIVE_BOX_STORAGE_KEY) || DEFAULT_BOX.id,
+      activeTab: localStorage.getItem(ACTIVE_TAB_STORAGE_KEY) || "open",
+      editingId: "",
+      selectedWeekdays: new Set(),
+    };
+    const boxDrag = {
+      changed: false,
+      dragging: false,
+      id: "",
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      suppressClick: false,
+      timer: 0,
+    };
+    const lastBoxTap = { id: "", at: 0 };
+
+    workerUrlInput.value = localStorage.getItem(PUSH_WORKER_STORAGE_KEY) || DEFAULT_PUSH_WORKER_URL;
+
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function parseDate(dateKey) {
+      const [year, month, day] = String(dateKey).split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function toDateKey(date) {
+      return date.toLocaleDateString("sv-SE", { timeZone: TAIPEI_TZ });
+    }
+
+    function addDays(dateKey, amount) {
+      const date = parseDate(dateKey);
+      date.setDate(date.getDate() + amount);
+      return toDateKey(date);
+    }
+
+    function addMonths(dateKey, amount, monthMode = "same-day") {
+      const source = parseDate(dateKey);
+      const target = new Date(source.getFullYear(), source.getMonth() + amount, 1);
+      const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+      const day = monthMode === "end-of-month" ? lastDay : Math.min(source.getDate(), lastDay);
+      target.setDate(day);
+      return toDateKey(target);
+    }
+
+    function defaultDateForActiveMonth() {
+      const todayDay = Number(todayKey().slice(8, 10));
+      const [year, month] = state.activeMonth.split("-").map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      return `${state.activeMonth}-${String(Math.min(todayDay, lastDay)).padStart(2, "0")}`;
+    }
+
+    function nextWeeklyDate(dateKey, recurrence) {
+      const selected = [...(recurrence.weekdays || [])].sort((a, b) => a - b);
+      if (selected.length === 0) return addDays(dateKey, 7 * recurrence.interval);
+      const current = parseDate(dateKey);
+      const currentDay = current.getDay();
+      for (const day of selected) {
+        const offset = (day - currentDay + 7) % 7;
+        if (offset > 0) return addDays(dateKey, offset);
+      }
+      const first = selected[0];
+      const offset = (first - currentDay + 7) % 7 || 7;
+      return addDays(dateKey, offset + (Math.max(1, recurrence.interval) - 1) * 7);
+    }
+
+    function nextDueDate(card) {
+      const recurrence = { ...DEFAULT_RECURRENCE, ...card.recurrence };
+      if (recurrence.type === "daily") return addDays(card.dueDate, recurrence.interval);
+      if (recurrence.type === "weekly") return nextWeeklyDate(card.dueDate, recurrence);
+      if (recurrence.type === "monthly") return addMonths(card.dueDate, recurrence.interval, recurrence.monthMode);
+      if (recurrence.type === "yearly") return addMonths(card.dueDate, 12 * recurrence.interval, recurrence.monthMode);
+      return "";
+    }
+
+    function recurrenceText(card) {
+      const recurrence = card.recurrence || DEFAULT_RECURRENCE;
+      if (recurrence.type === "none") return "";
+      if (recurrence.type === "daily") return `每 ${recurrence.interval} 天`;
+      if (recurrence.type === "weekly") {
+        const days = (recurrence.weekdays || []).map((day) => WEEKDAYS[day]).join("、");
+        return `每 ${recurrence.interval} 週${days ? `：${days}` : ""}`;
+      }
+      if (recurrence.type === "monthly") {
+        return `每 ${recurrence.interval} 月${recurrence.monthMode === "end-of-month" ? "：月底" : ""}`;
+      }
+      return `每 ${recurrence.interval} 年`;
+    }
+
+    function reminderText(card) {
+      if (!card.reminder?.enabled) return "";
+      const prefix = card.reminder.daysBefore > 0 ? `提前 ${card.reminder.daysBefore} 日` : "當天";
+      return `${prefix} ${card.reminder.time}${card.reminder.repeatUntilDone ? "，重複" : ""}`;
+    }
+
+    function activeBoxId() {
+      if (state.boxes.some((box) => box.id === state.activeBoxId)) return state.activeBoxId;
+      return state.boxes[0]?.id || DEFAULT_BOX.id;
+    }
+
+    function normalizeBoxOrder(boxes) {
+      return boxes.map((box, index) => ({ ...box, order: index }));
+    }
+
+    function cssEscape(value) {
+      return window.CSS?.escape ? CSS.escape(value) : String(value).replaceAll('"', '\\"');
+    }
+
+    function markDraggedBox() {
+      boxTabs.querySelector(`[data-box-id="${cssEscape(boxDrag.id)}"]`)?.classList.add("dragging");
+    }
+
+    async function renameBox(boxId) {
+      const box = state.boxes.find((item) => item.id === boxId);
+      if (!box) return;
+      const name = window.prompt("卡箱名稱", box.name);
+      if (!name?.trim()) return;
+      const trimmed = name.trim();
+      if (trimmed === box.name) return;
+      await saveBox({ ...box, name: trimmed });
+      setStatus("卡箱名稱已更新。");
+    }
+
+    function reorderBox(sourceId, targetId) {
+      if (!sourceId || !targetId || sourceId === targetId) return;
+      const boxes = [...state.boxes];
+      const from = boxes.findIndex((box) => box.id === sourceId);
+      const to = boxes.findIndex((box) => box.id === targetId);
+      if (from < 0 || to < 0) return;
+      const [source] = boxes.splice(from, 1);
+      boxes.splice(to, 0, source);
+      state.boxes = normalizeBoxOrder(boxes);
+      boxDrag.changed = true;
+      renderBoxes();
+      markDraggedBox();
+    }
+
+    async function persistBoxOrder() {
+      const ordered = normalizeBoxOrder(state.boxes);
+      state.boxes = ordered;
+      await Promise.all(ordered.map((box) => saveBox(box)));
+      setStatus("卡箱順序已更新。");
+    }
+
+    function renderBoxes() {
+      const selected = activeBoxId();
+      state.activeBoxId = selected;
+      boxTabs.innerHTML = [
+        ...state.boxes.map((box) => `
+          <button class="box-tab ${box.id === selected ? "active" : ""}" type="button" data-box-id="${escapeHtml(box.id)}">
+            ${escapeHtml(box.name)}
+          </button>
+        `),
+        '<button class="box-tab" id="new-box" type="button" aria-label="新增卡箱">＋</button>',
+      ].join("");
+    }
+
+    function renderTabs(openLength, doneLength) {
+      if (!["open", "done"].includes(state.activeTab)) state.activeTab = "open";
+      document.querySelectorAll("[data-tab]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.tab === state.activeTab);
+        if (button.dataset.tab === "open") button.textContent = `待辦任務 ${openLength}`;
+        if (button.dataset.tab === "done") button.textContent = `已完成 ${doneLength}`;
+      });
+      openList.hidden = state.activeTab !== "open";
+      doneList.hidden = state.activeTab !== "done";
+    }
+
+    function activeMonthCards() {
+      const selected = activeBoxId();
+      return state.cards.filter((card) =>
+        card.boxId === selected && monthKeyFromDateKey(card.dueDate) === state.activeMonth
+      );
+    }
+
+    function overdueOrTodayCount() {
+      const today = todayKey();
+      const selected = activeBoxId();
+      return state.cards.filter((card) => card.boxId === selected && !card.completed && card.dueDate <= today).length;
+    }
+
+    async function updateBadge() {
+      const count = overdueOrTodayCount();
+      try {
+        if ("setAppBadge" in navigator && count > 0) await navigator.setAppBadge(count);
+        else if ("clearAppBadge" in navigator) await navigator.clearAppBadge();
+      } catch {
+        // Badge support varies by iOS install state; it is a progressive enhancement.
+      }
+    }
+
+    function renderWeekdays() {
+      weekdayGrid.innerHTML = WEEKDAYS.map((label, index) => `
+        <button class="chip ${state.selectedWeekdays.has(index) ? "selected" : ""}" type="button" data-weekday="${index}">
+          ${label}
+        </button>
+      `).join("");
+    }
+
+    function renderRecurrenceControls() {
+      const isWeekly = fields.recurrenceType.value === "weekly";
+      const isMonthly = fields.recurrenceType.value === "monthly" || fields.recurrenceType.value === "yearly";
+      document.getElementById("weekday-wrap").hidden = !isWeekly;
+      document.getElementById("month-mode-wrap").hidden = !isMonthly;
+      renderWeekdays();
+    }
+
+    function renderCard(card) {
+      const tags = [
+        reminderText(card) ? `<span class="tag">${escapeHtml(reminderText(card))}</span>` : "",
+        recurrenceText(card) ? `<span class="tag gold">${escapeHtml(recurrenceText(card))}</span>` : "",
+      ].join("");
+      return `
+        <article class="card ${card.completed ? "completed" : ""}" data-card-id="${card.id}">
+          <div class="card-head">
+            <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
+            <div>
+              <div class="card-title">${escapeHtml(card.title)}</div>
+              <div class="card-meta">${escapeHtml(card.dueDate)}${card.completedAt ? ` · 完成於 ${escapeHtml(card.completedAt.slice(0, 10))}` : ""}</div>
+            </div>
+            <button class="button" data-edit="${card.id}" type="button">編輯</button>
+          </div>
+          ${card.notes ? `<div class="card-notes">${escapeHtml(card.notes)}</div>` : ""}
+          ${tags ? `<div class="tag-row">${tags}</div>` : ""}
+        </article>
+      `;
+    }
+
+    function render() {
+      renderBoxes();
+      const date = new Date(`${state.activeMonth}-01T00:00:00`);
+      monthTitle.textContent = new Intl.DateTimeFormat("zh-TW", {
+        year: "numeric",
+        month: "long",
+      }).format(date);
+
+      const cards = activeMonthCards();
+      const open = cards.filter((card) => !card.completed);
+      const done = cards.filter((card) => card.completed);
+      openList.innerHTML = open.map(renderCard).join("") || '<div class="empty">這個月還沒有待辦卡片。</div>';
+      doneList.innerHTML = done.map(renderCard).join("") || '<div class="empty">完成後會收在這裡。</div>';
+      renderTabs(open.length, done.length);
+      focusTargetCard();
+      updateBadge();
+    }
+
+    function focusTargetCard() {
+      const cardId = new URLSearchParams(location.search).get("card");
+      if (!cardId) return;
+      const card = state.cards.find((item) => item.id === cardId);
+      if (card && card.boxId !== state.activeBoxId) {
+        state.activeBoxId = card.boxId;
+        localStorage.setItem(ACTIVE_BOX_STORAGE_KEY, state.activeBoxId);
+        setTimeout(render, 0);
+        return;
+      }
+      if (card && monthKeyFromDateKey(card.dueDate) !== state.activeMonth) {
+        state.activeMonth = monthKeyFromDateKey(card.dueDate);
+        setTimeout(render, 0);
+        return;
+      }
+      const element = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
+      if (!element) return;
+      element.classList.add("target");
+      element.scrollIntoView({ block: "center", behavior: "smooth" });
+      window.setTimeout(() => element.classList.remove("target"), 2200);
+    }
+
+    function changeMonth(offset) {
+      const date = new Date(`${state.activeMonth}-01T00:00:00`);
+      date.setMonth(date.getMonth() + offset);
+      state.activeMonth = toDateKey(date).slice(0, 7);
+      render();
+    }
+
+    function openModal(card = null) {
+      const editing = Boolean(card);
+      state.editingId = card?.id || "";
+      modalTitle.textContent = editing ? "編輯卡片任務" : "新增卡片任務";
+      deleteButton.hidden = !editing;
+      const draft = normalizeCard(card || {
+        boxId: activeBoxId(),
+        dueDate: defaultDateForActiveMonth(),
+      }, "");
+      fields.title.value = editing ? draft.title : "";
+      fields.dueDate.value = draft.dueDate;
+      fields.notes.value = draft.notes;
+      fields.reminderEnabled.checked = draft.reminder.enabled;
+      fields.reminderTime.value = draft.reminder.time;
+      fields.daysBefore.value = draft.reminder.daysBefore;
+      fields.repeatReminder.checked = draft.reminder.repeatUntilDone;
+      fields.recurrenceType.value = draft.recurrence.type;
+      fields.recurrenceInterval.value = draft.recurrence.interval;
+      fields.monthMode.value = draft.recurrence.monthMode;
+      state.selectedWeekdays = new Set(draft.recurrence.weekdays || []);
+      renderRecurrenceControls();
+      modal.classList.add("open");
+      fields.title.focus();
+    }
+
+    function closeModal() {
+      modal.classList.remove("open");
+      form.reset();
+      state.editingId = "";
+      state.selectedWeekdays = new Set();
+    }
+
+    function formCard() {
+      const existing = state.cards.find((card) => card.id === state.editingId);
+      return normalizeCard({
+        ...(existing || {}),
+        id: state.editingId,
+        boxId: existing?.boxId || activeBoxId(),
+        title: fields.title.value.trim(),
+        dueDate: fields.dueDate.value,
+        notes: fields.notes.value.trim(),
+        completed: existing?.completed === true,
+        completedAt: existing?.completedAt || "",
+        reminder: {
+          enabled: fields.reminderEnabled.checked,
+          daysBefore: fields.daysBefore.value,
+          time: fields.reminderTime.value || "09:00",
+          repeatUntilDone: fields.repeatReminder.checked,
+          sentKeys: existing?.reminder?.sentKeys || {},
+        },
+        recurrence: {
+          type: fields.recurrenceType.value,
+          interval: fields.recurrenceInterval.value,
+          weekdays: [...state.selectedWeekdays],
+          monthMode: fields.monthMode.value,
+        },
+      }, state.editingId || "");
+    }
+
+    async function completeCard(card) {
+      const completedAt = new Date().toISOString();
+      const nextDate = nextDueDate(card);
+      await addCompletion({
+        cardId: card.id,
+        boxId: card.boxId,
+        title: card.title,
+        dueDate: card.dueDate,
+        completedAt,
+        nextDueDate: nextDate,
+      });
+
+      if (nextDate) {
+        await updateCard(card.id, {
+          dueDate: nextDate,
+          completed: false,
+          completedAt: "",
+          reminder: { ...card.reminder, sentKeys: {} },
+        });
+        state.activeMonth = monthKeyFromDateKey(nextDate);
+        setStatus("已完成，並移到下一個週期。");
+        return;
+      }
+
+      await updateCard(card.id, {
+        completed: true,
+        completedAt,
+        reminder: { ...card.reminder, enabled: false, sentKeys: {} },
+      });
+      setStatus("已完成，提醒也已解除。");
+    }
+
+    async function enablePush() {
+      const workerUrl = workerUrlInput.value.trim().replace(/\/+$/, "");
+      localStorage.setItem(PUSH_WORKER_STORAGE_KEY, workerUrl);
+      if (!workerUrl) {
+        setStatus("請先填入 Worker 網址。", true);
+        return;
+      }
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+        setStatus("目前瀏覽器不支援 PWA 推播。", true);
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setStatus("尚未允許通知。", true);
+        return;
+      }
+      const registration = await navigator.serviceWorker.register("../../sw.js", { updateViaCache: "none" });
+      const response = await fetch(`${workerUrl}/public-key`);
+      if (!response.ok) throw new Error("Cannot load VAPID public key");
+      const { publicKey } = await response.json();
+      const key = Uint8Array.from(atob(publicKey.replace(/-/g, "+").replace(/_/g, "/")), (char) => char.charCodeAt(0));
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: key,
+      });
+      await savePushSubscription(subscription.toJSON());
+      setStatus("提醒已啟用。");
+      await updateBadge();
+    }
+
+    document.getElementById("newer-month").addEventListener("click", () => changeMonth(1));
+    document.getElementById("older-month").addEventListener("click", () => changeMonth(-1));
+    document.getElementById("new-card").addEventListener("click", () => openModal());
+    document.getElementById("close-modal").addEventListener("click", closeModal);
+    document.getElementById("cancel-card").addEventListener("click", closeModal);
+    document.getElementById("settings-button").addEventListener("click", () => settingsModal.classList.add("open"));
+    document.getElementById("close-settings").addEventListener("click", () => settingsModal.classList.remove("open"));
+    boxTabs.addEventListener("pointerdown", (event) => {
+      const boxButton = event.target.closest("[data-box-id]");
+      if (!boxButton || event.button > 0) return;
+      window.clearTimeout(boxDrag.timer);
+      boxDrag.changed = false;
+      boxDrag.dragging = false;
+      boxDrag.id = boxButton.dataset.boxId;
+      boxDrag.pointerId = event.pointerId;
+      boxDrag.startX = event.clientX;
+      boxDrag.startY = event.clientY;
+      boxDrag.timer = window.setTimeout(() => {
+        boxDrag.dragging = true;
+        boxDrag.suppressClick = true;
+        markDraggedBox();
+      }, 520);
+    });
+    window.addEventListener("pointermove", (event) => {
+      if (!boxDrag.id || event.pointerId !== boxDrag.pointerId) return;
+      const deltaX = Math.abs(event.clientX - boxDrag.startX);
+      const deltaY = Math.abs(event.clientY - boxDrag.startY);
+      if (!boxDrag.dragging) {
+        if (deltaX > 10 || deltaY > 10) window.clearTimeout(boxDrag.timer);
+        return;
+      }
+      event.preventDefault();
+      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-box-id]");
+      if (target) reorderBox(boxDrag.id, target.dataset.boxId);
+    });
+    window.addEventListener("pointerup", async (event) => {
+      if (!boxDrag.id || event.pointerId !== boxDrag.pointerId) return;
+      window.clearTimeout(boxDrag.timer);
+      const shouldPersist = boxDrag.dragging && boxDrag.changed;
+      boxDrag.dragging = false;
+      boxDrag.id = "";
+      boxDrag.pointerId = null;
+      renderBoxes();
+      if (boxDrag.suppressClick) {
+        window.setTimeout(() => {
+          boxDrag.suppressClick = false;
+        }, 50);
+      }
+      if (!shouldPersist) return;
+      try {
+        await persistBoxOrder();
+      } catch (error) {
+        console.error(error);
+        setStatus("卡箱順序更新失敗。", true);
+      }
+    });
+    window.addEventListener("pointercancel", () => {
+      window.clearTimeout(boxDrag.timer);
+      boxDrag.dragging = false;
+      boxDrag.id = "";
+      boxDrag.pointerId = null;
+      boxDrag.suppressClick = false;
+      renderBoxes();
+    });
+    boxTabs.addEventListener("click", async (event) => {
+      if (boxDrag.suppressClick) return;
+      const newButton = event.target.closest("#new-box");
+      if (newButton) {
+        const name = window.prompt("卡箱名稱");
+        if (!name?.trim()) return;
+        const id = await saveBox({
+          name: name.trim(),
+          order: state.boxes.length,
+        });
+        state.activeBoxId = id;
+        localStorage.setItem(ACTIVE_BOX_STORAGE_KEY, id);
+        setStatus("卡箱已新增。");
+        return;
+      }
+
+      const boxButton = event.target.closest("[data-box-id]");
+      if (!boxButton) return;
+      const now = Date.now();
+      if (lastBoxTap.id === boxButton.dataset.boxId && now - lastBoxTap.at < 420) {
+        lastBoxTap.id = "";
+        lastBoxTap.at = 0;
+        await renameBox(boxButton.dataset.boxId);
+        return;
+      }
+      lastBoxTap.id = boxButton.dataset.boxId;
+      lastBoxTap.at = now;
+      state.activeBoxId = boxButton.dataset.boxId;
+      localStorage.setItem(ACTIVE_BOX_STORAGE_KEY, state.activeBoxId);
+      render();
+    });
+    document.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.activeTab = button.dataset.tab;
+        localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, state.activeTab);
+        render();
+      });
+    });
+    document.getElementById("enable-push").addEventListener("click", () => {
+      enablePush().catch((error) => {
+        console.error(error);
+        setStatus("提醒啟用失敗，請確認 Worker 網址與 iOS PWA 狀態。", true);
+      });
+    });
+    workerUrlInput.addEventListener("input", () => {
+      localStorage.setItem(PUSH_WORKER_STORAGE_KEY, workerUrlInput.value.trim());
+    });
+
+    fields.recurrenceType.addEventListener("input", renderRecurrenceControls);
+    weekdayGrid.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-weekday]");
+      if (!button) return;
+      const day = Number(button.dataset.weekday);
+      if (state.selectedWeekdays.has(day)) state.selectedWeekdays.delete(day);
+      else state.selectedWeekdays.add(day);
+      renderWeekdays();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const card = formCard();
+      await saveCard(card);
+      closeModal();
+      setStatus("卡片已儲存。");
+    });
+
+    deleteButton.addEventListener("click", async () => {
+      if (!state.editingId) return;
+      await deleteCard(state.editingId);
+      closeModal();
+      setStatus("卡片已刪除。");
+    });
+
+    document.body.addEventListener("click", async (event) => {
+      const edit = event.target.closest("[data-edit]");
+      if (edit) {
+        const card = state.cards.find((item) => item.id === edit.dataset.edit);
+        if (card) openModal(card);
+        return;
+      }
+      const complete = event.target.closest("[data-complete]");
+      if (complete) {
+        const card = state.cards.find((item) => item.id === complete.dataset.complete);
+        if (card && !card.completed) await completeCard(card);
+      }
+    });
+
+    try {
+      const cachedBoxes = JSON.parse(localStorage.getItem(BOX_CACHE_KEY) || "[]");
+      if (Array.isArray(cachedBoxes) && cachedBoxes.length > 0) state.boxes = cachedBoxes;
+      state.cards = JSON.parse(localStorage.getItem(CARD_CACHE_KEY) || "[]").map((card) => normalizeCard(card, card.id));
+      render();
+    } catch {
+      state.cards = [];
+    }
+
+    subscribeBoxes(
+      (boxes) => {
+        state.boxes = boxes;
+        localStorage.setItem(BOX_CACHE_KEY, JSON.stringify(boxes));
+        render();
+      },
+      () => setStatus("卡箱同步失敗，先顯示本機快取。", true),
+    );
+
+    subscribeCards(
+      (cards) => {
+        state.cards = cards;
+        localStorage.setItem(CARD_CACHE_KEY, JSON.stringify(cards));
+        render();
+        setStatus("待辦卡片已同步。");
+      },
+      () => setStatus("雲端同步失敗，先顯示本機快取。", true),
+    );
+
+    subscribeCompletions(
+      (items) => {
+        state.completions = items;
+      },
+      () => undefined,
+    );
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("../../sw.js", { updateViaCache: "none" }).catch(() => undefined);
+      });
+    }
+  </script>
+</body>
+</html>

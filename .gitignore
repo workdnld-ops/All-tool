@@ -8,6 +8,7 @@ Thumbs.db
 .npm-cache/
 apps/*/.npm-cache/
 deploy/
+workers/*/.wrangler/
 
 # Dependencies
 node_modules/

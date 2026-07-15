@@ -298,12 +298,25 @@
       gap: 4px;
     }
 
+    .calendar-head {
+      min-height: 24px;
+      align-items: center;
+      overflow: visible;
+      padding: 2px 0 4px;
+    }
+
     .calendar-weekday {
       color: var(--muted);
-      font-size: 0.7rem;
-      line-height: 1.1;
-      text-align: center;
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      line-height: 1.2;
       font-weight: 900;
+      text-align: center;
+      white-space: nowrap;
+      overflow: visible;
     }
 
     .calendar-day {
@@ -347,6 +360,48 @@
       overflow-wrap: anywhere;
     }
 
+    .shift-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 14px;
+      border-radius: 5px;
+      padding: 1px 4px;
+      margin-bottom: 2px;
+      color: #fff;
+      font-size: 0.58rem;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .shift-time {
+      display: block;
+    }
+
+    .day-item.early {
+      color: #176b4d;
+    }
+
+    .day-item.early .shift-label {
+      background: #1f8a5b;
+    }
+
+    .day-item.mid {
+      color: #7a5b00;
+    }
+
+    .day-item.mid .shift-label {
+      background: #c99718;
+    }
+
+    .day-item.late {
+      color: #245b9b;
+    }
+
+    .day-item.late .shift-label {
+      background: #2f6fb4;
+    }
+
     .day-item.leave {
       color: var(--rose);
     }
@@ -378,6 +433,15 @@
       .calendar-head {
         gap: 3px;
       }
+      .calendar-head {
+        min-height: 26px;
+        padding-bottom: 5px;
+      }
+      .calendar-weekday {
+        min-height: 20px;
+        font-size: 0.62rem;
+        line-height: 1.2;
+      }
       .calendar-day {
         min-height: 48px;
         border-radius: 6px;
@@ -388,6 +452,10 @@
       }
       .day-item {
         font-size: 0.6rem;
+      }
+      .shift-label {
+        font-size: 0.52rem;
+        padding: 1px 3px;
       }
     }
   </style>
@@ -434,8 +502,8 @@
       </div>
     </section>
 
-    <section class="result empty" id="result-panel" aria-label="輸出結果">
-      <div class="result-title" id="result-title">Line 文字</div>
+    <section class="result empty" id="result-panel" aria-label="行事曆預覽">
+      <div class="result-title" id="result-title">行事曆</div>
       <div class="output" id="output">尚無排班資料</div>
     </section>
 
@@ -777,6 +845,15 @@
       return `${dateText} 休假`;
     }
 
+    function shiftInfo(record) {
+      const match = String(record.time || "").match(/^(\d{1,2}):(\d{2})-/);
+      if (!match) return { className: "mid", label: "中班" };
+      const minutes = (Number(match[1]) * 60) + Number(match[2]);
+      if (minutes <= (10 * 60) + 59) return { className: "early", label: "早班" };
+      if (minutes >= 13 * 60) return { className: "late", label: "晚班" };
+      return { className: "mid", label: "中班" };
+    }
+
     function formatScheduleOutput() {
       const changedKeys = new Set(state.changedKeys);
       return records()
@@ -905,7 +982,7 @@
         entriesByKey.get(key).push(entry);
       });
 
-      const weekdays = WEEKDAYS.map((weekday) => `<div class="calendar-weekday">${weekday}</div>`).join("");
+      const weekdays = WEEKDAYS.map((weekday) => `<div class="calendar-weekday">週${weekday}</div>`).join("");
       const cells = Array.from({ length: totalCells }, (_, cellIndex) => {
         const dayOffset = cellIndex - startOffset;
         if (dayOffset < 0) return '<div class="calendar-day outside"></div>';
@@ -920,12 +997,28 @@
         const outside = date.getMonth() !== month - 1;
         const changed = changedKeys.has(key);
         const items = dayEntries.map((entry) => {
-          const label = entry.type === "shift" ? entry.time : "休假";
           const marker = changed && state.mode === "schedule" ? "★ " : "";
-          const classes = ["day-item", entry.type === "leave" ? "leave" : "", changed ? "changed" : ""]
+          const shift = entry.type === "shift" ? shiftInfo(entry) : null;
+          const label = entry.type === "shift"
+            ? `${marker}${shift.label}`
+            : `${marker}休假`;
+          const classes = [
+            "day-item",
+            entry.type === "leave" ? "leave" : "",
+            shift?.className || "",
+            changed ? "changed" : "",
+          ]
             .filter(Boolean)
             .join(" ");
-          return `<div class="${classes}">${escapeHtml(marker + label)}</div>`;
+          if (entry.type === "shift") {
+            return `
+              <div class="${classes}">
+                <span class="shift-label">${escapeHtml(label)}</span>
+                <span class="shift-time">${escapeHtml(entry.time)}</span>
+              </div>
+            `;
+          }
+          return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
         const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : ""]
           .filter(Boolean)
@@ -967,12 +1060,12 @@
       renderWeeks();
       const text = lineText();
       const hasChanged = state.mode === "schedule" && state.changedKeys.length > 0;
-      resultTitle.textContent = hasChanged ? "Line 文字（★為異動）" : "Line 文字";
+      resultTitle.textContent = hasChanged ? "行事曆（★為異動）" : "行事曆";
       renderCalendar();
       resultPanel.classList.toggle("empty", !text);
       status.style.color = "var(--muted)";
       if (text) {
-        status.textContent = state.mode === "schedule" ? "排班文字已整理" : "排休文字已整理";
+        status.textContent = state.mode === "schedule" ? "排班行事曆已更新" : "排休行事曆已更新";
       } else {
         status.textContent = state.mode === "schedule" ? "選擇週次後會讀取剪貼簿內容" : "貼上排休內容後會自動整理";
       }

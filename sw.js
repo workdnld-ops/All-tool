@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v11";
+const CACHE_NAME = "ops-toolbox-v12";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
@@ -60,6 +60,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (requestUrl.pathname.startsWith("/apps/todo-board/")) {
+    return;
+  }
+
   if (event.request.mode === "navigate") {
     return;
   }
@@ -78,4 +82,41 @@ self.addEventListener("fetch", (event) => {
       });
     })
   );
+});
+
+self.addEventListener("push", (event) => {
+  const fallback = {
+    title: "待辦事項提醒",
+    body: "有一張待辦卡片需要處理。",
+    url: "/apps/todo-board/index.html",
+    badgeCount: 1,
+  };
+  const data = event.data ? { ...fallback, ...event.data.json() } : fallback;
+  event.waitUntil((async () => {
+    if ("setAppBadge" in self.navigator && Number(data.badgeCount) > 0) {
+      await self.navigator.setAppBadge(Number(data.badgeCount));
+    }
+    await self.registration.showNotification(data.title, {
+      body: data.body,
+      data: { url: data.url || fallback.url },
+      badge: "/assets/toolbox-icon.svg",
+      icon: "/assets/toolbox-icon.svg",
+      tag: data.url || "todo-board",
+      renotify: true,
+    });
+  })());
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/apps/todo-board/index.html", self.location.origin).href;
+  event.waitUntil((async () => {
+    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = allClients.find((client) => client.url.startsWith(self.location.origin));
+    if (existing) {
+      await existing.navigate(targetUrl);
+      return existing.focus();
+    }
+    return clients.openWindow(targetUrl);
+  })());
 });

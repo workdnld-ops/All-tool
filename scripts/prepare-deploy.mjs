@@ -15,6 +15,8 @@ const copyItems = [
   ["apps/cleaning-schedule", "apps/cleaning-schedule"],
   ["apps/celebration-calculator", "apps/celebration-calculator"],
   ["apps/schedule-record", "apps/schedule-record"],
+  ["apps/todo-board", "apps/todo-board"],
+  ["workers", "workers"],
 ];
 
 await rm(deployDir, { recursive: true, force: true });

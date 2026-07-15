@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "todo-reminders",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-15",
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "FIREBASE_DATABASE_URL": "https://money-card-6bf98-default-rtdb.firebaseio.com",
+    "TODO_ROOT_PATH": "users/single-user/todoBoard",
+    "VAPID_SUBJECT": "mailto:admin@example.com"
+  }
+}
