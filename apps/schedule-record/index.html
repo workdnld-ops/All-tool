@@ -277,15 +277,90 @@
 
     .output {
       min-height: 42px;
-      font-size: 1.08rem;
+      font-size: 0.9rem;
       line-height: 1.55;
-      font-weight: 900;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
+      font-weight: 800;
       max-height: 360px;
       overflow-y: auto;
       -webkit-user-select: text;
       user-select: text;
+    }
+
+    .calendar {
+      display: grid;
+      gap: 6px;
+    }
+
+    .calendar-head,
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .calendar-weekday {
+      color: var(--muted);
+      font-size: 0.7rem;
+      line-height: 1.1;
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .calendar-day {
+      min-height: 56px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
+      display: grid;
+      align-content: start;
+      gap: 2px;
+      background: #fff;
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    .calendar-day.outside {
+      background: #f8fafb;
+      color: var(--muted);
+    }
+
+    .calendar-day.has-item {
+      border-color: rgba(31, 111, 100, 0.38);
+      background: #f5fbf9;
+    }
+
+    .calendar-day.changed {
+      border-color: #b7791f;
+      background: #fff8ea;
+    }
+
+    .day-number {
+      font-size: 0.74rem;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .day-item {
+      font-size: 0.68rem;
+      line-height: 1.15;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .day-item.leave {
+      color: var(--rose);
+    }
+
+    .day-item.changed {
+      color: #9a5a00;
+    }
+
+    .empty-calendar {
+      color: var(--muted);
+      min-height: 42px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
     }
 
     @media (max-width: 620px) {
@@ -298,8 +373,21 @@
       textarea { min-height: 96px; }
       .output {
         max-height: 312px;
-        font-size: 0.98rem;
-        line-height: 1.45;
+      }
+      .calendar-grid,
+      .calendar-head {
+        gap: 3px;
+      }
+      .calendar-day {
+        min-height: 48px;
+        border-radius: 6px;
+        padding: 3px;
+      }
+      .day-number {
+        font-size: 0.68rem;
+      }
+      .day-item {
+        font-size: 0.6rem;
       }
     }
   </style>
@@ -357,7 +445,30 @@
     </div>
   </main>
 
-  <script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getDatabase,
+      onValue,
+      ref,
+      serverTimestamp,
+      set,
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6aZhiruY_wqBfNPElCsybIQvKByld6_8",
+      authDomain: "money-card-6bf98.firebaseapp.com",
+      databaseURL: "https://money-card-6bf98-default-rtdb.firebaseio.com",
+      projectId: "money-card-6bf98",
+      storageBucket: "money-card-6bf98.firebasestorage.app",
+      messagingSenderId: "245245451690",
+      appId: "1:245245451690:web:e939a519af0009b8d1dfd3",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const remoteStateRef = ref(database, "users/single-user/scheduleRecord/state");
+
     const LEAVE_KEYWORDS = [
       "特休",
       "優先",
@@ -399,6 +510,9 @@
       activeWeek: 1,
       changedKeys: [],
     };
+    let applyingRemoteState = false;
+    let remoteReady = false;
+    let remoteSaveTimer = 0;
 
     function pad2(value) {
       return String(value).padStart(2, "0");
@@ -434,13 +548,87 @@
       if (savedMode === "schedule" || savedMode === "dayoff") state.mode = savedMode;
     }
 
-    function saveState() {
+    function persistLocalState() {
       localStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(state.weeks));
       localStorage.setItem(LAST_INPUT_STORAGE_KEY, scheduleInput.value);
       localStorage.setItem(DAYOFF_INPUT_STORAGE_KEY, dayOffInput.value);
       localStorage.setItem(DAYOFF_PLANNED_STORAGE_KEY, String(plannedInput.checked));
       localStorage.setItem(MODE_STORAGE_KEY, state.mode);
       localStorage.setItem(CHANGED_KEYS_STORAGE_KEY, JSON.stringify(state.changedKeys));
+    }
+
+    function saveState() {
+      persistLocalState();
+      if (!applyingRemoteState) scheduleRemoteSave();
+    }
+
+    function remoteSnapshot() {
+      return {
+        activeWeek: state.activeWeek,
+        changedKeys: state.changedKeys,
+        dayOffInput: dayOffInput.value,
+        mode: state.mode,
+        month: monthInput.value,
+        planned: plannedInput.checked,
+        scheduleInput: scheduleInput.value,
+        updatedAt: serverTimestamp(),
+        weeks: state.weeks,
+      };
+    }
+
+    function applyRemoteState(data) {
+      applyingRemoteState = true;
+      if (/^\d{4}-\d{2}$/.test(data?.month || "")) {
+        monthInput.value = data.month;
+        localStorage.setItem(MONTH_STORAGE_KEY, data.month);
+      }
+      if (data?.mode === "schedule" || data?.mode === "dayoff") state.mode = data.mode;
+      state.activeWeek = Number(data?.activeWeek) || 1;
+      state.weeks = data?.weeks && typeof data.weeks === "object" ? data.weeks : {};
+      state.changedKeys = Array.isArray(data?.changedKeys) ? data.changedKeys : [];
+      scheduleInput.value = String(data?.scheduleInput || "");
+      dayOffInput.value = String(data?.dayOffInput || "");
+      plannedInput.checked = Boolean(data?.planned);
+      applyingRemoteState = false;
+      persistLocalState();
+      render();
+    }
+
+    async function saveRemoteStateNow() {
+      if (applyingRemoteState) return;
+      try {
+        await set(remoteStateRef, remoteSnapshot());
+        remoteReady = true;
+      } catch (error) {
+        console.error("Schedule record sync error:", error);
+        status.textContent = "雲端同步失敗，暫存於本機";
+        status.style.color = "var(--danger)";
+      }
+    }
+
+    function scheduleRemoteSave() {
+      window.clearTimeout(remoteSaveTimer);
+      remoteSaveTimer = window.setTimeout(saveRemoteStateNow, remoteReady ? 250 : 0);
+    }
+
+    function subscribeRemoteState() {
+      onValue(
+        remoteStateRef,
+        (snapshot) => {
+          const data = snapshot.val();
+          remoteReady = true;
+          if (data) {
+            applyRemoteState(data);
+            return;
+          }
+          saveRemoteStateNow();
+        },
+        (error) => {
+          console.error("Schedule record read error:", error);
+          status.textContent = "雲端同步讀取失敗，暫用本機紀錄";
+          status.style.color = "var(--danger)";
+        },
+      );
     }
 
     function normalizeText(value) {
@@ -486,7 +674,7 @@
         month: date.getMonth() + 1,
         day: date.getDate(),
         weekday: WEEKDAYS[date.getDay()],
-        time: date.getTime(),
+        timestamp: date.getTime(),
       };
     }
 
@@ -576,7 +764,7 @@
       return Object.entries(state.weeks)
         .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
         .filter((record) => record.type !== "empty")
-        .sort((a, b) => a.time - b.time);
+        .sort((a, b) => dateTime(a) - dateTime(b));
     }
 
     function recordKey(record) {
@@ -669,6 +857,13 @@
       return unique.sort((a, b) => dateTime(a) - dateTime(b));
     }
 
+    function dayOffRecords() {
+      return dayOffDates().map((dateInfo) => ({
+        ...dateInfo,
+        type: "leave",
+      }));
+    }
+
     function formatDayOffOutput() {
       const dates = dayOffDates();
       const groupedDates = formatDateGroups(dates);
@@ -676,6 +871,79 @@
       const { month } = parseMonthValue();
       const title = plannedInput.checked ? `${month}月預計休假：` : `${month}月休假：`;
       return `${title}\n${groupedDates}`;
+    }
+
+    function lineText() {
+      return state.mode === "schedule" ? formatScheduleOutput() : formatDayOffOutput();
+    }
+
+    function calendarRecords() {
+      return state.mode === "schedule" ? records() : dayOffRecords();
+    }
+
+    function renderCalendar() {
+      const entries = calendarRecords();
+      if (entries.length === 0) {
+        output.innerHTML = `<div class="empty-calendar">${state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期"}</div>`;
+        return;
+      }
+
+      const { year, month } = parseMonthValue();
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0);
+      const maxEntryTime = Math.max(monthEnd.getTime(), ...entries.map(dateTime));
+      const calendarEnd = new Date(maxEntryTime);
+      const startOffset = monthStart.getDay();
+      const totalDays = Math.ceil((calendarEnd.getTime() - monthStart.getTime()) / 86400000) + 1;
+      const totalCells = Math.ceil((startOffset + totalDays) / 7) * 7;
+      const changedKeys = new Set(state.changedKeys);
+      const entriesByKey = new Map();
+
+      entries.forEach((entry) => {
+        const key = recordKey(entry);
+        if (!entriesByKey.has(key)) entriesByKey.set(key, []);
+        entriesByKey.get(key).push(entry);
+      });
+
+      const weekdays = WEEKDAYS.map((weekday) => `<div class="calendar-weekday">${weekday}</div>`).join("");
+      const cells = Array.from({ length: totalCells }, (_, cellIndex) => {
+        const dayOffset = cellIndex - startOffset;
+        if (dayOffset < 0) return '<div class="calendar-day outside"></div>';
+        const date = new Date(year, month - 1, dayOffset + 1);
+        const dateInfo = {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          day: date.getDate(),
+        };
+        const key = recordKey(dateInfo);
+        const dayEntries = entriesByKey.get(key) || [];
+        const outside = date.getMonth() !== month - 1;
+        const changed = changedKeys.has(key);
+        const items = dayEntries.map((entry) => {
+          const label = entry.type === "shift" ? entry.time : "休假";
+          const marker = changed && state.mode === "schedule" ? "★ " : "";
+          const classes = ["day-item", entry.type === "leave" ? "leave" : "", changed ? "changed" : ""]
+            .filter(Boolean)
+            .join(" ");
+          return `<div class="${classes}">${escapeHtml(marker + label)}</div>`;
+        }).join("");
+        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : ""]
+          .filter(Boolean)
+          .join(" ");
+        return `
+          <div class="${classes}">
+            <div class="day-number">${dateInfo.day}</div>
+            ${items}
+          </div>
+        `;
+      }).join("");
+
+      output.innerHTML = `
+        <div class="calendar">
+          <div class="calendar-head">${weekdays}</div>
+          <div class="calendar-grid">${cells}</div>
+        </div>
+      `;
     }
 
     function renderWeeks() {
@@ -697,12 +965,10 @@
     function render() {
       renderMode();
       renderWeeks();
-      const text = state.mode === "schedule"
-        ? formatScheduleOutput()
-        : formatDayOffOutput();
+      const text = lineText();
       const hasChanged = state.mode === "schedule" && state.changedKeys.length > 0;
       resultTitle.textContent = hasChanged ? "Line 文字（★為異動）" : "Line 文字";
-      output.textContent = text || (state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期");
+      renderCalendar();
       resultPanel.classList.toggle("empty", !text);
       status.style.color = "var(--muted)";
       if (text) {
@@ -763,8 +1029,7 @@
     }
 
     async function copyOutput() {
-      const emptyText = state.mode === "schedule" ? "尚無排班資料" : "尚無休假日期";
-      const text = output.textContent === emptyText ? "" : output.textContent;
+      const text = lineText();
       if (!text) {
         flashButton(copyButton, "沒有內容", true);
         return;
@@ -788,10 +1053,12 @@
 
     setDefaultMonth();
     loadState();
+    subscribeRemoteState();
     monthInput.addEventListener("input", () => {
       if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
         localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
       }
+      saveState();
       render();
     });
     modeButtons.forEach((button) => {
