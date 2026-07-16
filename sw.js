@@ -64,6 +64,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (requestUrl.pathname.startsWith("/apps/cash-change-planner/")) {
+    return;
+  }
+
   if (event.request.mode === "navigate") {
     return;
   }
