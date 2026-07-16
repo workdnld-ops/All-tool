@@ -197,6 +197,15 @@
       display: none;
     }
 
+    .raw-input-toolbar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .raw-input-panel[hidden] {
+      display: none;
+    }
+
     label {
       display: grid;
       gap: 4px;
@@ -280,13 +289,13 @@
       font-size: 0.9rem;
       line-height: 1.55;
       font-weight: 800;
-      max-height: 360px;
-      overflow-y: auto;
+      overflow: visible;
       -webkit-user-select: text;
       user-select: text;
     }
 
     .calendar {
+      --calendar-cell-height: clamp(62px, 8.4dvh, 82px);
       display: grid;
       gap: 6px;
     }
@@ -296,6 +305,10 @@
       display: grid;
       grid-template-columns: repeat(7, minmax(0, 1fr));
       gap: 4px;
+    }
+
+    .calendar-grid {
+      grid-template-rows: repeat(6, minmax(var(--calendar-cell-height), auto));
     }
 
     .calendar-head {
@@ -320,7 +333,7 @@
     }
 
     .calendar-day {
-      min-height: 56px;
+      min-height: var(--calendar-cell-height);
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 4px;
@@ -426,8 +439,9 @@
       .mode-button,
       .week-button { padding: 0 3px; }
       textarea { min-height: 96px; }
-      .output {
-        max-height: 312px;
+      .output { overflow: visible; }
+      .calendar {
+        --calendar-cell-height: clamp(64px, 8.2dvh, 76px);
       }
       .calendar-grid,
       .calendar-head {
@@ -443,7 +457,6 @@
         line-height: 1.2;
       }
       .calendar-day {
-        min-height: 48px;
         border-radius: 6px;
         padding: 3px;
       }
@@ -491,7 +504,12 @@
           <button class="week-button" type="button" data-week="4">wk4</button>
           <button class="week-button" type="button" data-week="5">wk5</button>
         </div>
-        <textarea id="schedule-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
+        <div class="raw-input-toolbar">
+          <button class="button" id="schedule-edit-toggle" type="button" aria-expanded="false" aria-controls="schedule-raw-panel">修正文字</button>
+        </div>
+        <div class="raw-input-panel" id="schedule-raw-panel" hidden>
+          <textarea id="schedule-input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="也可以手動貼上後，按 wk1-wk5 覆蓋該週" aria-label="貼上排班內容"></textarea>
+        </div>
       </div>
       <div class="view" id="dayoff-view" hidden>
         <label class="checkbox-label">
@@ -564,6 +582,8 @@
     const plannedInput = document.getElementById("planned-input");
     const scheduleView = document.getElementById("schedule-view");
     const dayOffView = document.getElementById("dayoff-view");
+    const scheduleEditToggle = document.getElementById("schedule-edit-toggle");
+    const scheduleRawPanel = document.getElementById("schedule-raw-panel");
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const resultTitle = document.getElementById("result-title");
@@ -581,6 +601,7 @@
     let applyingRemoteState = false;
     let remoteReady = false;
     let remoteSaveTimer = 0;
+    let scheduleEditorExpanded = false;
 
     function pad2(value) {
       return String(value).padStart(2, "0");
@@ -972,7 +993,7 @@
       const calendarEnd = new Date(maxEntryTime);
       const startOffset = monthStart.getDay();
       const totalDays = Math.ceil((calendarEnd.getTime() - monthStart.getTime()) / 86400000) + 1;
-      const totalCells = Math.ceil((startOffset + totalDays) / 7) * 7;
+      const totalCells = Math.max(42, Math.ceil((startOffset + totalDays) / 7) * 7);
       const changedKeys = new Set(state.changedKeys);
       const entriesByKey = new Map();
 
@@ -1053,6 +1074,14 @@
       modeButtons.forEach((button) => {
         button.classList.toggle("active", button.dataset.mode === state.mode);
       });
+    }
+
+    function setScheduleEditorExpanded(expanded, shouldFocus = false) {
+      scheduleEditorExpanded = expanded;
+      scheduleRawPanel.hidden = !expanded;
+      scheduleEditToggle.setAttribute("aria-expanded", String(expanded));
+      scheduleEditToggle.textContent = expanded ? "收合文字" : "修正文字";
+      if (expanded && shouldFocus) scheduleInput.focus();
     }
 
     function render() {
@@ -1183,9 +1212,17 @@
       }
       saveState();
       render();
-      (state.mode === "schedule" ? scheduleInput : dayOffInput).focus();
+      if (state.mode === "schedule") {
+        setScheduleEditorExpanded(true, true);
+      } else {
+        dayOffInput.focus();
+      }
+    });
+    scheduleEditToggle.addEventListener("click", () => {
+      setScheduleEditorExpanded(!scheduleEditorExpanded, !scheduleEditorExpanded);
     });
     copyButton.addEventListener("click", copyOutput);
+    setScheduleEditorExpanded(false);
     render();
   </script>
 </body>

@@ -63,6 +63,7 @@ export function normalizeCard(card, fallbackId) {
     title: String(card.title || "未命名任務"),
     notes: String(card.notes || ""),
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(card.dueDate || "") ? card.dueDate : todayKey(),
+    order: Number.isFinite(Number(card.order)) ? Number(card.order) : Number.MAX_SAFE_INTEGER,
     createdAt: card.createdAt || new Date().toISOString(),
     updatedAt: card.updatedAt || new Date().toISOString(),
     completed: card.completed === true,
@@ -99,7 +100,7 @@ export function normalizeBox(box, fallbackId) {
 function normalizeCards(data) {
   return Object.entries(data || {})
     .map(([id, card]) => normalizeCard(card || {}, id))
-    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.createdAt.localeCompare(b.createdAt));
+    .sort((a, b) => a.order - b.order || a.dueDate.localeCompare(b.dueDate) || a.createdAt.localeCompare(b.createdAt));
 }
 
 function normalizeBoxes(data) {

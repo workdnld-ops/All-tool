@@ -147,6 +147,7 @@
     .icon-button,
     .tab-button,
     .box-tab,
+    .drag-handle,
     .chip {
       min-height: 34px;
       border: 1px solid var(--line);
@@ -172,7 +173,7 @@
 
     .tab-strip {
       display: flex;
-      gap: 4px;
+      gap: 6px;
       overflow-x: auto;
       padding-top: 1px;
       border-bottom: 1px solid var(--line);
@@ -185,7 +186,7 @@
 
     .box-tab,
     .tab-button {
-      min-height: 40px;
+      min-height: 44px;
       border-bottom-left-radius: 0;
       border-bottom-right-radius: 0;
       padding: 0 14px;
@@ -194,25 +195,82 @@
       box-shadow: none;
     }
 
+    #box-tabs {
+      align-items: stretch;
+      border-bottom: 0;
+      padding-bottom: 2px;
+    }
+
+    .box-tab-group {
+      position: relative;
+      display: inline-flex;
+      align-items: stretch;
+      flex: 0 0 auto;
+    }
+
     .box-tab {
       flex: 0 0 auto;
+      min-width: 76px;
       max-width: 176px;
+      padding-right: 28px;
       overflow: hidden;
       text-overflow: ellipsis;
-      touch-action: pan-x;
+      position: relative;
+      z-index: 1;
+      border-radius: 8px;
+      touch-action: manipulation;
       user-select: none;
       -webkit-touch-callout: none;
       -webkit-user-select: none;
     }
 
+    .drag-handle {
+      width: 34px;
+      min-width: 34px;
+      min-height: 34px;
+      padding: 0;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      line-height: 1;
+      color: var(--muted);
+      background: #fff;
+      box-shadow: none;
+      touch-action: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
+
+    .drag-handle:active,
+    .drag-handle.dragging {
+      cursor: grabbing;
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .box-drag {
+      position: absolute;
+      right: 3px;
+      top: 3px;
+      z-index: 2;
+      width: 22px;
+      min-width: 22px;
+      min-height: 22px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    body.sorting {
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+
     #new-box {
       min-width: 44px;
       padding: 0 12px;
-    }
-
-    .box-tab.dragging {
-      opacity: 0.62;
-      transform: translateY(-1px);
     }
 
     .tab-grid.tab-strip {
@@ -222,6 +280,9 @@
     }
 
     .tab-grid.tab-strip .tab-button {
+      min-height: 34px;
+      padding: 0 8px;
+      font-size: 9pt;
       width: 100%;
     }
 
@@ -306,9 +367,16 @@
     }
 
     .card {
+      position: relative;
       padding: 10px;
       display: grid;
       gap: 7px;
+    }
+
+    .card.dragging,
+    .box-tab-group.dragging {
+      opacity: 0.62;
+      transform: translateY(-1px);
     }
 
     .card.completed {
@@ -323,7 +391,7 @@
 
     .card-head {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
       align-items: start;
       gap: 8px;
     }
@@ -354,27 +422,6 @@
       font-size: 0.82rem;
       line-height: 1.35;
       overflow-wrap: anywhere;
-    }
-
-    .tag-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-
-    .tag {
-      min-height: 24px;
-      padding: 3px 7px;
-      border-radius: 8px;
-      background: var(--primary-soft);
-      color: var(--primary);
-      font-size: 0.75rem;
-      font-weight: 850;
-    }
-
-    .tag.gold {
-      background: var(--gold-soft);
-      color: var(--gold);
     }
 
     .modal {
@@ -442,6 +489,23 @@
       grid-template-columns: minmax(0, 1fr) 92px;
     }
 
+    .compact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      align-items: end;
+    }
+
+    .compact-grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: center;
+    }
+
+    .compact-grid input,
+    .compact-grid select {
+      min-width: 0;
+    }
+
     .weekday-grid {
       grid-template-columns: repeat(7, minmax(0, 1fr));
     }
@@ -470,8 +534,10 @@
     @media (max-width: 620px) {
       h1 { font-size: 1.18rem; }
       .form-grid,
-      .repeat-grid,
-      .modal-actions { grid-template-columns: 1fr; }
+      .repeat-grid { grid-template-columns: 1fr; }
+      .compact-grid,
+      .modal-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .compact-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .button { padding: 0 8px; }
     }
   </style>
@@ -482,7 +548,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.3</span>
+          <span class="version">v7.15.7</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -539,35 +605,39 @@
           標題
           <input id="title-input" required maxlength="80" autocomplete="off">
         </label>
-        <label>
-          日期
-          <input id="due-input" type="date" required>
-        </label>
-        <label>
-          提醒時間
-          <input id="reminder-time-input" type="time" value="09:00">
-        </label>
+        <div class="compact-grid full">
+          <label>
+            日期
+            <input id="due-input" type="date" required>
+          </label>
+          <label>
+            提醒時間
+            <input id="reminder-time-input" type="time" value="09:00">
+          </label>
+          <label>
+            提前日
+            <input id="days-before-input" type="number" min="0" max="365" value="0">
+          </label>
+        </div>
         <label class="full">
           備註
           <textarea id="notes-input" maxlength="600"></textarea>
         </label>
-        <label class="switch-row">
-          <input id="reminder-enabled-input" type="checkbox">
-          開啟提醒
-        </label>
-        <label>
-          提前幾日提醒
-          <input id="days-before-input" type="number" min="0" max="365" value="0">
-        </label>
-        <label class="switch-row full">
-          <input id="repeat-reminder-input" type="checkbox">
-          到期後重複提醒直到完成
-        </label>
+        <div class="compact-grid two full">
+          <label class="switch-row">
+            <input id="reminder-enabled-input" type="checkbox">
+            開啟提醒
+          </label>
+          <label class="switch-row">
+            <input id="repeat-reminder-input" type="checkbox">
+            到期後重複提醒
+          </label>
+        </div>
       </div>
 
       <div class="panel">
         <div class="tray-title">週期</div>
-        <div class="repeat-grid">
+        <div class="compact-grid full">
           <label>
             類型
             <select id="recurrence-type-input">
@@ -582,14 +652,14 @@
             間隔
             <input id="recurrence-interval-input" type="number" min="1" max="36" value="1">
           </label>
+          <label id="month-mode-wrap">
+            每月模式
+            <select id="month-mode-input">
+              <option value="same-day">同一天</option>
+              <option value="end-of-month">月底</option>
+            </select>
+          </label>
         </div>
-        <label id="month-mode-wrap">
-          每月模式
-          <select id="month-mode-input">
-            <option value="same-day">同一天</option>
-            <option value="end-of-month">月底</option>
-          </select>
-        </label>
         <div id="weekday-wrap">
           <div class="card-meta">每週指定星期</div>
           <div class="weekday-grid" id="weekday-grid"></div>
@@ -597,9 +667,9 @@
       </div>
 
       <div class="modal-actions">
-        <button class="button danger" id="delete-card" type="button">刪除</button>
-        <button class="button" id="cancel-card" type="button">取消</button>
         <button class="button primary" type="submit">儲存</button>
+        <button class="button" id="cancel-card" type="button">取消</button>
+        <button class="button danger" id="delete-card" type="button">刪除</button>
       </div>
     </form>
   </section>
@@ -667,17 +737,12 @@
       editingId: "",
       selectedWeekdays: new Set(),
     };
-    const boxDrag = {
+    const dragState = {
       changed: false,
-      dragging: false,
       id: "",
+      kind: "",
       pointerId: null,
-      startX: 0,
-      startY: 0,
-      suppressClick: false,
-      timer: 0,
     };
-    const lastBoxTap = { id: "", at: 0 };
 
     workerUrlInput.value = localStorage.getItem(PUSH_WORKER_STORAGE_KEY) || DEFAULT_PUSH_WORKER_URL;
 
@@ -749,73 +814,104 @@
       return "";
     }
 
-    function recurrenceText(card) {
-      const recurrence = card.recurrence || DEFAULT_RECURRENCE;
-      if (recurrence.type === "none") return "";
-      if (recurrence.type === "daily") return `每 ${recurrence.interval} 天`;
-      if (recurrence.type === "weekly") {
-        const days = (recurrence.weekdays || []).map((day) => WEEKDAYS[day]).join("、");
-        return `每 ${recurrence.interval} 週${days ? `：${days}` : ""}`;
-      }
-      if (recurrence.type === "monthly") {
-        return `每 ${recurrence.interval} 月${recurrence.monthMode === "end-of-month" ? "：月底" : ""}`;
-      }
-      return `每 ${recurrence.interval} 年`;
-    }
-
-    function reminderText(card) {
-      if (!card.reminder?.enabled) return "";
-      const prefix = card.reminder.daysBefore > 0 ? `提前 ${card.reminder.daysBefore} 日` : "當天";
-      return `${prefix} ${card.reminder.time}${card.reminder.repeatUntilDone ? "，重複" : ""}`;
-    }
-
     function activeBoxId() {
       if (state.boxes.some((box) => box.id === state.activeBoxId)) return state.activeBoxId;
       return state.boxes[0]?.id || DEFAULT_BOX.id;
     }
 
-    function normalizeBoxOrder(boxes) {
-      return boxes.map((box, index) => ({ ...box, order: index }));
+    function normalizeOrder(items) {
+      return items.map((item, index) => ({ ...item, order: index }));
     }
 
-    function cssEscape(value) {
-      return window.CSS?.escape ? CSS.escape(value) : String(value).replaceAll('"', '\\"');
+    function reorderById(items, sourceId, targetId) {
+      if (!sourceId || !targetId || sourceId === targetId) return items;
+      const next = [...items];
+      const from = next.findIndex((item) => item.id === sourceId);
+      const to = next.findIndex((item) => item.id === targetId);
+      if (from < 0 || to < 0) return items;
+      const [source] = next.splice(from, 1);
+      next.splice(to, 0, source);
+      dragState.changed = true;
+      return normalizeOrder(next);
     }
 
-    function markDraggedBox() {
-      boxTabs.querySelector(`[data-box-id="${cssEscape(boxDrag.id)}"]`)?.classList.add("dragging");
+    function orderSignature(items) {
+      return items.map((item) => item.id).join("|");
     }
 
-    async function renameBox(boxId) {
-      const box = state.boxes.find((item) => item.id === boxId);
-      if (!box) return;
-      const name = window.prompt("卡箱名稱", box.name);
-      if (!name?.trim()) return;
-      const trimmed = name.trim();
-      if (trimmed === box.name) return;
-      await saveBox({ ...box, name: trimmed });
-      setStatus("卡箱名稱已更新。");
+    function sortedCards(cards) {
+      return [...cards].sort((a, b) =>
+        a.order - b.order || a.dueDate.localeCompare(b.dueDate) || a.createdAt.localeCompare(b.createdAt)
+      );
     }
 
-    function reorderBox(sourceId, targetId) {
-      if (!sourceId || !targetId || sourceId === targetId) return;
-      const boxes = [...state.boxes];
-      const from = boxes.findIndex((box) => box.id === sourceId);
-      const to = boxes.findIndex((box) => box.id === targetId);
-      if (from < 0 || to < 0) return;
-      const [source] = boxes.splice(from, 1);
-      boxes.splice(to, 0, source);
-      state.boxes = normalizeBoxOrder(boxes);
-      boxDrag.changed = true;
-      renderBoxes();
-      markDraggedBox();
+    function activeVisibleCards() {
+      return activeMonthCards().filter((card) => state.activeTab === "done" ? card.completed : !card.completed);
+    }
+
+    function mergeOrderedCards(orderedCards) {
+      const replacements = new Map(orderedCards.map((card) => [card.id, card]));
+      state.cards = state.cards.map((card) => replacements.get(card.id) || card);
+    }
+
+    function beginSort(kind, id, event, handle) {
+      event.preventDefault();
+      event.stopPropagation();
+      dragState.changed = false;
+      dragState.kind = kind;
+      dragState.id = id;
+      dragState.pointerId = event.pointerId;
+      document.body.classList.add("sorting");
+      handle.classList.add("dragging");
+      handle.setPointerCapture?.(event.pointerId);
+    }
+
+    function finishSort() {
+      const { changed, kind } = dragState;
+      dragState.changed = false;
+      dragState.kind = "";
+      dragState.id = "";
+      dragState.pointerId = null;
+      document.body.classList.remove("sorting");
+      render();
+      return { changed, kind };
     }
 
     async function persistBoxOrder() {
-      const ordered = normalizeBoxOrder(state.boxes);
-      state.boxes = ordered;
-      await Promise.all(ordered.map((box) => saveBox(box)));
+      state.boxes = normalizeOrder(state.boxes);
+      await Promise.all(state.boxes.map((box) => saveBox(box)));
       setStatus("卡箱順序已更新。");
+    }
+
+    async function persistCardOrder() {
+      const ordered = normalizeOrder(activeVisibleCards());
+      mergeOrderedCards(ordered);
+      await Promise.all(ordered.map((card) => updateCard(card.id, { order: card.order })));
+      setStatus("卡片順序已更新。");
+    }
+
+    function moveDraggedItem(clientX, clientY) {
+      if (!dragState.kind || !dragState.id) return;
+      const target = document.elementFromPoint(clientX, clientY);
+      if (dragState.kind === "box") {
+        const boxTarget = target?.closest("[data-box-sort-item]");
+        if (!boxTarget) return;
+        const before = orderSignature(state.boxes);
+        const ordered = reorderById(state.boxes, dragState.id, boxTarget.dataset.boxSortItem);
+        if (orderSignature(ordered) === before) return;
+        state.boxes = ordered;
+        renderBoxes();
+        return;
+      }
+
+      const cardTarget = target?.closest("[data-card-id]");
+      if (!cardTarget) return;
+      const visible = activeVisibleCards();
+      const before = orderSignature(visible);
+      const ordered = reorderById(visible, dragState.id, cardTarget.dataset.cardId);
+      if (orderSignature(ordered) === before) return;
+      mergeOrderedCards(ordered);
+      render();
     }
 
     function renderBoxes() {
@@ -823,9 +919,12 @@
       state.activeBoxId = selected;
       boxTabs.innerHTML = [
         ...state.boxes.map((box) => `
-          <button class="box-tab ${box.id === selected ? "active" : ""}" type="button" data-box-id="${escapeHtml(box.id)}">
-            ${escapeHtml(box.name)}
-          </button>
+          <span class="box-tab-group ${dragState.kind === "box" && dragState.id === box.id ? "dragging" : ""}" data-box-sort-item="${escapeHtml(box.id)}">
+            <button class="box-tab ${box.id === selected ? "active" : ""}" type="button" data-box-id="${escapeHtml(box.id)}">
+              ${escapeHtml(box.name)}
+            </button>
+            <button class="drag-handle box-drag" type="button" data-drag-box-id="${escapeHtml(box.id)}" aria-label="拖移 ${escapeHtml(box.name)}">☰</button>
+          </span>
         `),
         '<button class="box-tab" id="new-box" type="button" aria-label="新增卡箱">＋</button>',
       ].join("");
@@ -844,9 +943,9 @@
 
     function activeMonthCards() {
       const selected = activeBoxId();
-      return state.cards.filter((card) =>
+      return sortedCards(state.cards.filter((card) =>
         card.boxId === selected && monthKeyFromDateKey(card.dueDate) === state.activeMonth
-      );
+      ));
     }
 
     function overdueOrTodayCount() {
@@ -882,12 +981,8 @@
     }
 
     function renderCard(card) {
-      const tags = [
-        reminderText(card) ? `<span class="tag">${escapeHtml(reminderText(card))}</span>` : "",
-        recurrenceText(card) ? `<span class="tag gold">${escapeHtml(recurrenceText(card))}</span>` : "",
-      ].join("");
       return `
-        <article class="card ${card.completed ? "completed" : ""}" data-card-id="${card.id}">
+        <article class="card ${card.completed ? "completed" : ""} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
           <div class="card-head">
             <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
             <div>
@@ -895,9 +990,9 @@
               <div class="card-meta">${escapeHtml(card.dueDate)}${card.completedAt ? ` · 完成於 ${escapeHtml(card.completedAt.slice(0, 10))}` : ""}</div>
             </div>
             <button class="button" data-edit="${card.id}" type="button">編輯</button>
+            <button class="drag-handle" type="button" data-drag-card-id="${card.id}" aria-label="拖移 ${escapeHtml(card.title)}">☰</button>
           </div>
           ${card.notes ? `<div class="card-notes">${escapeHtml(card.notes)}</div>` : ""}
-          ${tags ? `<div class="tag-row">${tags}</div>` : ""}
         </article>
       `;
     }
@@ -1077,65 +1172,44 @@
     document.getElementById("cancel-card").addEventListener("click", closeModal);
     document.getElementById("settings-button").addEventListener("click", () => settingsModal.classList.add("open"));
     document.getElementById("close-settings").addEventListener("click", () => settingsModal.classList.remove("open"));
-    boxTabs.addEventListener("pointerdown", (event) => {
-      const boxButton = event.target.closest("[data-box-id]");
-      if (!boxButton || event.button > 0) return;
-      window.clearTimeout(boxDrag.timer);
-      boxDrag.changed = false;
-      boxDrag.dragging = false;
-      boxDrag.id = boxButton.dataset.boxId;
-      boxDrag.pointerId = event.pointerId;
-      boxDrag.startX = event.clientX;
-      boxDrag.startY = event.clientY;
-      boxDrag.timer = window.setTimeout(() => {
-        boxDrag.dragging = true;
-        boxDrag.suppressClick = true;
-        markDraggedBox();
-      }, 520);
-    });
-    window.addEventListener("pointermove", (event) => {
-      if (!boxDrag.id || event.pointerId !== boxDrag.pointerId) return;
-      const deltaX = Math.abs(event.clientX - boxDrag.startX);
-      const deltaY = Math.abs(event.clientY - boxDrag.startY);
-      if (!boxDrag.dragging) {
-        if (deltaX > 10 || deltaY > 10) window.clearTimeout(boxDrag.timer);
+    document.body.addEventListener("pointerdown", (event) => {
+      const boxHandle = event.target.closest("[data-drag-box-id]");
+      if (boxHandle) {
+        beginSort("box", boxHandle.dataset.dragBoxId, event, boxHandle);
         return;
       }
-      event.preventDefault();
-      const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-box-id]");
-      if (target) reorderBox(boxDrag.id, target.dataset.boxId);
+      const cardHandle = event.target.closest("[data-drag-card-id]");
+      if (cardHandle) beginSort("card", cardHandle.dataset.dragCardId, event, cardHandle);
     });
+    window.addEventListener("pointermove", (event) => {
+      if (!dragState.kind || event.pointerId !== dragState.pointerId) return;
+      event.preventDefault();
+      moveDraggedItem(event.clientX, event.clientY);
+    }, { passive: false });
     window.addEventListener("pointerup", async (event) => {
-      if (!boxDrag.id || event.pointerId !== boxDrag.pointerId) return;
-      window.clearTimeout(boxDrag.timer);
-      const shouldPersist = boxDrag.dragging && boxDrag.changed;
-      boxDrag.dragging = false;
-      boxDrag.id = "";
-      boxDrag.pointerId = null;
-      renderBoxes();
-      if (boxDrag.suppressClick) {
-        window.setTimeout(() => {
-          boxDrag.suppressClick = false;
-        }, 50);
-      }
-      if (!shouldPersist) return;
+      if (!dragState.kind || event.pointerId !== dragState.pointerId) return;
+      event.preventDefault();
+      const result = finishSort();
+      if (!result.changed) return;
       try {
-        await persistBoxOrder();
+        if (result.kind === "box") await persistBoxOrder();
+        if (result.kind === "card") await persistCardOrder();
       } catch (error) {
         console.error(error);
-        setStatus("卡箱順序更新失敗。", true);
+        setStatus("順序更新失敗。", true);
       }
     });
-    window.addEventListener("pointercancel", () => {
-      window.clearTimeout(boxDrag.timer);
-      boxDrag.dragging = false;
-      boxDrag.id = "";
-      boxDrag.pointerId = null;
-      boxDrag.suppressClick = false;
-      renderBoxes();
+    window.addEventListener("pointercancel", (event) => {
+      if (!dragState.kind || event.pointerId !== dragState.pointerId) return;
+      finishSort();
     });
+    document.body.addEventListener("click", (event) => {
+      if (event.target.closest(".drag-handle")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
     boxTabs.addEventListener("click", async (event) => {
-      if (boxDrag.suppressClick) return;
       const newButton = event.target.closest("#new-box");
       if (newButton) {
         const name = window.prompt("卡箱名稱");
@@ -1152,15 +1226,6 @@
 
       const boxButton = event.target.closest("[data-box-id]");
       if (!boxButton) return;
-      const now = Date.now();
-      if (lastBoxTap.id === boxButton.dataset.boxId && now - lastBoxTap.at < 420) {
-        lastBoxTap.id = "";
-        lastBoxTap.at = 0;
-        await renameBox(boxButton.dataset.boxId);
-        return;
-      }
-      lastBoxTap.id = boxButton.dataset.boxId;
-      lastBoxTap.at = now;
       state.activeBoxId = boxButton.dataset.boxId;
       localStorage.setItem(ACTIVE_BOX_STORAGE_KEY, state.activeBoxId);
       render();
