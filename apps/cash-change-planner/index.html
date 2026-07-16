@@ -136,34 +136,28 @@
       color: #fff;
     }
 
-    .button.danger {
-      border-color: var(--danger);
-      background: var(--danger-soft);
+    .mini-button.danger {
       color: var(--danger);
-    }
-
-    .button.feedback {
-      border-color: var(--green);
-      background: var(--green-soft);
-      color: var(--green);
+      background: var(--danger-soft);
     }
 
     .header-actions,
-    .actions,
     .quick-actions,
-    .summary {
+    .summary,
+    .settings-actions {
       display: grid;
       gap: 6px;
     }
 
-    .header-actions { grid-template-columns: 1fr; }
-    .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .quick-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .header-actions { grid-template-columns: 1fr 1fr; }
+    .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .settings-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .panel,
     .metric,
-    .result {
+    .result,
+    .modal-card {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface);
@@ -206,13 +200,25 @@
       overflow-wrap: anywhere;
     }
 
+    .metric.warn strong {
+      color: var(--danger);
+    }
+
     .money-grid {
       display: grid;
       grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 6px;
     }
 
-    .money-field {
+    .target-grid,
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .money-field,
+    .diff-cell {
       display: grid;
       gap: 4px;
       min-width: 0;
@@ -234,18 +240,6 @@
     .money-field.receipt span {
       color: var(--gold);
       background: var(--gold-soft);
-    }
-
-    .diff-grid {
-      display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-      gap: 6px;
-    }
-
-    .diff-cell {
-      display: grid;
-      gap: 4px;
-      min-width: 0;
     }
 
     .diff-value {
@@ -278,29 +272,80 @@
       color: var(--muted);
     }
 
-    .target-display {
-      min-height: 40px;
-      border: 1px solid var(--field-line);
-      border-radius: 8px;
-      background: #fff;
-      display: grid;
-      place-items: center;
-      padding: 0 6px;
-      font-size: 0.92rem;
-      font-weight: 950;
-      text-align: center;
-    }
-
     .result.ok {
       border-color: rgba(31, 111, 100, 0.34);
       background: var(--green-soft);
     }
 
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: none;
+      padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      background: rgba(23, 33, 38, 0.42);
+      overflow-y: auto;
+    }
+
+    .modal.open {
+      display: grid;
+      align-items: start;
+    }
+
+    .modal-card {
+      width: min(840px, 100%);
+      margin: 0 auto;
+      padding: 10px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .total-setting {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 160px;
+      gap: 6px;
+      align-items: end;
+    }
+
+    .setting-label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 850;
+    }
+
+    .settings-check {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      background: var(--green-soft);
+      color: var(--green);
+      font-weight: 900;
+    }
+
+    .settings-check.warn {
+      border-color: rgba(180, 35, 24, 0.34);
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
     @media (max-width: 860px) {
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .money-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .target-grid,
       .diff-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 460px) {
@@ -308,14 +353,118 @@
       header { grid-template-columns: 1fr; }
       h1 { font-size: 1.18rem; }
       .panel,
-      .result { padding: 8px; }
-      .actions,
-      .quick-actions { grid-template-columns: 1fr; }
+      .result,
+      .modal-card { padding: 8px; }
+      .quick-actions,
+      .settings-actions,
+      .total-setting { grid-template-columns: 1fr; }
       .money-grid,
+      .target-grid,
       .diff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .section-title span,
       .metric span,
       .note { font-size: 0.7rem; }
+    }
+
+    @media (max-width: 460px) and (min-height: 680px) {
+      .shell {
+        gap: 5px;
+        padding-top: max(6px, env(safe-area-inset-top));
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+      }
+
+      header {
+        min-height: 34px;
+        gap: 5px;
+      }
+
+      h1 { font-size: 1.06rem; }
+
+      .status,
+      .section-title span,
+      .note {
+        display: none;
+      }
+
+      .header-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .button {
+        min-height: 30px;
+        padding: 0 8px;
+        font-size: 0.82rem;
+      }
+
+      .summary {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .metric {
+        min-height: 48px;
+        padding: 5px;
+      }
+
+      .metric span {
+        display: block;
+        font-size: 0.62rem;
+        line-height: 1.1;
+      }
+
+      .metric strong {
+        font-size: 0.82rem;
+      }
+
+      .panel,
+      .result {
+        gap: 5px;
+        padding: 6px;
+      }
+
+      .section-title {
+        gap: 0;
+      }
+
+      .section-title h2 {
+        font-size: 0.9rem;
+      }
+
+      .quick-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .mini-button {
+        min-height: 28px;
+        font-size: 0.76rem;
+      }
+
+      .money-grid,
+      .diff-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .money-field,
+      .diff-cell {
+        gap: 3px;
+      }
+
+      .money-field span,
+      .diff-head {
+        min-height: 21px;
+        font-size: 0.68rem;
+        border-radius: 6px;
+      }
+
+      input,
+      .diff-value {
+        min-height: 32px;
+        border-radius: 7px;
+        font-size: 0.8rem;
+        padding: 0 4px;
+      }
     }
   </style>
 </head>
@@ -324,9 +473,10 @@
     <header>
       <div>
         <h1>換鈔金分配</h1>
-        <div class="status" id="status">輸入庫存數量與收據金額，自動算出補到固定 $10,000 的建議。</div>
+        <div class="status" id="status">輸入庫存數量與收據金額，自動算出補充建議。</div>
       </div>
       <div class="header-actions">
+        <button class="button" id="settings-button" type="button">設定</button>
         <a class="button" href="../../index.html">工具箱</a>
       </div>
     </header>
@@ -344,9 +494,9 @@
         <span>庫存 + 收據</span>
         <strong id="available-total">$0</strong>
       </div>
-      <div class="metric">
-        <span>固定目標</span>
-        <strong>$10,000</strong>
+      <div class="metric" id="balance-card">
+        <span>差額</span>
+        <strong id="balance-diff">$0</strong>
       </div>
     </section>
 
@@ -357,20 +507,10 @@
       </div>
       <div class="quick-actions">
         <button class="mini-button primary" id="paste-stock" type="button">貼上庫存資料</button>
-        <button class="mini-button" id="copy-stock" type="button">複製庫存資料</button>
-        <button class="mini-button" id="restore-stock" type="button">帶入上次庫存</button>
-        <button class="mini-button" id="clear-stock" type="button">庫存與收據清空</button>
+        <button class="mini-button danger" id="clear-stock" type="button">庫存與收據清空</button>
       </div>
       <div class="money-grid" id="stock-grid"></div>
       <div class="note" id="saved-note"></div>
-    </section>
-
-    <section class="panel">
-      <div class="section-title">
-        <h2>固定分配比例</h2>
-        <span>總額一律 $10,000。</span>
-      </div>
-      <div class="diff-grid" id="target-grid"></div>
     </section>
 
     <section class="result ok">
@@ -380,13 +520,29 @@
       </div>
       <div class="diff-grid" id="diff-grid"></div>
     </section>
-
-    <div class="actions">
-      <button class="button" id="copy-summary" type="button">複製明細</button>
-      <button class="button" id="copy-diff" type="button">複製建議列</button>
-      <button class="button danger" id="clear-stock-bottom" type="button">庫存與收據清空</button>
-    </div>
   </main>
+
+  <section class="modal" id="settings-modal" aria-modal="true" role="dialog">
+    <section class="modal-card">
+      <div class="modal-head">
+        <h2>分配設定</h2>
+        <button class="button" id="close-settings" type="button">關閉</button>
+      </div>
+      <div class="total-setting">
+        <label class="setting-label">
+          目標總額
+          <input id="target-total-input" type="number" min="0" step="1" inputmode="numeric">
+        </label>
+        <button class="mini-button" id="reset-settings" type="button">恢復預設</button>
+      </div>
+      <div class="target-grid" id="target-settings-grid"></div>
+      <div class="settings-check" id="settings-check"></div>
+      <div class="settings-actions">
+        <button class="button primary" id="done-settings" type="button">完成</button>
+        <button class="button" id="close-settings-bottom" type="button">關閉</button>
+      </div>
+    </section>
+  </section>
 
   <script>
     const DENOMS = [
@@ -399,28 +555,32 @@
       { key: "1", label: "1", unit: "枚", value: 1 },
     ];
 
-    const TARGET = {
-      "1000": 0,
-      "500": 0,
-      "100": 60,
-      "50": 50,
-      "10": 100,
-      "5": 80,
-      "1": 100,
+    const DEFAULT_SETTINGS = {
+      targetTotal: 10000,
+      target: {
+        "1000": 0,
+        "500": 0,
+        "100": 60,
+        "50": 50,
+        "10": 100,
+        "5": 80,
+        "1": 100,
+      },
     };
-    const TARGET_TOTAL = 10000;
-    const STORAGE_KEY = "cashChangePlannerStockV2";
+    const STOCK_STORAGE_KEY = "cashChangePlannerStockV2";
+    const SETTINGS_STORAGE_KEY = "cashChangePlannerSettingsV1";
 
     const stockGrid = document.getElementById("stock-grid");
-    const targetGrid = document.getElementById("target-grid");
     const diffGrid = document.getElementById("diff-grid");
     const status = document.getElementById("status");
     const savedNote = document.getElementById("saved-note");
-    const copySummaryButton = document.getElementById("copy-summary");
-    const copyDiffButton = document.getElementById("copy-diff");
+    const settingsModal = document.getElementById("settings-modal");
+    const targetSettingsGrid = document.getElementById("target-settings-grid");
+    const targetTotalInput = document.getElementById("target-total-input");
+    const settingsCheck = document.getElementById("settings-check");
+    const balanceCard = document.getElementById("balance-card");
 
-    let lastSummary = "";
-    let lastDiffLine = "";
+    let settings = loadSettings();
 
     function parseCount(value) {
       const number = Number.parseInt(String(value || "").replace(/[^\d-]/g, ""), 10);
@@ -435,12 +595,38 @@
       return `stock-${key}`;
     }
 
+    function targetFieldId(key) {
+      return `target-${key}`;
+    }
+
     function stockKeys() {
       return [...DENOMS.map((denom) => denom.key), "receipt"];
     }
 
     function blankStock() {
       return Object.fromEntries(stockKeys().map((key) => [key, 0]));
+    }
+
+    function normalizeSettings(value) {
+      return {
+        targetTotal: parseCount(value?.targetTotal) || DEFAULT_SETTINGS.targetTotal,
+        target: Object.fromEntries(DENOMS.map((denom) => [
+          denom.key,
+          parseCount(value?.target?.[denom.key] ?? DEFAULT_SETTINGS.target[denom.key]),
+        ])),
+      };
+    }
+
+    function loadSettings() {
+      try {
+        return normalizeSettings(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null"));
+      } catch {
+        return normalizeSettings(DEFAULT_SETTINGS);
+      }
+    }
+
+    function saveSettings() {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     }
 
     function readStock() {
@@ -467,8 +653,8 @@
       return DENOMS.reduce((sum, denom) => sum + (parseCount(stock[denom.key]) * denom.value), 0);
     }
 
-    function stockDataLine(stock) {
-      return [...DENOMS.map((denom) => stock[denom.key] || 0), stock.receipt || 0].join("\t");
+    function targetCashTotal() {
+      return DENOMS.reduce((sum, denom) => sum + ((settings.target[denom.key] || 0) * denom.value), 0);
     }
 
     function parseStockLine(text) {
@@ -491,7 +677,7 @@
         savedAt: new Date().toISOString(),
         stock,
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(STOCK_STORAGE_KEY, JSON.stringify(payload));
       savedNote.textContent = `已紀錄上一次庫存：${new Date(payload.savedAt).toLocaleString("zh-TW", {
         month: "2-digit",
         day: "2-digit",
@@ -502,7 +688,7 @@
 
     function loadSavedStock() {
       try {
-        const payload = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        const payload = JSON.parse(localStorage.getItem(STOCK_STORAGE_KEY) || "null");
         if (!payload?.stock) return null;
         return payload;
       } catch {
@@ -545,13 +731,25 @@
       ].join("");
     }
 
-    function renderTarget() {
-      targetGrid.innerHTML = DENOMS.map((denom) => `
-        <div class="diff-cell">
-          <div class="diff-head">${denom.label}</div>
-          <div class="target-display">${TARGET[denom.key]}${denom.unit}</div>
-        </div>
+    function renderSettingsFields() {
+      targetTotalInput.value = String(settings.targetTotal);
+      targetSettingsGrid.innerHTML = DENOMS.map((denom) => `
+        <label class="money-field">
+          <span>${denom.label}</span>
+          <input
+            id="${targetFieldId(denom.key)}"
+            data-target-input
+            data-denom="${denom.key}"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            value="${settings.target[denom.key] || 0}"
+            aria-label="${denom.label} 目標數量"
+          >
+        </label>
       `).join("");
+      renderSettingsCheck();
     }
 
     function diffLabel(diff, unit) {
@@ -561,7 +759,7 @@
 
     function renderDiff(stock) {
       diffGrid.innerHTML = DENOMS.map((denom) => {
-        const diff = (TARGET[denom.key] || 0) - (stock[denom.key] || 0);
+        const diff = (settings.target[denom.key] || 0) - (stock[denom.key] || 0);
         const className = diff > 0 ? "add" : diff < 0 ? "remove" : "same";
         return `
           <div class="diff-cell">
@@ -572,27 +770,13 @@
       }).join("");
     }
 
-    function buildSummary(stock) {
-      const diffs = Object.fromEntries(DENOMS.map((denom) => [
-        denom.key,
-        (TARGET[denom.key] || 0) - (stock[denom.key] || 0),
-      ]));
-      const stockTotal = stockCashTotal(stock);
-      const availableTotal = stockTotal + (stock.receipt || 0);
-      return [
-        "換鈔金分配建議",
-        "",
-        `庫存現金：${formatCurrency(stockTotal)}`,
-        `收據金額：${formatCurrency(stock.receipt || 0)}`,
-        `庫存 + 收據：${formatCurrency(availableTotal)}`,
-        `固定目標：${formatCurrency(TARGET_TOTAL)}`,
-        "",
-        `庫存列：${stockDataLine(stock)}`,
-        `建議列：${DENOMS.map((denom) => diffLabel(diffs[denom.key], denom.unit)).join("\t")}`,
-        "",
-        "固定分配：",
-        ...DENOMS.map((denom) => `${denom.label}：${TARGET[denom.key]}${denom.unit}`),
-      ].join("\n");
+    function renderSettingsCheck() {
+      const total = targetCashTotal();
+      const diff = total - settings.targetTotal;
+      settingsCheck.classList.toggle("warn", diff !== 0);
+      settingsCheck.textContent = diff === 0
+        ? `已對齊設定總額：${formatCurrency(total)}`
+        : `目前比例合計 ${formatCurrency(total)}，與設定總額相差 ${formatCurrency(diff)}。`;
     }
 
     function calculate(shouldSave = true) {
@@ -600,22 +784,18 @@
       const cashTotal = stockCashTotal(stock);
       const receipt = stock.receipt || 0;
       const availableTotal = cashTotal + receipt;
+      const balance = settings.targetTotal - availableTotal;
 
       document.getElementById("stock-total").textContent = formatCurrency(cashTotal);
       document.getElementById("receipt-total").textContent = formatCurrency(receipt);
       document.getElementById("available-total").textContent = formatCurrency(availableTotal);
+      document.getElementById("balance-diff").textContent = formatCurrency(balance);
+      balanceCard.classList.toggle("warn", balance !== 0);
 
       renderDiff(stock);
-      lastDiffLine = DENOMS.map((denom) => {
-        const diff = (TARGET[denom.key] || 0) - (stock[denom.key] || 0);
-        return diffLabel(diff, denom.unit);
-      }).join("\t");
-      lastSummary = buildSummary(stock);
-
-      const difference = TARGET_TOTAL - availableTotal;
-      document.getElementById("result-text").textContent = difference === 0
-        ? "庫存加收據剛好 $10,000。"
-        : `庫存加收據與 $10,000 相差 ${formatCurrency(difference)}。`;
+      document.getElementById("result-text").textContent = balance === 0
+        ? "庫存加收據已對齊設定總額。"
+        : `庫存加收據與設定總額相差 ${formatCurrency(balance)}。`;
 
       if (shouldSave) saveStock(stock);
     }
@@ -635,48 +815,9 @@
       }
     }
 
-    async function copyText(text, button, label = "已複製") {
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch {
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.setAttribute("readonly", "");
-        textarea.style.position = "fixed";
-        textarea.style.left = "-9999px";
-        document.body.append(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        textarea.remove();
-      }
-      flashButton(button, label);
-    }
-
-    function flashButton(button, label) {
-      const original = button.dataset.originalLabel || button.textContent;
-      button.dataset.originalLabel = original;
-      window.clearTimeout(Number(button.dataset.timer || 0));
-      button.textContent = label;
-      button.classList.add("feedback");
-      button.dataset.timer = String(window.setTimeout(() => {
-        button.textContent = original;
-        button.classList.remove("feedback");
-      }, 1300));
-    }
-
     function setStatus(message, isError = false) {
       status.textContent = message;
       status.style.color = isError ? "var(--danger)" : "var(--muted)";
-    }
-
-    function restoreSavedStock() {
-      const saved = loadSavedStock();
-      if (!saved?.stock) {
-        setStatus("目前沒有上一次庫存紀錄。", true);
-        return;
-      }
-      setStock(saved.stock, false);
-      setStatus("已帶入上一次庫存。");
     }
 
     function clearStock() {
@@ -684,8 +825,36 @@
       setStatus("庫存與收據已清空。");
     }
 
+    function openSettings() {
+      renderSettingsFields();
+      settingsModal.classList.add("open");
+    }
+
+    function closeSettings() {
+      settingsModal.classList.remove("open");
+      calculate(false);
+    }
+
+    function updateSettingsFromInputs() {
+      settings.targetTotal = parseCount(targetTotalInput.value);
+      DENOMS.forEach((denom) => {
+        settings.target[denom.key] = parseCount(document.getElementById(targetFieldId(denom.key))?.value);
+      });
+      saveSettings();
+      renderSettingsCheck();
+      calculate(false);
+    }
+
+    function resetSettings() {
+      settings = normalizeSettings(DEFAULT_SETTINGS);
+      saveSettings();
+      renderSettingsFields();
+      calculate(false);
+      setStatus("分配設定已恢復預設。");
+    }
+
     renderStockFields();
-    renderTarget();
+    renderSettingsFields();
     const saved = loadSavedStock();
     setStock(saved?.stock || blankStock(), false);
     if (saved?.savedAt) {
@@ -701,6 +870,7 @@
 
     document.body.addEventListener("input", (event) => {
       if (event.target.matches("[data-stock-input]")) calculate();
+      if (event.target.matches("#target-total-input, [data-target-input]")) updateSettingsFromInputs();
     });
 
     document.body.addEventListener("focusin", (event) => {
@@ -717,12 +887,15 @@
     });
 
     document.getElementById("paste-stock").addEventListener("click", pasteStock);
-    document.getElementById("copy-stock").addEventListener("click", () => copyText(stockDataLine(readStock()), document.getElementById("copy-stock")));
-    document.getElementById("restore-stock").addEventListener("click", restoreSavedStock);
     document.getElementById("clear-stock").addEventListener("click", clearStock);
-    document.getElementById("clear-stock-bottom").addEventListener("click", clearStock);
-    copySummaryButton.addEventListener("click", () => copyText(lastSummary, copySummaryButton));
-    copyDiffButton.addEventListener("click", () => copyText(lastDiffLine, copyDiffButton));
+    document.getElementById("settings-button").addEventListener("click", openSettings);
+    document.getElementById("close-settings").addEventListener("click", closeSettings);
+    document.getElementById("close-settings-bottom").addEventListener("click", closeSettings);
+    document.getElementById("done-settings").addEventListener("click", closeSettings);
+    document.getElementById("reset-settings").addEventListener("click", resetSettings);
+    settingsModal.addEventListener("click", (event) => {
+      if (event.target === settingsModal) closeSettings();
+    });
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

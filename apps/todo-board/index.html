@@ -384,6 +384,15 @@
       background: #f7f8f9;
     }
 
+    .card.today {
+      border-color: #82b9aa;
+      background: #edf8f4;
+    }
+
+    .card.today.completed {
+      background: #f3f6f5;
+    }
+
     .card.target {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(47, 111, 94, 0.18);
@@ -548,7 +557,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.7</span>
+          <span class="version">v7.15.8</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -612,7 +621,7 @@
           </label>
           <label>
             提醒時間
-            <input id="reminder-time-input" type="time" value="09:00">
+            <input id="reminder-time-input" type="text" inputmode="numeric" autocomplete="off" maxlength="5" pattern="^([01]\d|2[0-3]):[0-5]\d$" placeholder="09:00" value="09:00">
           </label>
           <label>
             提前日
@@ -758,6 +767,21 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function normalizeTimeValue(value) {
+      const digits = String(value || "").replace(/\D/g, "").slice(0, 4);
+      if (!digits) return "09:00";
+      const padded = digits.padStart(4, "0");
+      const hours = Math.min(23, Number(padded.slice(0, 2)));
+      const minutes = Math.min(59, Number(padded.slice(2, 4)));
+      return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    }
+
+    function formatTimeTyping(value) {
+      const digits = String(value || "").replace(/\D/g, "").slice(0, 4);
+      if (digits.length <= 2) return digits;
+      return `${digits.slice(0, 2)}:${digits.slice(2)}`;
     }
 
     function parseDate(dateKey) {
@@ -982,7 +1006,7 @@
 
     function renderCard(card) {
       return `
-        <article class="card ${card.completed ? "completed" : ""} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
+        <article class="card ${card.completed ? "completed" : ""} ${card.dueDate === todayKey() ? "today" : ""} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
           <div class="card-head">
             <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
             <div>
@@ -1057,7 +1081,7 @@
       fields.dueDate.value = draft.dueDate;
       fields.notes.value = draft.notes;
       fields.reminderEnabled.checked = draft.reminder.enabled;
-      fields.reminderTime.value = draft.reminder.time;
+      fields.reminderTime.value = normalizeTimeValue(draft.reminder.time);
       fields.daysBefore.value = draft.reminder.daysBefore;
       fields.repeatReminder.checked = draft.reminder.repeatUntilDone;
       fields.recurrenceType.value = draft.recurrence.type;
@@ -1090,7 +1114,7 @@
         reminder: {
           enabled: fields.reminderEnabled.checked,
           daysBefore: fields.daysBefore.value,
-          time: fields.reminderTime.value || "09:00",
+          time: normalizeTimeValue(fields.reminderTime.value),
           repeatUntilDone: fields.repeatReminder.checked,
           sentKeys: existing?.reminder?.sentKeys || {},
         },
@@ -1247,6 +1271,12 @@
       localStorage.setItem(PUSH_WORKER_STORAGE_KEY, workerUrlInput.value.trim());
     });
 
+    fields.reminderTime.addEventListener("input", () => {
+      fields.reminderTime.value = formatTimeTyping(fields.reminderTime.value);
+    });
+    fields.reminderTime.addEventListener("blur", () => {
+      fields.reminderTime.value = normalizeTimeValue(fields.reminderTime.value);
+    });
     fields.recurrenceType.addEventListener("input", renderRecurrenceControls);
     weekdayGrid.addEventListener("click", (event) => {
       const button = event.target.closest("[data-weekday]");
