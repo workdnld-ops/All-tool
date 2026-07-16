@@ -15,6 +15,7 @@
       --ink: #172126;
       --muted: #63717a;
       --line: #dce4e8;
+      --field-line: #b8c6cc;
       --primary: #245b9b;
       --primary-soft: #e7f0fb;
       --green: #1f6f64;
@@ -47,14 +48,14 @@
 
     input {
       min-width: 0;
-      min-height: 36px;
-      border: 1px solid #b8c6cc;
+      min-height: 40px;
+      border: 1px solid var(--field-line);
       border-radius: 8px;
       padding: 0 8px;
       background: #fff;
       color: var(--ink);
       text-align: center;
-      font-weight: 850;
+      font-weight: 900;
       -webkit-user-select: text;
       user-select: text;
     }
@@ -66,7 +67,7 @@
     }
 
     .shell {
-      width: min(980px, 100%);
+      width: min(1060px, 100%);
       min-height: 100dvh;
       margin: 0 auto;
       padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
@@ -128,10 +129,17 @@
       border-color: transparent;
     }
 
-    .button.primary {
+    .button.primary,
+    .mini-button.primary {
       border-color: var(--primary);
       background: var(--primary);
       color: #fff;
+    }
+
+    .button.danger {
+      border-color: var(--danger);
+      background: var(--danger-soft);
+      color: var(--danger);
     }
 
     .button.feedback {
@@ -143,7 +151,6 @@
     .header-actions,
     .actions,
     .quick-actions,
-    .settings-grid,
     .summary {
       display: grid;
       gap: 6px;
@@ -151,13 +158,11 @@
 
     .header-actions { grid-template-columns: 1fr; }
     .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .quick-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
     .panel,
     .metric,
-    .row-card,
     .result {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -201,90 +206,89 @@
       overflow-wrap: anywhere;
     }
 
-    label {
+    .money-grid {
       display: grid;
-      gap: 4px;
-      color: var(--muted);
-      font-size: 0.74rem;
-      font-weight: 850;
-    }
-
-    .denom-grid,
-    .diff-list {
-      display: grid;
+      grid-template-columns: repeat(8, minmax(0, 1fr));
       gap: 6px;
     }
 
-    .denom-grid {
-      grid-template-columns: repeat(7, minmax(0, 1fr));
-    }
-
-    .denom-field {
+    .money-field {
       display: grid;
       gap: 4px;
+      min-width: 0;
     }
 
-    .denom-field span {
-      min-height: 24px;
+    .money-field span,
+    .diff-head {
+      min-height: 28px;
       border-radius: 8px;
       background: #eef2f4;
       color: var(--ink);
       display: grid;
       place-items: center;
       font-size: 0.76rem;
-      font-weight: 900;
-    }
-
-    .row-card {
-      padding: 8px;
-      display: grid;
-      grid-template-columns: 62px minmax(0, 1fr) 92px;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .denom-name {
-      font-size: 1rem;
       font-weight: 950;
+      text-align: center;
     }
 
-    .diff-main {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .diff-title {
-      font-size: 0.9rem;
-      font-weight: 950;
-      line-height: 1.2;
-    }
-
-    .diff-meta {
-      color: var(--muted);
-      font-size: 0.74rem;
-      line-height: 1.3;
-    }
-
-    .diff-value {
-      text-align: right;
-      font-size: 0.88rem;
-      font-weight: 950;
-      line-height: 1.2;
-    }
-
-    .row-card.add {
-      border-color: rgba(31, 111, 100, 0.34);
-      background: var(--green-soft);
-    }
-
-    .row-card.remove {
-      border-color: rgba(138, 90, 0, 0.36);
+    .money-field.receipt span {
+      color: var(--gold);
       background: var(--gold-soft);
     }
 
-    .row-card.same {
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .diff-cell {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .diff-value {
+      min-height: 40px;
+      border: 1px solid var(--field-line);
+      border-radius: 8px;
       background: #fbfcfc;
+      display: grid;
+      place-items: center;
+      padding: 0 6px;
+      font-size: 0.9rem;
+      font-weight: 950;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .diff-value.add {
+      border-color: rgba(31, 111, 100, 0.34);
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .diff-value.remove {
+      border-color: rgba(138, 90, 0, 0.38);
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .diff-value.same {
+      color: var(--muted);
+    }
+
+    .target-display {
+      min-height: 40px;
+      border: 1px solid var(--field-line);
+      border-radius: 8px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      padding: 0 6px;
+      font-size: 0.92rem;
+      font-weight: 950;
+      text-align: center;
     }
 
     .result.ok {
@@ -292,14 +296,11 @@
       background: var(--green-soft);
     }
 
-    .result.warn {
-      border-color: rgba(180, 35, 24, 0.34);
-      background: var(--danger-soft);
-    }
-
-    @media (max-width: 760px) {
+    @media (max-width: 860px) {
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .denom-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .money-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .diff-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
     @media (max-width: 460px) {
@@ -308,16 +309,13 @@
       h1 { font-size: 1.18rem; }
       .panel,
       .result { padding: 8px; }
-      .actions { grid-template-columns: 1fr; }
-      .quick-actions,
-      .settings-grid { grid-template-columns: 1fr; }
-      .denom-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      .row-card { grid-template-columns: 48px minmax(0, 1fr) 76px; gap: 6px; }
-      .diff-title { font-size: 0.82rem; }
-      .diff-meta,
+      .actions,
+      .quick-actions { grid-template-columns: 1fr; }
+      .money-grid,
+      .diff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .section-title span,
+      .metric span,
       .note { font-size: 0.7rem; }
-      .diff-value { font-size: 0.78rem; }
     }
   </style>
 </head>
@@ -326,7 +324,7 @@
     <header>
       <div>
         <h1>換鈔金分配</h1>
-        <div class="status" id="status">預設用圖片第一列，目前總額 8572，目標補到 10000。</div>
+        <div class="status" id="status">輸入庫存數量與收據金額，自動算出補到固定 $10,000 的建議。</div>
       </div>
       <div class="header-actions">
         <a class="button" href="../../index.html">工具箱</a>
@@ -335,67 +333,58 @@
 
     <section class="summary" aria-label="總覽">
       <div class="metric">
-        <span>目前總額</span>
-        <strong id="current-total">$0</strong>
+        <span>庫存現金</span>
+        <strong id="stock-total">$0</strong>
       </div>
       <div class="metric">
-        <span>目標合計</span>
-        <strong id="target-count-total">$0</strong>
+        <span>收據金額</span>
+        <strong id="receipt-total">$0</strong>
       </div>
       <div class="metric">
-        <span>目標金額</span>
-        <strong id="desired-total-label">$10,000</strong>
+        <span>庫存 + 收據</span>
+        <strong id="available-total">$0</strong>
       </div>
       <div class="metric">
-        <span>淨增加</span>
-        <strong id="net-total">$0</strong>
+        <span>固定目標</span>
+        <strong>$10,000</strong>
       </div>
     </section>
 
     <section class="panel">
       <div class="section-title">
-        <h2>目前數量</h2>
-        <span>輸入現在手上的張數或枚數。下面兩個範例就是圖片裡的兩列。</span>
+        <h2>庫存數量</h2>
+        <span>可直接貼上：1000、500、100、50、10、5、1、收據，欄位之間用 Tab 或空白分隔。</span>
       </div>
       <div class="quick-actions">
-        <button class="mini-button" type="button" data-current-preset="first">套用圖片第 1 列</button>
-        <button class="mini-button" type="button" data-current-preset="second">套用圖片第 2 列</button>
+        <button class="mini-button primary" id="paste-stock" type="button">貼上庫存資料</button>
+        <button class="mini-button" id="copy-stock" type="button">複製庫存資料</button>
+        <button class="mini-button" id="restore-stock" type="button">帶入上次庫存</button>
+        <button class="mini-button" id="clear-stock" type="button">庫存與收據清空</button>
       </div>
-      <div class="denom-grid" id="current-grid"></div>
+      <div class="money-grid" id="stock-grid"></div>
+      <div class="note" id="saved-note"></div>
     </section>
 
     <section class="panel">
       <div class="section-title">
-        <h2>目標設定</h2>
-        <span>千鈔和 500 預設為 0；100 預設至少 50 張，其餘會用 50、10、5、1 分散補足。</span>
+        <h2>固定分配比例</h2>
+        <span>總額一律 $10,000。</span>
       </div>
-      <div class="settings-grid">
-        <label>
-          目標總額
-          <input id="desired-total" type="number" min="0" step="1" inputmode="numeric" value="10000">
-        </label>
-        <label>
-          100 至少幾張
-          <input id="min-hundreds" type="number" min="0" step="1" inputmode="numeric" value="50">
-        </label>
-      </div>
-      <button class="button primary" id="apply-suggestion" type="button">套用建議分配</button>
-      <div class="denom-grid" id="target-grid"></div>
-      <div class="note" id="target-note"></div>
+      <div class="diff-grid" id="target-grid"></div>
     </section>
 
-    <section class="result ok" id="result-panel">
+    <section class="result ok">
       <div class="section-title">
-        <h2 id="result-title">補充建議</h2>
-        <span id="result-text">輸入數量後會自動計算要補進或拿出的張數。</span>
+        <h2>補充建議</h2>
+        <span id="result-text">下方直接顯示各幣種要拿出或補進的數量。</span>
       </div>
-      <div class="diff-list" id="diff-list"></div>
+      <div class="diff-grid" id="diff-grid"></div>
     </section>
 
     <div class="actions">
-      <button class="button" id="reset-current" type="button">清空目前</button>
       <button class="button" id="copy-summary" type="button">複製明細</button>
-      <button class="button primary" id="focus-target" type="button">回到目標</button>
+      <button class="button" id="copy-diff" type="button">複製建議列</button>
+      <button class="button danger" id="clear-stock-bottom" type="button">庫存與收據清空</button>
     </div>
   </main>
 
@@ -410,39 +399,31 @@
       { key: "1", label: "1", unit: "枚", value: 1 },
     ];
 
-    const CURRENT_PRESETS = {
-      first: { "1000": 5, "500": 0, "100": 23, "50": 16, "10": 17, "5": 60, "1": 2 },
-      second: { "1000": 6, "500": 0, "100": 14, "50": 14, "10": 17, "5": 60, "1": 2 },
-    };
-
-    const DEFAULT_TARGET = {
+    const TARGET = {
       "1000": 0,
       "500": 0,
-      "100": 50,
-      "50": 40,
-      "10": 200,
-      "5": 160,
-      "1": 200,
+      "100": 60,
+      "50": 50,
+      "10": 100,
+      "5": 80,
+      "1": 100,
     };
+    const TARGET_TOTAL = 10000;
+    const STORAGE_KEY = "cashChangePlannerStockV2";
 
-    const currentGrid = document.getElementById("current-grid");
+    const stockGrid = document.getElementById("stock-grid");
     const targetGrid = document.getElementById("target-grid");
-    const desiredTotalInput = document.getElementById("desired-total");
-    const minHundredsInput = document.getElementById("min-hundreds");
-    const currentTotal = document.getElementById("current-total");
-    const targetCountTotal = document.getElementById("target-count-total");
-    const desiredTotalLabel = document.getElementById("desired-total-label");
-    const netTotal = document.getElementById("net-total");
-    const targetNote = document.getElementById("target-note");
-    const resultPanel = document.getElementById("result-panel");
-    const resultTitle = document.getElementById("result-title");
-    const resultText = document.getElementById("result-text");
-    const diffList = document.getElementById("diff-list");
+    const diffGrid = document.getElementById("diff-grid");
     const status = document.getElementById("status");
+    const savedNote = document.getElementById("saved-note");
     const copySummaryButton = document.getElementById("copy-summary");
+    const copyDiffButton = document.getElementById("copy-diff");
+
+    let lastSummary = "";
+    let lastDiffLine = "";
 
     function parseCount(value) {
-      const number = Number.parseInt(String(value || "").replace(/[^\d]/g, ""), 10);
+      const number = Number.parseInt(String(value || "").replace(/[^\d-]/g, ""), 10);
       return Number.isFinite(number) && number > 0 ? number : 0;
     }
 
@@ -450,189 +431,216 @@
       return `$${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
     }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    function fieldId(key) {
+      return `stock-${key}`;
     }
 
-    function fieldId(type, key) {
-      return `${type}-${key}`;
+    function stockKeys() {
+      return [...DENOMS.map((denom) => denom.key), "receipt"];
     }
 
-    function renderFields(container, type, values) {
-      container.innerHTML = DENOMS.map((denom) => `
-        <label class="denom-field">
-          <span>${denom.label}</span>
+    function blankStock() {
+      return Object.fromEntries(stockKeys().map((key) => [key, 0]));
+    }
+
+    function readStock() {
+      const values = Object.fromEntries(DENOMS.map((denom) => {
+        const input = document.getElementById(fieldId(denom.key));
+        return [denom.key, parseCount(input?.value)];
+      }));
+      values.receipt = parseCount(document.getElementById("stock-receipt")?.value);
+      return values;
+    }
+
+    function setStock(values, shouldSave = true) {
+      const next = { ...blankStock(), ...(values || {}) };
+      DENOMS.forEach((denom) => {
+        const input = document.getElementById(fieldId(denom.key));
+        if (input) input.value = String(parseCount(next[denom.key]));
+      });
+      const receipt = document.getElementById("stock-receipt");
+      if (receipt) receipt.value = String(parseCount(next.receipt));
+      calculate(shouldSave);
+    }
+
+    function stockCashTotal(stock) {
+      return DENOMS.reduce((sum, denom) => sum + (parseCount(stock[denom.key]) * denom.value), 0);
+    }
+
+    function stockDataLine(stock) {
+      return [...DENOMS.map((denom) => stock[denom.key] || 0), stock.receipt || 0].join("\t");
+    }
+
+    function parseStockLine(text) {
+      const values = String(text || "")
+        .trim()
+        .split(/[\t,\s]+/)
+        .filter(Boolean)
+        .map(parseCount);
+      if (values.length < 8) return null;
+      const stock = {};
+      DENOMS.forEach((denom, index) => {
+        stock[denom.key] = values[index] || 0;
+      });
+      stock.receipt = values[7] || 0;
+      return stock;
+    }
+
+    function saveStock(stock) {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        stock,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      savedNote.textContent = `已紀錄上一次庫存：${new Date(payload.savedAt).toLocaleString("zh-TW", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
+    }
+
+    function loadSavedStock() {
+      try {
+        const payload = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (!payload?.stock) return null;
+        return payload;
+      } catch {
+        return null;
+      }
+    }
+
+    function renderStockFields() {
+      stockGrid.innerHTML = [
+        ...DENOMS.map((denom) => `
+          <label class="money-field">
+            <span>${denom.label}</span>
+            <input
+              id="${fieldId(denom.key)}"
+              data-stock-input
+              data-denom="${denom.key}"
+              type="number"
+              min="0"
+              step="1"
+              inputmode="numeric"
+              value="0"
+              aria-label="${denom.label} 庫存數量"
+            >
+          </label>
+        `),
+        `<label class="money-field receipt">
+          <span>收據</span>
           <input
-            id="${fieldId(type, denom.key)}"
-            data-type="${type}"
-            data-denom="${denom.key}"
+            id="stock-receipt"
+            data-stock-input
+            data-denom="receipt"
             type="number"
             min="0"
             step="1"
             inputmode="numeric"
-            value="${values[denom.key] || 0}"
-            aria-label="${denom.label} ${type === "current" ? "目前數量" : "目標數量"}"
+            value="0"
+            aria-label="收據金額"
           >
-        </label>
+        </label>`,
+      ].join("");
+    }
+
+    function renderTarget() {
+      targetGrid.innerHTML = DENOMS.map((denom) => `
+        <div class="diff-cell">
+          <div class="diff-head">${denom.label}</div>
+          <div class="target-display">${TARGET[denom.key]}${denom.unit}</div>
+        </div>
       `).join("");
     }
 
-    function readValues(type) {
-      return Object.fromEntries(DENOMS.map((denom) => {
-        const input = document.getElementById(fieldId(type, denom.key));
-        return [denom.key, parseCount(input?.value)];
-      }));
+    function diffLabel(diff, unit) {
+      if (diff === 0) return `0${unit}`;
+      return `${diff > 0 ? "+" : "-"}${Math.abs(diff)}${unit}`;
     }
 
-    function setValues(type, values) {
-      DENOMS.forEach((denom) => {
-        const input = document.getElementById(fieldId(type, denom.key));
-        if (input) input.value = String(values[denom.key] || 0);
-      });
-      calculate();
-    }
-
-    function valueOf(values) {
-      return DENOMS.reduce((sum, denom) => sum + (parseCount(values[denom.key]) * denom.value), 0);
-    }
-
-    function suggestedTarget() {
-      const desired = parseCount(desiredTotalInput.value) || 10000;
-      const minHundreds = parseCount(minHundredsInput.value);
-      const target = { "1000": 0, "500": 0, "100": minHundreds, "50": 0, "10": 0, "5": 0, "1": 0 };
-      let remaining = desired - (minHundreds * 100);
-      if (remaining < 0) return null;
-
-      const shares = [
-        { key: "50", value: 50, share: 0.4 },
-        { key: "10", value: 10, share: 0.4 },
-        { key: "5", value: 5, share: 0.16 },
-      ];
-
-      shares.forEach((item) => {
-        const amount = Math.floor((remaining * item.share) / item.value) * item.value;
-        target[item.key] = amount / item.value;
-        remaining -= amount;
-      });
-      target["1"] = remaining;
-      return target;
-    }
-
-    function renderDiff(current, target) {
-      const rows = DENOMS.map((denom) => {
-        const currentCount = parseCount(current[denom.key]);
-        const targetCount = parseCount(target[denom.key]);
-        const diff = targetCount - currentCount;
-        const abs = Math.abs(diff);
-        const value = abs * denom.value;
-        const stateClass = diff > 0 ? "add" : diff < 0 ? "remove" : "same";
-        const action = diff > 0 ? "補進" : diff < 0 ? "拿出" : "不用調整";
-        const title = diff === 0
-          ? `${denom.label} 維持 ${currentCount}${denom.unit}`
-          : `${action} ${abs}${denom.unit} ${denom.label}`;
+    function renderDiff(stock) {
+      diffGrid.innerHTML = DENOMS.map((denom) => {
+        const diff = (TARGET[denom.key] || 0) - (stock[denom.key] || 0);
+        const className = diff > 0 ? "add" : diff < 0 ? "remove" : "same";
         return `
-          <article class="row-card ${stateClass}">
-            <div class="denom-name">${denom.label}</div>
-            <div class="diff-main">
-              <div class="diff-title">${escapeHtml(title)}</div>
-              <div class="diff-meta">目前 ${currentCount}${denom.unit}，目標 ${targetCount}${denom.unit}</div>
-            </div>
-            <div class="diff-value">${diff === 0 ? "$0" : formatCurrency(value)}</div>
-          </article>
+          <div class="diff-cell">
+            <div class="diff-head">${denom.label}</div>
+            <div class="diff-value ${className}">${diffLabel(diff, denom.unit)}</div>
+          </div>
         `;
-      });
-      diffList.innerHTML = rows.join("");
+      }).join("");
     }
 
-    function buildSummary(data) {
-      const lines = [
+    function buildSummary(stock) {
+      const diffs = Object.fromEntries(DENOMS.map((denom) => [
+        denom.key,
+        (TARGET[denom.key] || 0) - (stock[denom.key] || 0),
+      ]));
+      const stockTotal = stockCashTotal(stock);
+      const availableTotal = stockTotal + (stock.receipt || 0);
+      return [
         "換鈔金分配建議",
         "",
-        `目前總額：${formatCurrency(data.currentTotal)}`,
-        `目標合計：${formatCurrency(data.targetTotal)}`,
-        `淨增加：${formatCurrency(data.net)}`,
-        `需要補進：${formatCurrency(data.addTotal)}`,
-        `需要拿出：${formatCurrency(data.removeTotal)}`,
+        `庫存現金：${formatCurrency(stockTotal)}`,
+        `收據金額：${formatCurrency(stock.receipt || 0)}`,
+        `庫存 + 收據：${formatCurrency(availableTotal)}`,
+        `固定目標：${formatCurrency(TARGET_TOTAL)}`,
         "",
-        "目標數量：",
-        ...DENOMS.map((denom) => `${denom.label}：${data.target[denom.key] || 0}${denom.unit}`),
+        `庫存列：${stockDataLine(stock)}`,
+        `建議列：${DENOMS.map((denom) => diffLabel(diffs[denom.key], denom.unit)).join("\t")}`,
         "",
-        "調整明細：",
-        ...DENOMS.map((denom) => {
-          const diff = (data.target[denom.key] || 0) - (data.current[denom.key] || 0);
-          if (diff === 0) return `${denom.label}：不用調整`;
-          return `${denom.label}：${diff > 0 ? "補進" : "拿出"} ${Math.abs(diff)}${denom.unit}`;
-        }),
-      ];
-      return lines.join("\n");
+        "固定分配：",
+        ...DENOMS.map((denom) => `${denom.label}：${TARGET[denom.key]}${denom.unit}`),
+      ].join("\n");
     }
 
-    let lastSummary = "";
+    function calculate(shouldSave = true) {
+      const stock = readStock();
+      const cashTotal = stockCashTotal(stock);
+      const receipt = stock.receipt || 0;
+      const availableTotal = cashTotal + receipt;
 
-    function calculate() {
-      const current = readValues("current");
-      const target = readValues("target");
-      const desired = parseCount(desiredTotalInput.value) || 0;
-      const currentValue = valueOf(current);
-      const targetValue = valueOf(target);
-      const net = targetValue - currentValue;
-      let addTotal = 0;
-      let removeTotal = 0;
+      document.getElementById("stock-total").textContent = formatCurrency(cashTotal);
+      document.getElementById("receipt-total").textContent = formatCurrency(receipt);
+      document.getElementById("available-total").textContent = formatCurrency(availableTotal);
 
-      DENOMS.forEach((denom) => {
-        const diff = (target[denom.key] || 0) - (current[denom.key] || 0);
-        if (diff > 0) addTotal += diff * denom.value;
-        if (diff < 0) removeTotal += Math.abs(diff) * denom.value;
-      });
+      renderDiff(stock);
+      lastDiffLine = DENOMS.map((denom) => {
+        const diff = (TARGET[denom.key] || 0) - (stock[denom.key] || 0);
+        return diffLabel(diff, denom.unit);
+      }).join("\t");
+      lastSummary = buildSummary(stock);
 
-      currentTotal.textContent = formatCurrency(currentValue);
-      targetCountTotal.textContent = formatCurrency(targetValue);
-      desiredTotalLabel.textContent = formatCurrency(desired);
-      netTotal.textContent = formatCurrency(net);
-      renderDiff(current, target);
+      const difference = TARGET_TOTAL - availableTotal;
+      document.getElementById("result-text").textContent = difference === 0
+        ? "庫存加收據剛好 $10,000。"
+        : `庫存加收據與 $10,000 相差 ${formatCurrency(difference)}。`;
 
-      const data = { current, target, currentTotal: currentValue, targetTotal: targetValue, net, addTotal, removeTotal };
-      lastSummary = buildSummary(data);
-
-      resultPanel.classList.toggle("warn", targetValue !== desired);
-      resultPanel.classList.toggle("ok", targetValue === desired);
-      if (targetValue !== desired) {
-        resultTitle.textContent = "目標合計還沒對齊";
-        resultText.textContent = `目前目標數量加起來是 ${formatCurrency(targetValue)}，和目標金額 ${formatCurrency(desired)} 差 ${formatCurrency(targetValue - desired)}。`;
-      } else {
-        resultTitle.textContent = "補充建議";
-        resultText.textContent = `需要補進 ${formatCurrency(addTotal)}，拿出 ${formatCurrency(removeTotal)}，淨增加 ${formatCurrency(net)}。`;
-      }
-
-      const hundredCount = target["100"] || 0;
-      const minHundreds = parseCount(minHundredsInput.value);
-      targetNote.textContent = `目前 100 元目標 ${hundredCount} 張，${hundredCount >= minHundreds ? "已達到" : "還沒達到"}至少 ${minHundreds} 張的設定。`;
+      if (shouldSave) saveStock(stock);
     }
 
-    function applySuggestion() {
-      const suggestion = suggestedTarget();
-      if (!suggestion) {
-        status.textContent = "100 元張數太高，已經超過目標總額。";
-        status.style.color = "var(--danger)";
-        return;
-      }
-      setValues("target", suggestion);
-      status.textContent = "已套用建議分配。";
-      status.style.color = "var(--muted)";
-    }
-
-    async function copySummary() {
+    async function pasteStock() {
       try {
-        await navigator.clipboard.writeText(lastSummary);
-        flashCopyButton("已複製");
+        const text = await navigator.clipboard.readText();
+        const parsed = parseStockLine(text);
+        if (!parsed) {
+          setStatus("貼上格式需要 8 個數字：1000、500、100、50、10、5、1、收據。", true);
+          return;
+        }
+        setStock(parsed);
+        setStatus("已貼上庫存資料。");
+      } catch {
+        setStatus("無法讀取剪貼簿，請直接點第一個欄位後貼上。", true);
+      }
+    }
+
+    async function copyText(text, button, label = "已複製") {
+      try {
+        await navigator.clipboard.writeText(text);
       } catch {
         const textarea = document.createElement("textarea");
-        textarea.value = lastSummary;
+        textarea.value = text;
         textarea.setAttribute("readonly", "");
         textarea.style.position = "fixed";
         textarea.style.left = "-9999px";
@@ -640,51 +648,81 @@
         textarea.select();
         document.execCommand("copy");
         textarea.remove();
-        flashCopyButton("已複製");
       }
+      flashButton(button, label);
     }
 
-    function flashCopyButton(label) {
-      const original = copySummaryButton.dataset.originalLabel || copySummaryButton.textContent;
-      copySummaryButton.dataset.originalLabel = original;
-      window.clearTimeout(Number(copySummaryButton.dataset.timer || 0));
-      copySummaryButton.textContent = label;
-      copySummaryButton.classList.add("feedback");
-      copySummaryButton.dataset.timer = String(window.setTimeout(() => {
-        copySummaryButton.textContent = original;
-        copySummaryButton.classList.remove("feedback");
+    function flashButton(button, label) {
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      window.clearTimeout(Number(button.dataset.timer || 0));
+      button.textContent = label;
+      button.classList.add("feedback");
+      button.dataset.timer = String(window.setTimeout(() => {
+        button.textContent = original;
+        button.classList.remove("feedback");
       }, 1300));
     }
 
-    renderFields(currentGrid, "current", CURRENT_PRESETS.first);
-    renderFields(targetGrid, "target", DEFAULT_TARGET);
-    calculate();
+    function setStatus(message, isError = false) {
+      status.textContent = message;
+      status.style.color = isError ? "var(--danger)" : "var(--muted)";
+    }
+
+    function restoreSavedStock() {
+      const saved = loadSavedStock();
+      if (!saved?.stock) {
+        setStatus("目前沒有上一次庫存紀錄。", true);
+        return;
+      }
+      setStock(saved.stock, false);
+      setStatus("已帶入上一次庫存。");
+    }
+
+    function clearStock() {
+      setStock(blankStock());
+      setStatus("庫存與收據已清空。");
+    }
+
+    renderStockFields();
+    renderTarget();
+    const saved = loadSavedStock();
+    setStock(saved?.stock || blankStock(), false);
+    if (saved?.savedAt) {
+      savedNote.textContent = `已載入上一次庫存：${new Date(saved.savedAt).toLocaleString("zh-TW", {
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`;
+    } else {
+      savedNote.textContent = "尚未紀錄庫存。";
+    }
 
     document.body.addEventListener("input", (event) => {
-      if (event.target.matches("input")) calculate();
+      if (event.target.matches("[data-stock-input]")) calculate();
     });
 
     document.body.addEventListener("focusin", (event) => {
       if (event.target.matches("input")) setTimeout(() => event.target.select(), 0);
     });
 
-    document.body.addEventListener("click", (event) => {
-      const presetButton = event.target.closest("[data-current-preset]");
-      if (presetButton) {
-        setValues("current", CURRENT_PRESETS[presetButton.dataset.currentPreset]);
-        status.textContent = presetButton.dataset.currentPreset === "first"
-          ? "已套用圖片第 1 列。"
-          : "已套用圖片第 2 列。";
-        status.style.color = "var(--muted)";
-      }
+    stockGrid.addEventListener("paste", (event) => {
+      const text = event.clipboardData?.getData("text");
+      const parsed = parseStockLine(text);
+      if (!parsed) return;
+      event.preventDefault();
+      setStock(parsed);
+      setStatus("已貼上庫存資料。");
     });
 
-    document.getElementById("apply-suggestion").addEventListener("click", applySuggestion);
-    document.getElementById("reset-current").addEventListener("click", () => setValues("current", {}));
-    document.getElementById("copy-summary").addEventListener("click", copySummary);
-    document.getElementById("focus-target").addEventListener("click", () => {
-      document.getElementById("target-100").focus();
-    });
+    document.getElementById("paste-stock").addEventListener("click", pasteStock);
+    document.getElementById("copy-stock").addEventListener("click", () => copyText(stockDataLine(readStock()), document.getElementById("copy-stock")));
+    document.getElementById("restore-stock").addEventListener("click", restoreSavedStock);
+    document.getElementById("clear-stock").addEventListener("click", clearStock);
+    document.getElementById("clear-stock-bottom").addEventListener("click", clearStock);
+    copySummaryButton.addEventListener("click", () => copyText(lastSummary, copySummaryButton));
+    copyDiffButton.addEventListener("click", () => copyText(lastDiffLine, copyDiffButton));
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
