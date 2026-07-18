@@ -389,6 +389,16 @@
       background: #edf8f4;
     }
 
+    .card.overdue {
+      border-color: #d87474;
+      background: #fff0f0;
+    }
+
+    .card.reminder-soon {
+      border-color: #77a9df;
+      background: #eef6ff;
+    }
+
     .card.today.completed {
       background: #f3f6f5;
     }
@@ -515,6 +525,329 @@
       min-width: 0;
     }
 
+    .reminder-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 1.2fr) minmax(112px, 0.75fr) 72px minmax(180px, 1fr);
+      gap: 6px 8px;
+      align-items: end;
+    }
+
+    .reminder-checks {
+      display: grid;
+      gap: 5px;
+      align-self: end;
+    }
+
+    .check-row {
+      min-height: 27px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      color: var(--ink);
+      font-size: 0.78rem;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+
+    input.check-box {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 24px;
+      min-width: 24px;
+      height: 24px;
+      min-height: 24px;
+      border: 1px solid var(--primary);
+      border-radius: 7px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+    }
+
+    input.check-box:checked {
+      background: var(--primary);
+    }
+
+    input.check-box:checked::after {
+      content: "✓";
+      color: #fff;
+      font-size: 1.05rem;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .time-select-desktop {
+      min-height: 36px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 4px;
+    }
+
+    .time-select-desktop select {
+      width: 100%;
+      min-height: 36px;
+      padding: 0 6px;
+      text-align: center;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .time-select-desktop span {
+      color: var(--ink);
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .time-mobile-control {
+      display: none;
+    }
+
+    .time-chip-mobile {
+      width: fit-content;
+      min-width: 76px;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #f2f3f4;
+      color: var(--ink);
+      font-size: 0.95rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .time-chip-mobile.open {
+      background: var(--ink);
+      color: #fff;
+    }
+
+    .time-wheel-mobile {
+      display: none;
+    }
+
+    .time-wheel-mobile[hidden] {
+      display: none;
+    }
+
+    .time-mobile-picker {
+      display: none;
+    }
+
+    .time-mobile-picker[hidden] {
+      display: none;
+    }
+
+    .time-wheel {
+      position: relative;
+      min-height: 132px;
+      grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .time-wheel::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 36px;
+      border-radius: 8px;
+      background: #f1f2f4;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .time-column {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 132px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: none;
+      font-variant-numeric: tabular-nums;
+      -webkit-overflow-scrolling: touch;
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 26%, #000 74%, transparent 100%);
+    }
+
+    .time-column::-webkit-scrollbar {
+      display: none;
+    }
+
+    .time-option,
+    .time-spacer {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      scroll-snap-align: center;
+      color: #a6adb2;
+      font-size: 1.22rem;
+      font-weight: 850;
+      line-height: 1;
+    }
+
+    .time-option.selected {
+      color: var(--ink);
+      font-size: 1.52rem;
+      font-weight: 950;
+    }
+
+    .time-separator {
+      position: relative;
+      z-index: 1;
+      color: var(--ink);
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .time-picker-actions {
+      display: none;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .time-select-desktop {
+        display: none;
+      }
+
+      .reminder-row {
+        grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1fr);
+        gap: 7px 8px;
+        align-items: end;
+      }
+
+      .reminder-row input,
+      .reminder-row select {
+        min-height: 32px;
+        padding: 0 6px;
+        font-size: 0.75rem;
+        font-weight: 900;
+      }
+
+      .reminder-row label {
+        gap: 4px;
+        font-size: 0.7rem;
+        min-width: 0;
+      }
+
+      .reminder-row > label:first-child {
+        grid-column: 1 / 3;
+        grid-row: 1;
+      }
+
+      .reminder-row > label:first-child input {
+        width: calc(100% - 14px);
+        text-align: center;
+        font-size: 0.82rem;
+      }
+
+      .time-field {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: start;
+      }
+
+      .reminder-row > label:nth-child(3) {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .reminder-row > label:nth-child(3) input {
+        width: 52px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+        text-align: center;
+        border-radius: 8px;
+        font-size: 0.82rem;
+      }
+
+      .reminder-checks {
+        display: contents;
+      }
+
+      .reminder-checks .check-row:first-child {
+        grid-column: 2;
+        grid-row: 2;
+      }
+
+      .reminder-checks .check-row:nth-child(2) {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .check-row {
+        min-height: 32px;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 4px;
+        padding: 0;
+        font-size: 0.67rem;
+        line-height: 1.08;
+        overflow-wrap: anywhere;
+      }
+
+      input.check-box {
+        width: 28px;
+        min-width: 28px;
+        height: 28px;
+        min-height: 28px;
+        border-radius: 8px;
+      }
+
+      input.check-box:checked::after {
+        font-size: 1.15rem;
+      }
+
+      .time-mobile-control {
+        display: grid;
+      }
+
+      .time-chip-mobile {
+        width: 62px;
+        min-width: 62px;
+        height: 34px;
+        min-height: 34px;
+        padding: 0;
+        border-radius: 8px;
+        font-size: 0.78rem;
+      }
+
+      .time-mobile-picker {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        display: grid;
+        gap: 8px;
+        padding: 6px 0 4px;
+      }
+
+      .time-wheel-mobile {
+        display: grid;
+        width: 100%;
+        padding: 4px 0;
+      }
+
+      .time-picker-actions {
+        width: min(240px, 58%);
+        justify-self: center;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .time-picker-actions .button {
+        min-height: 30px;
+        font-size: 0.82rem;
+      }
+    }
+
     .weekday-grid {
       grid-template-columns: repeat(7, minmax(0, 1fr));
     }
@@ -557,7 +890,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.8</span>
+          <span class="version">v7.15.18</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -614,34 +947,52 @@
           標題
           <input id="title-input" required maxlength="80" autocomplete="off">
         </label>
-        <div class="compact-grid full">
+        <div class="reminder-row full">
           <label>
             日期
             <input id="due-input" type="date" required>
           </label>
-          <label>
+          <label class="time-field">
             提醒時間
-            <input id="reminder-time-input" type="text" inputmode="numeric" autocomplete="off" maxlength="5" pattern="^([01]\d|2[0-3]):[0-5]\d$" placeholder="09:00" value="09:00">
+            <span class="time-select-desktop" aria-label="提醒時間，24 小時制">
+              <select id="reminder-hour-select" aria-label="小時"></select>
+              <span>:</span>
+              <select id="reminder-minute-select" aria-label="分鐘"></select>
+            </span>
+            <span class="time-mobile-control">
+              <button class="time-chip-mobile" id="reminder-time-mobile-button" type="button" aria-expanded="false" aria-controls="reminder-time-wheel-panel">09:00</button>
+            </span>
           </label>
           <label>
             提前日
             <input id="days-before-input" type="number" min="0" max="365" value="0">
           </label>
+          <div class="reminder-checks">
+            <label class="check-row">
+              <input class="check-box" id="reminder-enabled-input" type="checkbox">
+              <span>開啟提醒</span>
+            </label>
+            <label class="check-row">
+              <input class="check-box" id="repeat-reminder-input" type="checkbox">
+              <span>到期後重複提醒</span>
+            </label>
+          </div>
+          <div class="time-mobile-picker" id="reminder-time-wheel-panel" hidden>
+            <span class="time-wheel time-wheel-mobile" aria-label="提醒時間，24 小時制">
+              <span class="time-column" id="reminder-hour-wheel" role="listbox" aria-label="小時"></span>
+              <span class="time-separator">:</span>
+              <span class="time-column" id="reminder-minute-wheel" role="listbox" aria-label="分鐘"></span>
+            </span>
+            <span class="time-picker-actions">
+              <button class="button primary" id="time-picker-save" type="button">儲存</button>
+              <button class="button" id="time-picker-cancel" type="button">取消</button>
+            </span>
+          </div>
         </div>
         <label class="full">
           備註
           <textarea id="notes-input" maxlength="600"></textarea>
         </label>
-        <div class="compact-grid two full">
-          <label class="switch-row">
-            <input id="reminder-enabled-input" type="checkbox">
-            開啟提醒
-          </label>
-          <label class="switch-row">
-            <input id="repeat-reminder-input" type="checkbox">
-            到期後重複提醒
-          </label>
-        </div>
       </div>
 
       <div class="panel">
@@ -728,7 +1079,14 @@
       dueDate: document.getElementById("due-input"),
       notes: document.getElementById("notes-input"),
       reminderEnabled: document.getElementById("reminder-enabled-input"),
-      reminderTime: document.getElementById("reminder-time-input"),
+      reminderHourSelect: document.getElementById("reminder-hour-select"),
+      reminderMinuteSelect: document.getElementById("reminder-minute-select"),
+      reminderMobileButton: document.getElementById("reminder-time-mobile-button"),
+      reminderWheelPanel: document.getElementById("reminder-time-wheel-panel"),
+      timePickerSave: document.getElementById("time-picker-save"),
+      timePickerCancel: document.getElementById("time-picker-cancel"),
+      reminderHourWheel: document.getElementById("reminder-hour-wheel"),
+      reminderMinuteWheel: document.getElementById("reminder-minute-wheel"),
       daysBefore: document.getElementById("days-before-input"),
       repeatReminder: document.getElementById("repeat-reminder-input"),
       recurrenceType: document.getElementById("recurrence-type-input"),
@@ -744,6 +1102,7 @@
       activeBoxId: localStorage.getItem(ACTIVE_BOX_STORAGE_KEY) || DEFAULT_BOX.id,
       activeTab: localStorage.getItem(ACTIVE_TAB_STORAGE_KEY) || "open",
       editingId: "",
+      mobileTimeBeforeOpen: "09:00",
       selectedWeekdays: new Set(),
     };
     const dragState = {
@@ -778,10 +1137,97 @@
       return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
     }
 
-    function formatTimeTyping(value) {
-      const digits = String(value || "").replace(/\D/g, "").slice(0, 4);
-      if (digits.length <= 2) return digits;
-      return `${digits.slice(0, 2)}:${digits.slice(2)}`;
+    function fillTimeOptions() {
+      const hourValues = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, "0"));
+      const minuteValues = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, "0"));
+      fields.reminderHourSelect.innerHTML = hourValues.map((value) => `<option value="${value}">${value}</option>`).join("");
+      fields.reminderMinuteSelect.innerHTML = minuteValues.map((value) => `<option value="${value}">${value}</option>`).join("");
+      fields.reminderHourWheel.innerHTML = [
+        '<span class="time-spacer" aria-hidden="true"></span>',
+        ...hourValues.map((value) => `<button class="time-option" type="button" role="option" data-time-value="${value}">${value}</button>`),
+        '<span class="time-spacer" aria-hidden="true"></span>',
+      ].join("");
+      fields.reminderMinuteWheel.innerHTML = [
+        '<span class="time-spacer" aria-hidden="true"></span>',
+        ...minuteValues.map((value) => `<button class="time-option" type="button" role="option" data-time-value="${value}">${value}</button>`),
+        '<span class="time-spacer" aria-hidden="true"></span>',
+      ].join("");
+    }
+
+    function setTimeColumnValue(column, value, behavior = "auto") {
+      column.dataset.value = value;
+      column.querySelectorAll(".time-option").forEach((option) => {
+        const selected = option.dataset.timeValue === value;
+        option.classList.toggle("selected", selected);
+        option.setAttribute("aria-selected", selected ? "true" : "false");
+        if (selected) option.scrollIntoView({ block: "center", behavior });
+      });
+    }
+
+    function selectedTimeColumnValue(column) {
+      const options = [...column.querySelectorAll(".time-option")];
+      if (options.length === 0) return column.dataset.value || "00";
+      const columnCenter = column.getBoundingClientRect().top + column.clientHeight / 2;
+      let closest = options[0];
+      let closestDistance = Infinity;
+      for (const option of options) {
+        const rect = option.getBoundingClientRect();
+        const distance = Math.abs((rect.top + rect.height / 2) - columnCenter);
+        if (distance < closestDistance) {
+          closest = option;
+          closestDistance = distance;
+        }
+      }
+      return closest.dataset.timeValue || "00";
+    }
+
+    function syncTimeColumn(column, part) {
+      const value = selectedTimeColumnValue(column);
+      const hour = part === "hour" ? value : fields.reminderHourSelect.value || fields.reminderHourWheel.dataset.value || "09";
+      const minute = part === "minute" ? value : fields.reminderMinuteSelect.value || fields.reminderMinuteWheel.dataset.value || "00";
+      setReminderTime(`${hour}:${minute}`, "smooth");
+    }
+
+    function wireTimeWheel(column, part) {
+      let scrollTimer = 0;
+      column.addEventListener("scroll", () => {
+        window.clearTimeout(scrollTimer);
+        scrollTimer = window.setTimeout(() => syncTimeColumn(column, part), 80);
+      }, { passive: true });
+      column.addEventListener("click", (event) => {
+        const option = event.target.closest(".time-option");
+        if (!option) return;
+        const hour = part === "hour" ? option.dataset.timeValue : fields.reminderHourSelect.value || fields.reminderHourWheel.dataset.value || "09";
+        const minute = part === "minute" ? option.dataset.timeValue : fields.reminderMinuteSelect.value || fields.reminderMinuteWheel.dataset.value || "00";
+        setReminderTime(`${hour}:${minute}`, "smooth");
+      });
+    }
+
+    function setReminderTime(value, behavior = "auto") {
+      const [hour, minute] = normalizeTimeValue(value).split(":");
+      fields.reminderHourSelect.value = hour;
+      fields.reminderMinuteSelect.value = minute;
+      fields.reminderMobileButton.textContent = `${hour}:${minute}`;
+      setTimeColumnValue(fields.reminderHourWheel, hour, behavior);
+      setTimeColumnValue(fields.reminderMinuteWheel, minute, behavior);
+    }
+
+    function setMobileTimeWheelOpen(open) {
+      if (open) state.mobileTimeBeforeOpen = reminderTimeValue();
+      fields.reminderWheelPanel.hidden = !open;
+      fields.reminderMobileButton.classList.toggle("open", open);
+      fields.reminderMobileButton.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) requestAnimationFrame(() => setReminderTime(reminderTimeValue()));
+    }
+
+    function reminderTimeValue() {
+      return `${fields.reminderHourSelect.value || fields.reminderHourWheel.dataset.value || "09"}:${fields.reminderMinuteSelect.value || fields.reminderMinuteWheel.dataset.value || "00"}`;
+    }
+
+    function isAdvanceReminderToday(card, today) {
+      const reminder = card.reminder || {};
+      const daysBefore = Number.parseInt(reminder.daysBefore, 10) || 0;
+      return reminder.enabled === true && daysBefore > 0 && addDays(card.dueDate, -daysBefore) === today;
     }
 
     function parseDate(dateKey) {
@@ -1005,8 +1451,18 @@
     }
 
     function renderCard(card) {
+      const today = todayKey();
+      const dateClass = card.completed
+        ? ""
+        : card.dueDate < today
+          ? "overdue"
+          : card.dueDate === today
+            ? "today"
+            : isAdvanceReminderToday(card, today)
+              ? "reminder-soon"
+              : "";
       return `
-        <article class="card ${card.completed ? "completed" : ""} ${card.dueDate === todayKey() ? "today" : ""} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
+        <article class="card ${card.completed ? "completed" : ""} ${dateClass} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
           <div class="card-head">
             <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
             <div>
@@ -1081,7 +1537,7 @@
       fields.dueDate.value = draft.dueDate;
       fields.notes.value = draft.notes;
       fields.reminderEnabled.checked = draft.reminder.enabled;
-      fields.reminderTime.value = normalizeTimeValue(draft.reminder.time);
+      setReminderTime(draft.reminder.time);
       fields.daysBefore.value = draft.reminder.daysBefore;
       fields.repeatReminder.checked = draft.reminder.repeatUntilDone;
       fields.recurrenceType.value = draft.recurrence.type;
@@ -1090,6 +1546,8 @@
       state.selectedWeekdays = new Set(draft.recurrence.weekdays || []);
       renderRecurrenceControls();
       modal.classList.add("open");
+      setMobileTimeWheelOpen(false);
+      requestAnimationFrame(() => setReminderTime(draft.reminder.time));
       fields.title.focus();
     }
 
@@ -1114,7 +1572,7 @@
         reminder: {
           enabled: fields.reminderEnabled.checked,
           daysBefore: fields.daysBefore.value,
-          time: normalizeTimeValue(fields.reminderTime.value),
+          time: reminderTimeValue(),
           repeatUntilDone: fields.repeatReminder.checked,
           sentKeys: existing?.reminder?.sentKeys || {},
         },
@@ -1271,11 +1729,21 @@
       localStorage.setItem(PUSH_WORKER_STORAGE_KEY, workerUrlInput.value.trim());
     });
 
-    fields.reminderTime.addEventListener("input", () => {
-      fields.reminderTime.value = formatTimeTyping(fields.reminderTime.value);
+    fields.reminderHourSelect.addEventListener("change", () => {
+      setReminderTime(`${fields.reminderHourSelect.value}:${fields.reminderMinuteSelect.value}`);
     });
-    fields.reminderTime.addEventListener("blur", () => {
-      fields.reminderTime.value = normalizeTimeValue(fields.reminderTime.value);
+    fields.reminderMinuteSelect.addEventListener("change", () => {
+      setReminderTime(`${fields.reminderHourSelect.value}:${fields.reminderMinuteSelect.value}`);
+    });
+    fields.reminderMobileButton.addEventListener("click", () => {
+      setMobileTimeWheelOpen(fields.reminderWheelPanel.hidden);
+    });
+    fields.timePickerSave.addEventListener("click", () => {
+      setMobileTimeWheelOpen(false);
+    });
+    fields.timePickerCancel.addEventListener("click", () => {
+      setReminderTime(state.mobileTimeBeforeOpen);
+      setMobileTimeWheelOpen(false);
     });
     fields.recurrenceType.addEventListener("input", renderRecurrenceControls);
     weekdayGrid.addEventListener("click", (event) => {
@@ -1315,6 +1783,11 @@
         if (card && !card.completed) await completeCard(card);
       }
     });
+
+    fillTimeOptions();
+    wireTimeWheel(fields.reminderHourWheel, "hour");
+    wireTimeWheel(fields.reminderMinuteWheel, "minute");
+    setReminderTime("09:00");
 
     try {
       const cachedBoxes = JSON.parse(localStorage.getItem(BOX_CACHE_KEY) || "[]");
