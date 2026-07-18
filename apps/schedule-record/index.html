@@ -174,9 +174,12 @@
     }
 
     .top-actions,
-    .mode-grid,
-    .action-grid {
+    .mode-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .action-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .form-grid {
@@ -527,6 +530,7 @@
 
     <div class="action-grid">
       <button class="button" id="clear-button" type="button">清空</button>
+      <button class="button" id="clear-marks-button" type="button">清除標記</button>
       <button class="button primary" id="copy-button" type="button">複製</button>
     </div>
   </main>
@@ -566,6 +570,11 @@
       "年假例休",
       "家庭照護假",
     ];
+    const SUPPORT_SHIFT_KEYWORDS = [
+      "一店裝機支援休",
+      "二店裝機支援休",
+      "二電裝機支援休",
+    ];
 
     const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
     const MONTH_STORAGE_KEY = "scheduleRecordSelectedMonth";
@@ -589,6 +598,7 @@
     const resultTitle = document.getElementById("result-title");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
+    const clearMarksButton = document.getElementById("clear-marks-button");
     const weekButtons = Array.from(document.querySelectorAll("[data-week]"));
     const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 
@@ -776,6 +786,7 @@
     function findShiftTime(cells) {
       const values = cells.map(normalizeText).filter(Boolean);
       const joined = values.join(" ");
+      if (SUPPORT_SHIFT_KEYWORDS.some((keyword) => joined.includes(keyword))) return "10:00-19:00";
       const rangeText = normalizeText(joined)
         .replace(/[~～至]/g, "-")
         .replace(/\s+/g, " ");
@@ -1220,6 +1231,17 @@
     });
     scheduleEditToggle.addEventListener("click", () => {
       setScheduleEditorExpanded(!scheduleEditorExpanded, !scheduleEditorExpanded);
+    });
+    clearMarksButton.addEventListener("click", () => {
+      if (state.changedKeys.length === 0) {
+        flashButton(clearMarksButton, "無標記", true);
+        return;
+      }
+      state.changedKeys = [];
+      saveState();
+      render();
+      status.textContent = "異動標記已清除";
+      flashButton(clearMarksButton, "已清除");
     });
     copyButton.addEventListener("click", copyOutput);
     setScheduleEditorExpanded(false);
