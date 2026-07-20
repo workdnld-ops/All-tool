@@ -890,7 +890,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.18</span>
+          <span class="version">v7.15.19</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -1224,10 +1224,8 @@
       return `${fields.reminderHourSelect.value || fields.reminderHourWheel.dataset.value || "09"}:${fields.reminderMinuteSelect.value || fields.reminderMinuteWheel.dataset.value || "00"}`;
     }
 
-    function isAdvanceReminderToday(card, today) {
-      const reminder = card.reminder || {};
-      const daysBefore = Number.parseInt(reminder.daysBefore, 10) || 0;
-      return reminder.enabled === true && daysBefore > 0 && addDays(card.dueDate, -daysBefore) === today;
+    function isDueTomorrow(card, today) {
+      return card.dueDate === addDays(today, 1);
     }
 
     function parseDate(dateKey) {
@@ -1458,7 +1456,7 @@
           ? "overdue"
           : card.dueDate === today
             ? "today"
-            : isAdvanceReminderToday(card, today)
+            : isDueTomorrow(card, today)
               ? "reminder-soon"
               : "";
       return `
