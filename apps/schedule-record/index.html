@@ -178,8 +178,15 @@
     }
 
     .form-grid {
-      grid-template-columns: minmax(0, 236px) minmax(0, 116px);
+      grid-template-columns: minmax(0, 236px) minmax(0, 224px);
       align-items: end;
+    }
+
+    .dayoff-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      align-self: end;
     }
 
     .month-control {
@@ -458,7 +465,7 @@
 
     @media (max-width: 620px) {
       h1 { font-size: 1.18rem; }
-      .form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 104px); }
+      .form-grid { grid-template-columns: 1fr; }
       .week-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
       .button,
       .week-button { padding: 0 3px; }
@@ -519,7 +526,10 @@
             <button class="button month-nav" id="next-month-button" type="button" aria-label="下一個月">›</button>
           </div>
         </label>
-        <button class="button" id="paste-dayoff-button" type="button">貼上排休</button>
+        <div class="dayoff-actions">
+          <button class="button" id="paste-dayoff-button" type="button">貼上排休</button>
+          <button class="button" id="restore-dayoff-button" type="button">回復排休</button>
+        </div>
       </div>
       <div class="view" id="schedule-view">
         <div class="week-grid" aria-label="週次">
@@ -605,6 +615,7 @@
     const scheduleEditToggle = document.getElementById("schedule-edit-toggle");
     const scheduleRawPanel = document.getElementById("schedule-raw-panel");
     const pasteDayOffButton = document.getElementById("paste-dayoff-button");
+    const restoreDayOffButton = document.getElementById("restore-dayoff-button");
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const resultTitle = document.getElementById("result-title");
@@ -670,6 +681,9 @@
         scheduleInput: String(value.scheduleInput || ""),
         dayOffInput: String(value.dayOffInput || ""),
         dayOffUpdatedAt: Number(value.dayOffUpdatedAt) || 0,
+        dayOffPreviousInput: String(value.dayOffPreviousInput || ""),
+        dayOffPreviousUpdatedAt: Number(value.dayOffPreviousUpdatedAt) || 0,
+        dayOffUndoReady: Boolean(value.dayOffUndoReady),
       };
     }
 
@@ -743,7 +757,10 @@
         activeWeek: state.activeWeek,
         changedKeys: monthData.changedKeys,
         dayOffInput: monthData.dayOffInput,
+        dayOffPreviousInput: monthData.dayOffPreviousInput,
+        dayOffPreviousUpdatedAt: monthData.dayOffPreviousUpdatedAt,
         dayOffUpdatedAt: monthData.dayOffUpdatedAt,
+        dayOffUndoReady: monthData.dayOffUndoReady,
         month: monthKeyFromInput(),
         months: state.months,
         scheduleInput: scheduleInput.value,
@@ -769,7 +786,10 @@
           changedKeys: data.changedKeys,
           scheduleInput: data.scheduleInput,
           dayOffInput: data.dayOffInput,
+          dayOffPreviousInput: data.dayOffPreviousInput,
+          dayOffPreviousUpdatedAt: data.dayOffPreviousUpdatedAt,
           dayOffUpdatedAt: data.dayOffUpdatedAt,
+          dayOffUndoReady: data.dayOffUndoReady,
         });
       }
       syncScheduleInputFromMonth();
@@ -1293,6 +1313,9 @@
         return;
       }
       const monthData = currentMonthData();
+      monthData.dayOffPreviousInput = monthData.dayOffInput;
+      monthData.dayOffPreviousUpdatedAt = monthData.dayOffUpdatedAt;
+      monthData.dayOffUndoReady = true;
       monthData.dayOffInput = text;
       monthData.dayOffUpdatedAt = Date.now();
       saveState();
@@ -1301,6 +1324,29 @@
       status.textContent = `已貼上排休，${dayOffCount} 天休假`;
       status.style.color = "var(--muted)";
       flashButton(pasteDayOffButton, "已貼上");
+    }
+
+    function restoreDayOff() {
+      const monthData = currentMonthData();
+      if (!monthData.dayOffUndoReady) {
+        status.textContent = "沒有可回復的排休資料";
+        status.style.color = "var(--danger)";
+        flashButton(restoreDayOffButton, "無資料", true);
+        return;
+      }
+      const currentInput = monthData.dayOffInput;
+      const currentUpdatedAt = monthData.dayOffUpdatedAt;
+      monthData.dayOffInput = monthData.dayOffPreviousInput;
+      monthData.dayOffUpdatedAt = monthData.dayOffPreviousUpdatedAt;
+      monthData.dayOffPreviousInput = currentInput;
+      monthData.dayOffPreviousUpdatedAt = currentUpdatedAt;
+      monthData.dayOffUndoReady = true;
+      saveState();
+      render();
+      const dayOffCount = parseDayOffRows().length;
+      status.textContent = dayOffCount > 0 ? `已回復排休，${dayOffCount} 天休假` : "已回復排休，這個月份沒有排休資料";
+      status.style.color = "var(--muted)";
+      flashButton(restoreDayOffButton, "已回復");
     }
 
     async function copyOutput() {
@@ -1345,6 +1391,9 @@
       monthData.scheduleInput = "";
       monthData.dayOffInput = "";
       monthData.dayOffUpdatedAt = 0;
+      monthData.dayOffPreviousInput = "";
+      monthData.dayOffPreviousUpdatedAt = 0;
+      monthData.dayOffUndoReady = false;
       scheduleInput.value = "";
       saveState();
       render();
@@ -1366,6 +1415,7 @@
       flashButton(clearMarksButton, "已清除");
     });
     pasteDayOffButton.addEventListener("click", importDayOff);
+    restoreDayOffButton.addEventListener("click", restoreDayOff);
     copyButton.addEventListener("click", copyOutput);
     setScheduleEditorExpanded(false);
     render();
