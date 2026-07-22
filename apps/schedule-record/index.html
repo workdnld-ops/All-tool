@@ -178,7 +178,7 @@
     }
 
     .form-grid {
-      grid-template-columns: minmax(0, 236px);
+      grid-template-columns: minmax(0, 236px) minmax(0, 116px);
       align-items: end;
     }
 
@@ -372,6 +372,11 @@
       background: #fff8ea;
     }
 
+    .calendar-day.conflict {
+      border-color: var(--danger);
+      background: var(--danger-soft);
+    }
+
     .day-number {
       font-size: 0.74rem;
       line-height: 1;
@@ -435,6 +440,14 @@
       color: #9a5a00;
     }
 
+    .day-item.conflict {
+      color: var(--danger);
+    }
+
+    .day-item.conflict .shift-label {
+      background: var(--danger);
+    }
+
     .empty-calendar {
       color: var(--muted);
       min-height: 42px;
@@ -445,7 +458,7 @@
 
     @media (max-width: 620px) {
       h1 { font-size: 1.18rem; }
-      .form-grid { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 104px); }
       .week-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
       .button,
       .week-button { padding: 0 3px; }
@@ -506,6 +519,7 @@
             <button class="button month-nav" id="next-month-button" type="button" aria-label="下一個月">›</button>
           </div>
         </label>
+        <button class="button" id="paste-dayoff-button" type="button">貼上排休</button>
       </div>
       <div class="view" id="schedule-view">
         <div class="week-grid" aria-label="週次">
@@ -590,6 +604,7 @@
     const scheduleInput = document.getElementById("schedule-input");
     const scheduleEditToggle = document.getElementById("schedule-edit-toggle");
     const scheduleRawPanel = document.getElementById("schedule-raw-panel");
+    const pasteDayOffButton = document.getElementById("paste-dayoff-button");
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const resultTitle = document.getElementById("result-title");
@@ -637,11 +652,24 @@
       return normalized;
     }
 
+    function normalizeWeekUpdatedAt(value) {
+      const normalized = {};
+      Object.entries(value || {}).forEach(([week, timestamp]) => {
+        if (!/^[1-5]$/.test(String(week))) return;
+        const parsed = Number(timestamp);
+        normalized[String(week)] = Number.isFinite(parsed) ? parsed : 0;
+      });
+      return normalized;
+    }
+
     function normalizeMonthRecord(value = {}) {
       return {
         weeks: normalizeWeeks(value.weeks),
+        weekUpdatedAt: normalizeWeekUpdatedAt(value.weekUpdatedAt),
         changedKeys: Array.isArray(value.changedKeys) ? value.changedKeys.map(String) : [],
         scheduleInput: String(value.scheduleInput || ""),
+        dayOffInput: String(value.dayOffInput || ""),
+        dayOffUpdatedAt: Number(value.dayOffUpdatedAt) || 0,
       };
     }
 
@@ -714,10 +742,13 @@
       return {
         activeWeek: state.activeWeek,
         changedKeys: monthData.changedKeys,
+        dayOffInput: monthData.dayOffInput,
+        dayOffUpdatedAt: monthData.dayOffUpdatedAt,
         month: monthKeyFromInput(),
         months: state.months,
         scheduleInput: scheduleInput.value,
         updatedAt: serverTimestamp(),
+        weekUpdatedAt: monthData.weekUpdatedAt,
         weeks: monthData.weeks,
       };
     }
@@ -734,8 +765,11 @@
       if (Object.keys(state.months).length === 0 && data?.weeks && typeof data.weeks === "object") {
         state.months[activeMonthKey] = normalizeMonthRecord({
           weeks: data.weeks,
+          weekUpdatedAt: data.weekUpdatedAt,
           changedKeys: data.changedKeys,
           scheduleInput: data.scheduleInput,
+          dayOffInput: data.dayOffInput,
+          dayOffUpdatedAt: data.dayOffUpdatedAt,
         });
       }
       syncScheduleInputFromMonth();
@@ -927,6 +961,8 @@
           ...date,
           week: Number(week),
           rowIndex: index,
+          source: "schedule",
+          sourceUpdatedAt: Number(currentMonthData().weekUpdatedAt[String(week)]) || 0,
           text,
           time,
           type: time ? "shift" : isLeave ? "leave" : "empty",
@@ -934,11 +970,73 @@
       });
     }
 
-    function records() {
+    function scheduleRecords() {
       return Object.entries(currentMonthData().weeks)
         .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
         .filter((record) => record.type !== "empty")
         .sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function parseDayOffRows() {
+      const monthData = currentMonthData();
+      const rawText = String(monthData.dayOffInput || "").replace(/\r/g, "").replace(/\n+$/g, "");
+      const rawRows = rawText ? rawText.split("\n") : [];
+      const rows = rawRows.map((line) => line.split("\t"));
+      const { year, month } = parseMonthValue();
+      const maxDay = daysInMonth(year, month);
+      const matches = [];
+
+      rows.forEach((cells, index) => {
+        if (!hasLeaveText(cells)) return;
+        let dateInfo = parseDateFromCells(cells, year, month);
+        if (!dateInfo) {
+          const day = index + 1;
+          if (day < 1 || day > maxDay) return;
+          dateInfo = { year, month, day };
+        }
+        const date = new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day);
+        matches.push({
+          ...dateInfo,
+          source: "dayoff",
+          sourceUpdatedAt: Number(monthData.dayOffUpdatedAt) || 0,
+          text: normalizeText(cells.join(" ")),
+          time: "",
+          type: "leave",
+          weekday: WEEKDAYS[date.getDay()],
+          timestamp: date.getTime(),
+        });
+      });
+
+      const unique = [];
+      const seen = new Set();
+      for (const item of matches) {
+        const key = recordKey(item);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(item);
+      }
+      return unique.sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function records() {
+      const entriesByKey = new Map();
+      [...scheduleRecords(), ...parseDayOffRows()].forEach((record) => {
+        const key = recordKey(record);
+        if (!entriesByKey.has(key)) entriesByKey.set(key, []);
+        entriesByKey.get(key).push(record);
+      });
+
+      return [...entriesByKey.entries()].map(([key, entries]) => {
+        const scheduleEntry = entries.find((entry) => entry.source === "schedule");
+        const dayOffEntry = entries.find((entry) => entry.source === "dayoff");
+        if (scheduleEntry && dayOffEntry) {
+          const winner = dayOffEntry.sourceUpdatedAt > scheduleEntry.sourceUpdatedAt
+            ? dayOffEntry
+            : scheduleEntry;
+          return { ...winner, conflict: true, conflictKey: key };
+        }
+        return entries[0];
+      }).sort((a, b) => dateTime(a) - dateTime(b));
     }
 
     function recordKey(record) {
@@ -963,7 +1061,7 @@
     function formatScheduleOutput() {
       const changedKeys = new Set(currentMonthData().changedKeys);
       return records()
-        .map((record) => `${changedKeys.has(recordKey(record)) ? "★ " : ""}${formatRecord(record)}`)
+        .map((record) => `${record.conflict ? "⚠ " : ""}${changedKeys.has(recordKey(record)) ? "★ " : ""}${formatRecord(record)}`)
         .join("\n");
     }
 
@@ -1036,17 +1134,20 @@
         const dayEntries = entriesByKey.get(key) || [];
         const outside = date.getMonth() !== month - 1;
         const changed = changedKeys.has(key);
+        const conflict = dayEntries.some((entry) => entry.conflict);
         const items = dayEntries.map((entry) => {
           const marker = changed ? "★ " : "";
+          const warning = entry.conflict ? "⚠ " : "";
           const shift = entry.type === "shift" ? shiftInfo(entry) : null;
           const label = entry.type === "shift"
-            ? `${marker}${shift.label}`
-            : `${marker}休假`;
+            ? `${warning}${marker}${shift.label}`
+            : `${warning}${marker}休假`;
           const classes = [
             "day-item",
             entry.type === "leave" ? "leave" : "",
             shift?.className || "",
             changed ? "changed" : "",
+            entry.conflict ? "conflict" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -1060,7 +1161,7 @@
           }
           return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
-        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : ""]
+        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
           .filter(Boolean)
           .join(" ");
         return `
@@ -1100,7 +1201,12 @@
       renderWeeks();
       const text = lineText();
       const hasChanged = currentMonthData().changedKeys.length > 0;
-      resultTitle.textContent = hasChanged ? "行事曆（★為異動）" : "行事曆";
+      const hasConflict = records().some((record) => record.conflict);
+      const titleNotes = [
+        hasChanged ? "★為異動" : "",
+        hasConflict ? "⚠為衝突" : "",
+      ].filter(Boolean);
+      resultTitle.textContent = titleNotes.length > 0 ? `行事曆（${titleNotes.join("、")}）` : "行事曆";
       renderCalendar();
       resultPanel.classList.toggle("empty", !text);
       status.style.color = "var(--muted)";
@@ -1153,6 +1259,7 @@
       nextChangedKeys.forEach((key) => currentChangedKeys.add(key));
       monthData.changedKeys = [...currentChangedKeys];
       monthData.weeks[String(week)] = text;
+      monthData.weekUpdatedAt[String(week)] = Date.now();
       monthData.scheduleInput = text;
       saveState();
       status.style.color = "var(--muted)";
@@ -1161,6 +1268,26 @@
       status.textContent = oldText
         ? `已覆蓋 wk${week}，${nextChangedKeys.length} 筆異動以 ★ 標記`
         : `已輸入 wk${week}`;
+    }
+
+    async function importDayOff() {
+      const clipboardText = await readClipboardText();
+      const text = clipboardText.trim();
+      if (!normalizeText(text)) {
+        status.textContent = "剪貼簿沒有排休內容";
+        status.style.color = "var(--danger)";
+        flashButton(pasteDayOffButton, "無內容", true);
+        return;
+      }
+      const monthData = currentMonthData();
+      monthData.dayOffInput = text;
+      monthData.dayOffUpdatedAt = Date.now();
+      saveState();
+      render();
+      const dayOffCount = parseDayOffRows().length;
+      status.textContent = `已貼上排休，${dayOffCount} 天休假`;
+      status.style.color = "var(--muted)";
+      flashButton(pasteDayOffButton, "已貼上");
     }
 
     async function copyOutput() {
@@ -1200,8 +1327,11 @@
     document.getElementById("clear-button").addEventListener("click", () => {
       const monthData = currentMonthData();
       monthData.weeks = {};
+      monthData.weekUpdatedAt = {};
       monthData.changedKeys = [];
       monthData.scheduleInput = "";
+      monthData.dayOffInput = "";
+      monthData.dayOffUpdatedAt = 0;
       scheduleInput.value = "";
       saveState();
       render();
@@ -1222,6 +1352,7 @@
       status.textContent = "異動標記已清除";
       flashButton(clearMarksButton, "已清除");
     });
+    pasteDayOffButton.addEventListener("click", importDayOff);
     copyButton.addEventListener("click", copyOutput);
     setScheduleEditorExpanded(false);
     render();

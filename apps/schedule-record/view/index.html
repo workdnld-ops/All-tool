@@ -22,6 +22,8 @@
       --primary-soft: #e4f0ee;
       --rose: #9a3d55;
       --rose-soft: #fbe8ee;
+      --danger: #b42318;
+      --danger-soft: #fff5f4;
       --shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
     }
 
@@ -252,6 +254,11 @@
       background: #fff8ea;
     }
 
+    .calendar-day.conflict {
+      border-color: var(--danger);
+      background: var(--danger-soft);
+    }
+
     .day-number {
       font-size: 0.74rem;
       line-height: 1;
@@ -310,6 +317,14 @@
     .day-item.leave,
     .day-item.changed {
       color: var(--rose);
+    }
+
+    .day-item.conflict {
+      color: var(--danger);
+    }
+
+    .day-item.conflict .shift-label {
+      background: var(--danger);
     }
 
     .empty-calendar {
@@ -470,10 +485,23 @@
       return normalized;
     }
 
+    function normalizeWeekUpdatedAt(value) {
+      const normalized = {};
+      Object.entries(value || {}).forEach(([week, timestamp]) => {
+        if (!/^[1-5]$/.test(String(week))) return;
+        const parsed = Number(timestamp);
+        normalized[String(week)] = Number.isFinite(parsed) ? parsed : 0;
+      });
+      return normalized;
+    }
+
     function normalizeMonthRecord(value = {}) {
       return {
         weeks: normalizeWeeks(value.weeks),
+        weekUpdatedAt: normalizeWeekUpdatedAt(value.weekUpdatedAt),
         changedKeys: Array.isArray(value.changedKeys) ? value.changedKeys.map(String) : [],
+        dayOffInput: String(value.dayOffInput || ""),
+        dayOffUpdatedAt: Number(value.dayOffUpdatedAt) || 0,
       };
     }
 
@@ -532,6 +560,40 @@
       const nextMonth = new Date(year, month - 1 + offset, 1);
       setMonthValue(nextMonth.getFullYear(), nextMonth.getMonth() + 1);
       handleMonthChange(true);
+    }
+
+    function daysInMonth(year, month) {
+      return new Date(year, month, 0).getDate();
+    }
+
+    function isValidDate(year, month, day) {
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    }
+
+    function parseDateFromCells(cells, fallbackYear, fallbackMonth) {
+      const joined = cells.map(normalizeText).join(" ");
+      const full = joined.match(/(?<!\d)(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})(?!\d)/);
+      if (full) {
+        const year = Number(full[1]);
+        const month = Number(full[2]);
+        const day = Number(full[3]);
+        if (isValidDate(year, month, day)) return { year, month, day };
+      }
+      const monthDay = joined.match(/(?<!\d)(\d{1,2})\s*(?:\/|月)\s*(\d{1,2})\s*(?:日)?(?!\d)/);
+      if (monthDay) {
+        const month = Number(monthDay[1]);
+        const day = Number(monthDay[2]);
+        if (isValidDate(fallbackYear, month, day)) return { year: fallbackYear, month, day };
+      }
+      const dayOnly = joined.match(/(?<!\d)(\d{1,2})\s*日(?!\d)/);
+      if (dayOnly) {
+        const day = Number(dayOnly[1]);
+        if (isValidDate(fallbackYear, fallbackMonth, day)) {
+          return { year: fallbackYear, month: fallbackMonth, day };
+        }
+      }
+      return null;
     }
 
     function dateForWeekDay(week, index) {
@@ -596,17 +658,79 @@
           ...date,
           week: Number(week),
           rowIndex: index,
+          source: "schedule",
+          sourceUpdatedAt: Number(currentMonthData().weekUpdatedAt[String(week)]) || 0,
           time,
           type: time ? "shift" : isLeave ? "leave" : "empty",
         };
       });
     }
 
-    function records() {
+    function scheduleRecords() {
       return Object.entries(currentMonthData().weeks)
         .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
         .filter((record) => record.type !== "empty")
         .sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function parseDayOffRows() {
+      const monthData = currentMonthData();
+      const rawText = String(monthData.dayOffInput || "").replace(/\r/g, "").replace(/\n+$/g, "");
+      const rawRows = rawText ? rawText.split("\n") : [];
+      const rows = rawRows.map((line) => line.split("\t"));
+      const { year, month } = parseMonthValue();
+      const maxDay = daysInMonth(year, month);
+      const matches = [];
+
+      rows.forEach((cells, index) => {
+        if (!hasLeaveText(cells)) return;
+        let dateInfo = parseDateFromCells(cells, year, month);
+        if (!dateInfo) {
+          const day = index + 1;
+          if (day < 1 || day > maxDay) return;
+          dateInfo = { year, month, day };
+        }
+        const date = new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day);
+        matches.push({
+          ...dateInfo,
+          source: "dayoff",
+          sourceUpdatedAt: Number(monthData.dayOffUpdatedAt) || 0,
+          time: "",
+          type: "leave",
+          weekday: WEEKDAYS[date.getDay()],
+        });
+      });
+
+      const unique = [];
+      const seen = new Set();
+      for (const item of matches) {
+        const key = recordKey(item);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(item);
+      }
+      return unique.sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function records() {
+      const entriesByKey = new Map();
+      [...scheduleRecords(), ...parseDayOffRows()].forEach((record) => {
+        const key = recordKey(record);
+        if (!entriesByKey.has(key)) entriesByKey.set(key, []);
+        entriesByKey.get(key).push(record);
+      });
+
+      return [...entriesByKey.entries()].map(([key, entries]) => {
+        const scheduleEntry = entries.find((entry) => entry.source === "schedule");
+        const dayOffEntry = entries.find((entry) => entry.source === "dayoff");
+        if (scheduleEntry && dayOffEntry) {
+          const winner = dayOffEntry.sourceUpdatedAt > scheduleEntry.sourceUpdatedAt
+            ? dayOffEntry
+            : scheduleEntry;
+          return { ...winner, conflict: true, conflictKey: key };
+        }
+        return entries[0];
+      }).sort((a, b) => dateTime(a) - dateTime(b));
     }
 
     function recordKey(record) {
@@ -664,17 +788,20 @@
         const dayEntries = entriesByKey.get(key) || [];
         const outside = date.getMonth() !== month - 1;
         const changed = changedKeys.has(key);
+        const conflict = dayEntries.some((entry) => entry.conflict);
         const items = dayEntries.map((entry) => {
           const marker = changed ? "★ " : "";
+          const warning = entry.conflict ? "⚠ " : "";
           const shift = entry.type === "shift" ? shiftInfo(entry) : null;
           const label = entry.type === "shift"
-            ? `${marker}${shift.label}`
-            : `${marker}休假`;
+            ? `${warning}${marker}${shift.label}`
+            : `${warning}${marker}休假`;
           const classes = [
             "day-item",
             entry.type === "leave" ? "leave" : "",
             shift?.className || "",
             changed ? "changed" : "",
+            entry.conflict ? "conflict" : "",
           ]
             .filter(Boolean)
             .join(" ");
@@ -688,7 +815,7 @@
           }
           return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
-        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : ""]
+        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
           .filter(Boolean)
           .join(" ");
         return `
@@ -711,7 +838,12 @@
       const entries = records();
       const monthData = currentMonthData();
       const hasChanged = monthData.changedKeys.length > 0;
-      resultTitle.textContent = hasChanged ? "行事曆（★為異動）" : "行事曆";
+      const hasConflict = entries.some((record) => record.conflict);
+      const titleNotes = [
+        hasChanged ? "★為異動" : "",
+        hasConflict ? "⚠為衝突" : "",
+      ].filter(Boolean);
+      resultTitle.textContent = titleNotes.length > 0 ? `行事曆（${titleNotes.join("、")}）` : "行事曆";
       renderCalendar();
       resultPanel.classList.toggle("empty", entries.length === 0);
       if (!state.loaded) {
@@ -736,7 +868,10 @@
         const fallbackMonth = state.remoteMonth || monthKeyFromInput();
         state.months[fallbackMonth] = normalizeMonthRecord({
           weeks: data.weeks,
+          weekUpdatedAt: data.weekUpdatedAt,
           changedKeys: data.changedKeys,
+          dayOffInput: data.dayOffInput,
+          dayOffUpdatedAt: data.dayOffUpdatedAt,
         });
       }
       if (!state.userSelectedMonth && state.remoteMonth) {
