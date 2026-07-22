@@ -890,7 +890,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.19</span>
+          <span class="version">v7.15.20</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -1450,7 +1450,8 @@
 
     function renderCard(card) {
       const today = todayKey();
-      const dateClass = card.completed
+      const reminderEnabled = card.reminder?.enabled === true;
+      const dateClass = card.completed || !reminderEnabled
         ? ""
         : card.dueDate < today
           ? "overdue"
@@ -1459,13 +1460,18 @@
             : isDueTomorrow(card, today)
               ? "reminder-soon"
               : "";
+      const metaParts = [
+        reminderEnabled ? escapeHtml(card.dueDate) : "",
+        card.completedAt ? `完成於 ${escapeHtml(card.completedAt.slice(0, 10))}` : "",
+      ].filter(Boolean);
+      const cardMeta = metaParts.length > 0 ? `<div class="card-meta">${metaParts.join(" · ")}</div>` : "";
       return `
         <article class="card ${card.completed ? "completed" : ""} ${dateClass} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
           <div class="card-head">
             <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
             <div>
               <div class="card-title">${escapeHtml(card.title)}</div>
-              <div class="card-meta">${escapeHtml(card.dueDate)}${card.completedAt ? ` · 完成於 ${escapeHtml(card.completedAt.slice(0, 10))}` : ""}</div>
+              ${cardMeta}
             </div>
             <button class="button" data-edit="${card.id}" type="button">編輯</button>
             <button class="drag-handle" type="button" data-drag-card-id="${card.id}" aria-label="拖移 ${escapeHtml(card.title)}">☰</button>

@@ -178,8 +178,22 @@
     }
 
     .form-grid {
-      grid-template-columns: 148px;
+      grid-template-columns: minmax(0, 236px);
       align-items: end;
+    }
+
+    .month-control {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 38px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .month-nav {
+      min-height: 36px;
+      padding: 0;
+      font-size: 1.15rem;
+      line-height: 1;
     }
 
     .week-grid {
@@ -486,7 +500,11 @@
       <div class="form-grid">
         <label>
           月份
-          <input id="month-input" type="month" aria-label="月份">
+          <div class="month-control">
+            <button class="button month-nav" id="prev-month-button" type="button" aria-label="上一個月">‹</button>
+            <input id="month-input" type="month" aria-label="月份">
+            <button class="button month-nav" id="next-month-button" type="button" aria-label="下一個月">›</button>
+          </div>
         </label>
       </div>
       <div class="view" id="schedule-view">
@@ -567,6 +585,8 @@
     const CHANGED_KEYS_STORAGE_KEY = "scheduleRecordChangedKeys";
 
     const monthInput = document.getElementById("month-input");
+    const prevMonthButton = document.getElementById("prev-month-button");
+    const nextMonthButton = document.getElementById("next-month-button");
     const scheduleInput = document.getElementById("schedule-input");
     const scheduleEditToggle = document.getElementById("schedule-edit-toggle");
     const scheduleRawPanel = document.getElementById("schedule-raw-panel");
@@ -784,6 +804,29 @@
         return { year: now.getFullYear(), month: now.getMonth() + 1 };
       }
       return { year: Number(match[1]), month: Number(match[2]) };
+    }
+
+    function setMonthValue(year, month) {
+      monthInput.value = `${year}-${pad2(month)}`;
+    }
+
+    function handleMonthChange() {
+      saveScheduleInputToMonth();
+      if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
+        localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
+      }
+      activeMonthKey = monthKeyFromInput();
+      syncScheduleInputFromMonth();
+      saveState();
+      render();
+    }
+
+    function changeMonth(offset) {
+      saveScheduleInputToMonth();
+      const { year, month } = parseMonthValue();
+      const nextMonth = new Date(year, month - 1 + offset, 1);
+      setMonthValue(nextMonth.getFullYear(), nextMonth.getMonth() + 1);
+      handleMonthChange();
     }
 
     function daysInMonth(year, month) {
@@ -1147,16 +1190,9 @@
     activeMonthKey = monthKeyFromInput();
     loadState();
     subscribeRemoteState();
-    monthInput.addEventListener("input", () => {
-      saveScheduleInputToMonth();
-      if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
-        localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
-      }
-      activeMonthKey = monthKeyFromInput();
-      syncScheduleInputFromMonth();
-      saveState();
-      render();
-    });
+    monthInput.addEventListener("input", handleMonthChange);
+    prevMonthButton.addEventListener("click", () => changeMonth(-1));
+    nextMonthButton.addEventListener("click", () => changeMonth(1));
     scheduleInput.addEventListener("input", saveState);
     weekButtons.forEach((button) => {
       button.addEventListener("click", () => importWeek(button.dataset.week, button));
