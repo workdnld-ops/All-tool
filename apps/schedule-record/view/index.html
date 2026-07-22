@@ -737,6 +737,11 @@
         const scheduleEntry = entries.find((entry) => entry.source === "schedule");
         const dayOffEntry = entries.find((entry) => entry.source === "dayoff");
         if (scheduleEntry && dayOffEntry) {
+          if (scheduleEntry.type === "leave" && dayOffEntry.type === "leave") {
+            return dayOffEntry.sourceUpdatedAt > scheduleEntry.sourceUpdatedAt
+              ? dayOffEntry
+              : scheduleEntry;
+          }
           const winner = dayOffEntry.sourceUpdatedAt > scheduleEntry.sourceUpdatedAt
             ? dayOffEntry
             : scheduleEntry;
