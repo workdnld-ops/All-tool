@@ -643,6 +643,18 @@
       return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
     }
 
+    function dayOffDataStartIndex(rows) {
+      if (rows.length <= 5) return 0;
+      const nameRow = normalizeText((rows[4] || []).join(" "));
+      const summaryRows = rows
+        .slice(0, 4)
+        .flat()
+        .map(normalizeText)
+        .filter(Boolean);
+      const hasSummaryHeader = nameRow && summaryRows.every((value) => /^\d+$/.test(value));
+      return hasSummaryHeader ? 5 : 0;
+    }
+
     function parseWeekRows(rawText, week) {
       const values = rawText
         .replace(/\r/g, "")
@@ -678,11 +690,12 @@
       const rawText = String(monthData.dayOffInput || "").replace(/\r/g, "").replace(/\n+$/g, "");
       const rawRows = rawText ? rawText.split("\n") : [];
       const rows = rawRows.map((line) => line.split("\t"));
+      const dataRows = rows.slice(dayOffDataStartIndex(rows));
       const { year, month } = parseMonthValue();
       const maxDay = daysInMonth(year, month);
       const matches = [];
 
-      rows.forEach((cells, index) => {
+      dataRows.forEach((cells, index) => {
         if (!hasLeaveText(cells)) return;
         let dateInfo = parseDateFromCells(cells, year, month);
         if (!dateInfo) {

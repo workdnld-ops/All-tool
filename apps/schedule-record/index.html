@@ -920,6 +920,18 @@
       return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
     }
 
+    function dayOffDataStartIndex(rows) {
+      if (rows.length <= 5) return 0;
+      const nameRow = normalizeText((rows[4] || []).join(" "));
+      const summaryRows = rows
+        .slice(0, 4)
+        .flat()
+        .map(normalizeText)
+        .filter(Boolean);
+      const hasSummaryHeader = nameRow && summaryRows.every((value) => /^\d+$/.test(value));
+      return hasSummaryHeader ? 5 : 0;
+    }
+
     function parseDateFromCells(cells, fallbackYear, fallbackMonth) {
       const joined = cells.map(normalizeText).join(" ");
       const full = joined.match(/(?<!\d)(20\d{2})[\/.-](\d{1,2})[\/.-](\d{1,2})(?!\d)/);
@@ -982,11 +994,12 @@
       const rawText = String(monthData.dayOffInput || "").replace(/\r/g, "").replace(/\n+$/g, "");
       const rawRows = rawText ? rawText.split("\n") : [];
       const rows = rawRows.map((line) => line.split("\t"));
+      const dataRows = rows.slice(dayOffDataStartIndex(rows));
       const { year, month } = parseMonthValue();
       const maxDay = daysInMonth(year, month);
       const matches = [];
 
-      rows.forEach((cells, index) => {
+      dataRows.forEach((cells, index) => {
         if (!hasLeaveText(cells)) return;
         let dateInfo = parseDateFromCells(cells, year, month);
         if (!dateInfo) {
@@ -1272,7 +1285,7 @@
 
     async function importDayOff() {
       const clipboardText = await readClipboardText();
-      const text = clipboardText.trim();
+      const text = clipboardText.replace(/\r/g, "").replace(/\n+$/g, "");
       if (!normalizeText(text)) {
         status.textContent = "剪貼簿沒有排休內容";
         status.style.color = "var(--danger)";
