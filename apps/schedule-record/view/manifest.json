@@ -1,0 +1,17 @@
+{
+  "name": "排班行事曆",
+  "short_name": "排班行事曆",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7f8",
+  "theme_color": "#1f6f64",
+  "icons": [
+    {
+      "src": "../../../assets/toolbox-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

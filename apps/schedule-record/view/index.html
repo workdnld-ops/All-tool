@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>排班行事曆</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="../../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../../assets/toolbox-icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="排班行事曆">
+  <meta name="theme-color" content="#1f6f64">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f8;
+      --surface: #fff;
+      --ink: #172126;
+      --muted: #63717a;
+      --line: #dce4e8;
+      --primary: #1f6f64;
+      --primary-soft: #e4f0ee;
+      --rose: #9a3d55;
+      --rose-soft: #fbe8ee;
+      --shadow: 0 6px 18px rgba(23, 33, 38, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow-x: hidden;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    input { font: inherit; }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
+    }
+
+    .shell {
+      width: min(860px, 100%);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: max(10px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    header {
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: center;
+      gap: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.28rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 750;
+    }
+
+    .button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-weight: 850;
+      text-decoration: none;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+
+    .panel,
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      padding: 9px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 236px);
+      gap: 6px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    .month-control {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 38px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .month-nav {
+      min-height: 36px;
+      padding: 0;
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    input {
+      width: 100%;
+      min-height: 36px;
+      min-width: 0;
+      border: 1px solid #b8c6cc;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #fff;
+      font-weight: 750;
+      padding: 0 9px;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(31, 111, 100, 0.16);
+      outline: none;
+    }
+
+    .result {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border-color: rgba(31, 111, 100, 0.35);
+      background: var(--primary-soft);
+    }
+
+    .result.empty {
+      border-color: rgba(154, 61, 85, 0.28);
+      background: var(--rose-soft);
+    }
+
+    .result-title {
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .output {
+      min-height: 42px;
+      font-size: 0.9rem;
+      line-height: 1.55;
+      font-weight: 800;
+      overflow: visible;
+    }
+
+    .calendar {
+      --calendar-cell-height: clamp(62px, 8.4dvh, 82px);
+      display: grid;
+      gap: 6px;
+    }
+
+    .calendar-head,
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .calendar-grid {
+      grid-template-rows: repeat(6, minmax(var(--calendar-cell-height), auto));
+    }
+
+    .calendar-head {
+      min-height: 24px;
+      align-items: center;
+      overflow: visible;
+      padding: 2px 0 4px;
+    }
+
+    .calendar-weekday {
+      color: var(--muted);
+      min-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      line-height: 1.2;
+      font-weight: 900;
+      text-align: center;
+      white-space: nowrap;
+      overflow: visible;
+    }
+
+    .calendar-day {
+      min-height: var(--calendar-cell-height);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 4px;
+      display: grid;
+      align-content: start;
+      gap: 2px;
+      background: #fff;
+      color: var(--ink);
+      overflow: hidden;
+    }
+
+    .calendar-day.outside {
+      background: #f8fafb;
+      color: var(--muted);
+    }
+
+    .calendar-day.has-item {
+      border-color: rgba(31, 111, 100, 0.38);
+      background: #f5fbf9;
+    }
+
+    .calendar-day.changed {
+      border-color: #b7791f;
+      background: #fff8ea;
+    }
+
+    .day-number {
+      font-size: 0.74rem;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .day-item {
+      font-size: 0.68rem;
+      line-height: 1.15;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .shift-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 14px;
+      border-radius: 5px;
+      padding: 1px 4px;
+      margin-bottom: 2px;
+      color: #fff;
+      font-size: 0.58rem;
+      line-height: 1.1;
+      font-weight: 900;
+    }
+
+    .shift-time {
+      display: block;
+    }
+
+    .day-item.early {
+      color: #176b4d;
+    }
+
+    .day-item.early .shift-label {
+      background: #1f8a5b;
+    }
+
+    .day-item.mid {
+      color: #7a5b00;
+    }
+
+    .day-item.mid .shift-label {
+      background: #c99718;
+    }
+
+    .day-item.late {
+      color: #245b9b;
+    }
+
+    .day-item.late .shift-label {
+      background: #2f6fb4;
+    }
+
+    .day-item.leave,
+    .day-item.changed {
+      color: var(--rose);
+    }
+
+    .empty-calendar {
+      color: var(--muted);
+      min-height: 42px;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+    }
+
+    @media (max-width: 620px) {
+      h1 { font-size: 1.18rem; }
+      .form-grid { grid-template-columns: 1fr; }
+      .button { padding: 0 3px; }
+      .calendar {
+        --calendar-cell-height: clamp(64px, 8.2dvh, 76px);
+      }
+      .calendar-grid,
+      .calendar-head {
+        gap: 3px;
+      }
+      .calendar-head {
+        min-height: 26px;
+        padding-bottom: 5px;
+      }
+      .calendar-weekday {
+        min-height: 20px;
+        font-size: 0.62rem;
+        line-height: 1.2;
+      }
+      .calendar-day {
+        border-radius: 6px;
+        padding: 3px;
+      }
+      .day-number {
+        font-size: 0.68rem;
+      }
+      .day-item {
+        font-size: 0.6rem;
+      }
+      .shift-label {
+        font-size: 0.52rem;
+        padding: 1px 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <h1>排班行事曆</h1>
+      <div class="status" id="status">讀取排班資料中...</div>
+    </header>
+
+    <section class="panel">
+      <div class="form-grid">
+        <label>
+          月份
+          <div class="month-control">
+            <button class="button month-nav" id="prev-month-button" type="button" aria-label="上一個月">&lt;</button>
+            <input id="month-input" type="month" aria-label="月份">
+            <button class="button month-nav" id="next-month-button" type="button" aria-label="下一個月">&gt;</button>
+          </div>
+        </label>
+      </div>
+    </section>
+
+    <section class="result empty" id="result-panel" aria-label="行事曆預覽">
+      <div class="result-title" id="result-title">行事曆</div>
+      <div class="output" id="output">尚無排班資料</div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import {
+      getDatabase,
+      onValue,
+      ref,
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD6aZhiruY_wqBfNPElCsybIQvKByld6_8",
+      authDomain: "money-card-6bf98.firebaseapp.com",
+      databaseURL: "https://money-card-6bf98-default-rtdb.firebaseio.com",
+      projectId: "money-card-6bf98",
+      storageBucket: "money-card-6bf98.firebasestorage.app",
+      messagingSenderId: "245245451690",
+      appId: "1:245245451690:web:e939a519af0009b8d1dfd3",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+    const remoteStateRef = ref(database, "users/single-user/scheduleRecord/state");
+
+    const LEAVE_KEYWORDS = [
+      "特休",
+      "優先",
+      "次優",
+      "排休",
+      "公假",
+      "事假休",
+      "滑雪假休",
+      "年假例休",
+      "家庭照護假",
+    ];
+    const SUPPORT_SHIFT_KEYWORDS = [
+      "一店裝機支援休",
+      "二店裝機支援休",
+      "二電裝機支援休",
+    ];
+    const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
+    const MONTH_STORAGE_KEY = "scheduleRecordViewerSelectedMonth";
+
+    const monthInput = document.getElementById("month-input");
+    const prevMonthButton = document.getElementById("prev-month-button");
+    const nextMonthButton = document.getElementById("next-month-button");
+    const status = document.getElementById("status");
+    const resultPanel = document.getElementById("result-panel");
+    const resultTitle = document.getElementById("result-title");
+    const output = document.getElementById("output");
+
+    const state = {
+      months: {},
+      remoteMonth: "",
+      loaded: false,
+      loadError: "",
+      userSelectedMonth: false,
+    };
+
+    function pad2(value) {
+      return String(value).padStart(2, "0");
+    }
+
+    function setDefaultMonth() {
+      const savedMonth = localStorage.getItem(MONTH_STORAGE_KEY);
+      if (/^\d{4}-\d{2}$/.test(savedMonth || "")) {
+        monthInput.value = savedMonth;
+        state.userSelectedMonth = true;
+        return;
+      }
+      const now = new Date();
+      monthInput.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    }
+
+    function monthKeyFromInput() {
+      if (/^\d{4}-\d{2}$/.test(monthInput.value || "")) return monthInput.value;
+      const { year, month } = parseMonthValue();
+      return `${year}-${pad2(month)}`;
+    }
+
+    function normalizeWeeks(value) {
+      const normalized = {};
+      Object.entries(value || {}).forEach(([week, text]) => {
+        if (!/^[1-5]$/.test(String(week))) return;
+        normalized[String(week)] = String(text || "");
+      });
+      return normalized;
+    }
+
+    function normalizeMonthRecord(value = {}) {
+      return {
+        weeks: normalizeWeeks(value.weeks),
+        changedKeys: Array.isArray(value.changedKeys) ? value.changedKeys.map(String) : [],
+      };
+    }
+
+    function normalizeMonths(value) {
+      const normalized = {};
+      Object.entries(value || {}).forEach(([month, record]) => {
+        if (!/^\d{4}-\d{2}$/.test(String(month))) return;
+        normalized[String(month)] = normalizeMonthRecord(record || {});
+      });
+      return normalized;
+    }
+
+    function currentMonthData(monthKey = monthKeyFromInput()) {
+      return state.months[monthKey] || normalizeMonthRecord();
+    }
+
+    function normalizeText(value) {
+      return String(value || "")
+        .normalize("NFKC")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+        .trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function parseMonthValue() {
+      const match = /^(\d{4})-(\d{2})$/.exec(monthInput.value);
+      if (!match) {
+        const now = new Date();
+        return { year: now.getFullYear(), month: now.getMonth() + 1 };
+      }
+      return { year: Number(match[1]), month: Number(match[2]) };
+    }
+
+    function setMonthValue(year, month) {
+      monthInput.value = `${year}-${pad2(month)}`;
+    }
+
+    function handleMonthChange(userSelected = true) {
+      if (userSelected) state.userSelectedMonth = true;
+      if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
+        localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
+      }
+      render();
+    }
+
+    function changeMonth(offset) {
+      const { year, month } = parseMonthValue();
+      const nextMonth = new Date(year, month - 1 + offset, 1);
+      setMonthValue(nextMonth.getFullYear(), nextMonth.getMonth() + 1);
+      handleMonthChange(true);
+    }
+
+    function dateForWeekDay(week, index) {
+      const { year, month } = parseMonthValue();
+      const day = ((Number(week) - 1) * 7) + index + 1;
+      const date = new Date(year, month - 1, day);
+      return {
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        weekday: WEEKDAYS[date.getDay()],
+      };
+    }
+
+    function normalizeTime(hour, minute = "00") {
+      const parsedHour = Number(hour);
+      if (!Number.isInteger(parsedHour) || parsedHour > 23) return "";
+      return `${pad2(parsedHour)}:${minute}`;
+    }
+
+    function findShiftTime(cells) {
+      const values = cells.map(normalizeText).filter(Boolean);
+      const joined = values.join(" ");
+      if (SUPPORT_SHIFT_KEYWORDS.some((keyword) => joined.includes(keyword))) return "10:00-19:00";
+      const rangeText = normalizeText(joined)
+        .replace(/[~～至]/g, "-")
+        .replace(/\s+/g, " ");
+      const range = rangeText.match(/(\d{1,2})(?::?(\d{2}))\s*-\s*(\d{1,2})(?::?(\d{2}))/);
+      if (range) {
+        const start = normalizeTime(range[1], range[2]);
+        const end = normalizeTime(range[3], range[4]);
+        if (start && end) return `${start}-${end}`;
+      }
+      const times = [];
+      for (const value of values) {
+        const match = value.match(/^(\d{1,2}):(\d{2})$/);
+        if (!match) continue;
+        const time = normalizeTime(match[1], match[2]);
+        if (time) times.push(time);
+        if (times.length >= 2) break;
+      }
+      return times.length >= 2 ? `${times[0]}-${times[1]}` : "";
+    }
+
+    function hasLeaveText(cells) {
+      const text = normalizeText(cells.join(" "));
+      return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
+    }
+
+    function parseWeekRows(rawText, week) {
+      const values = rawText
+        .replace(/\r/g, "")
+        .split(/\n|\t/g)
+        .map(normalizeText);
+      const dataValues = values.slice(4);
+      return Array.from({ length: 7 }, (_, index) => {
+        const cells = dataValues.slice(index * 25, (index + 1) * 25);
+        const date = dateForWeekDay(week, index);
+        const time = findShiftTime(cells);
+        const isLeave = !time && hasLeaveText(cells);
+        return {
+          ...date,
+          week: Number(week),
+          rowIndex: index,
+          time,
+          type: time ? "shift" : isLeave ? "leave" : "empty",
+        };
+      });
+    }
+
+    function records() {
+      return Object.entries(currentMonthData().weeks)
+        .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
+        .filter((record) => record.type !== "empty")
+        .sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function recordKey(record) {
+      return `${record.year}-${record.month}-${record.day}`;
+    }
+
+    function dateTime(dateInfo) {
+      return new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day).getTime();
+    }
+
+    function shiftInfo(record) {
+      const match = String(record.time || "").match(/^(\d{1,2}):(\d{2})-/);
+      if (!match) return { className: "mid", label: "中班" };
+      const minutes = (Number(match[1]) * 60) + Number(match[2]);
+      if (minutes <= (10 * 60) + 59) return { className: "early", label: "早班" };
+      if (minutes >= 13 * 60) return { className: "late", label: "晚班" };
+      return { className: "mid", label: "中班" };
+    }
+
+    function renderCalendar() {
+      const entries = records();
+      if (entries.length === 0) {
+        output.innerHTML = '<div class="empty-calendar">尚無排班資料</div>';
+        return;
+      }
+
+      const { year, month } = parseMonthValue();
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0);
+      const maxEntryTime = Math.max(monthEnd.getTime(), ...entries.map(dateTime));
+      const calendarEnd = new Date(maxEntryTime);
+      const startOffset = monthStart.getDay();
+      const totalDays = Math.ceil((calendarEnd.getTime() - monthStart.getTime()) / 86400000) + 1;
+      const totalCells = Math.max(42, Math.ceil((startOffset + totalDays) / 7) * 7);
+      const changedKeys = new Set(currentMonthData().changedKeys);
+      const entriesByKey = new Map();
+
+      entries.forEach((entry) => {
+        const key = recordKey(entry);
+        if (!entriesByKey.has(key)) entriesByKey.set(key, []);
+        entriesByKey.get(key).push(entry);
+      });
+
+      const weekdays = WEEKDAYS.map((weekday) => `<div class="calendar-weekday">週${weekday}</div>`).join("");
+      const cells = Array.from({ length: totalCells }, (_, cellIndex) => {
+        const dayOffset = cellIndex - startOffset;
+        if (dayOffset < 0) return '<div class="calendar-day outside"></div>';
+        const date = new Date(year, month - 1, dayOffset + 1);
+        const dateInfo = {
+          year: date.getFullYear(),
+          month: date.getMonth() + 1,
+          day: date.getDate(),
+        };
+        const key = recordKey(dateInfo);
+        const dayEntries = entriesByKey.get(key) || [];
+        const outside = date.getMonth() !== month - 1;
+        const changed = changedKeys.has(key);
+        const items = dayEntries.map((entry) => {
+          const marker = changed ? "★ " : "";
+          const shift = entry.type === "shift" ? shiftInfo(entry) : null;
+          const label = entry.type === "shift"
+            ? `${marker}${shift.label}`
+            : `${marker}休假`;
+          const classes = [
+            "day-item",
+            entry.type === "leave" ? "leave" : "",
+            shift?.className || "",
+            changed ? "changed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ");
+          if (entry.type === "shift") {
+            return `
+              <div class="${classes}">
+                <span class="shift-label">${escapeHtml(label)}</span>
+                <span class="shift-time">${escapeHtml(entry.time)}</span>
+              </div>
+            `;
+          }
+          return `<div class="${classes}">${escapeHtml(label)}</div>`;
+        }).join("");
+        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", changed ? "changed" : ""]
+          .filter(Boolean)
+          .join(" ");
+        return `
+          <div class="${classes}">
+            <div class="day-number">${dateInfo.day}</div>
+            ${items}
+          </div>
+        `;
+      }).join("");
+
+      output.innerHTML = `
+        <div class="calendar">
+          <div class="calendar-head">${weekdays}</div>
+          <div class="calendar-grid">${cells}</div>
+        </div>
+      `;
+    }
+
+    function render() {
+      const entries = records();
+      const monthData = currentMonthData();
+      const hasChanged = monthData.changedKeys.length > 0;
+      resultTitle.textContent = hasChanged ? "行事曆（★為異動）" : "行事曆";
+      renderCalendar();
+      resultPanel.classList.toggle("empty", entries.length === 0);
+      if (!state.loaded) {
+        status.textContent = "讀取排班資料中...";
+        return;
+      }
+      if (state.loadError) {
+        status.style.color = "var(--rose)";
+        status.textContent = state.loadError;
+        return;
+      }
+      status.style.color = "var(--muted)";
+      status.textContent = entries.length > 0 ? "排班行事曆已同步" : "這個月份尚無排班資料";
+    }
+
+    function applyRemoteState(data) {
+      state.loaded = true;
+      state.loadError = "";
+      state.remoteMonth = /^\d{4}-\d{2}$/.test(data?.month || "") ? data.month : "";
+      state.months = normalizeMonths(data?.months);
+      if (Object.keys(state.months).length === 0 && data?.weeks && typeof data.weeks === "object") {
+        const fallbackMonth = state.remoteMonth || monthKeyFromInput();
+        state.months[fallbackMonth] = normalizeMonthRecord({
+          weeks: data.weeks,
+          changedKeys: data.changedKeys,
+        });
+      }
+      if (!state.userSelectedMonth && state.remoteMonth) {
+        monthInput.value = state.remoteMonth;
+      }
+      render();
+    }
+
+    function subscribeRemoteState() {
+      onValue(
+        remoteStateRef,
+        (snapshot) => {
+          applyRemoteState(snapshot.val() || {});
+        },
+        (error) => {
+          console.error("Schedule viewer read error:", error);
+          state.loaded = true;
+          state.loadError = "雲端同步讀取失敗";
+          render();
+        },
+      );
+    }
+
+    setDefaultMonth();
+    monthInput.addEventListener("input", () => handleMonthChange(true));
+    prevMonthButton.addEventListener("click", () => changeMonth(-1));
+    nextMonthButton.addEventListener("click", () => changeMonth(1));
+    subscribeRemoteState();
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("../../../sw.js").catch(() => {});
+    }
+    render();
+  </script>
+</body>
+</html>
