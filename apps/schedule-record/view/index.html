@@ -174,9 +174,23 @@
       background: var(--rose-soft);
     }
 
+    .result-heading {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
     .result-title {
       font-size: 0.9rem;
       color: var(--muted);
+      font-weight: 900;
+    }
+
+    .result-updated-at {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
       font-weight: 900;
     }
 
@@ -350,6 +364,10 @@
         min-height: 26px;
         padding-bottom: 5px;
       }
+      .result-heading {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
       .calendar-weekday {
         min-height: 20px;
         font-size: 0.62rem;
@@ -393,7 +411,10 @@
     </section>
 
     <section class="result empty" id="result-panel" aria-label="行事曆預覽">
-      <div class="result-title" id="result-title">行事曆</div>
+      <div class="result-heading">
+        <div class="result-updated-at" id="schedule-updated-at">資料更新：尚未貼上</div>
+        <div class="result-title" id="result-title">行事曆</div>
+      </div>
       <div class="output" id="output">尚無排班資料</div>
     </section>
   </main>
@@ -445,6 +466,7 @@
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const resultTitle = document.getElementById("result-title");
+    const scheduleUpdatedAt = document.getElementById("schedule-updated-at");
     const output = document.getElementById("output");
 
     const state = {
@@ -495,11 +517,22 @@
       return normalized;
     }
 
+    function latestKnownUpdatedAt(value = {}, weekUpdatedAt = normalizeWeekUpdatedAt(value.weekUpdatedAt)) {
+      return Math.max(
+        0,
+        Number(value.scheduleUpdatedAt) || 0,
+        Number(value.dayOffUpdatedAt) || 0,
+        ...Object.values(weekUpdatedAt),
+      );
+    }
+
     function normalizeMonthRecord(value = {}) {
+      const weekUpdatedAt = normalizeWeekUpdatedAt(value.weekUpdatedAt);
       return {
         weeks: normalizeWeeks(value.weeks),
-        weekUpdatedAt: normalizeWeekUpdatedAt(value.weekUpdatedAt),
+        weekUpdatedAt,
         changedKeys: Array.isArray(value.changedKeys) ? value.changedKeys.map(String) : [],
+        scheduleUpdatedAt: latestKnownUpdatedAt(value, weekUpdatedAt),
         dayOffInput: String(value.dayOffInput || ""),
         dayOffUpdatedAt: Number(value.dayOffUpdatedAt) || 0,
       };
@@ -759,6 +792,14 @@
       return new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day).getTime();
     }
 
+    function formatUpdatedAt(timestamp) {
+      const value = Number(timestamp) || 0;
+      if (!value) return "資料更新：尚未貼上";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "資料更新：尚未貼上";
+      return `資料更新：${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
     function shiftInfo(record) {
       const match = String(record.time || "").match(/^(\d{1,2}):(\d{2})-/);
       if (!match) return { className: "mid", label: "中班" };
@@ -862,6 +903,7 @@
         hasConflict ? "⚠為衝突" : "",
       ].filter(Boolean);
       resultTitle.textContent = titleNotes.length > 0 ? `行事曆（${titleNotes.join("、")}）` : "行事曆";
+      scheduleUpdatedAt.textContent = formatUpdatedAt(monthData.scheduleUpdatedAt);
       renderCalendar();
       resultPanel.classList.toggle("empty", entries.length === 0);
       if (!state.loaded) {
@@ -888,6 +930,7 @@
           weeks: data.weeks,
           weekUpdatedAt: data.weekUpdatedAt,
           changedKeys: data.changedKeys,
+          scheduleUpdatedAt: data.scheduleUpdatedAt,
           dayOffInput: data.dayOffInput,
           dayOffUpdatedAt: data.dayOffUpdatedAt,
         });

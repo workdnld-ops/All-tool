@@ -297,9 +297,23 @@
       background: var(--rose-soft);
     }
 
+    .result-heading {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
     .result-title {
       font-size: 0.9rem;
       color: var(--muted);
+      font-weight: 900;
+    }
+
+    .result-updated-at {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
       font-weight: 900;
     }
 
@@ -471,6 +485,10 @@
       .week-button { padding: 0 3px; }
       textarea { min-height: 96px; }
       .output { overflow: visible; }
+      .result-heading {
+        grid-template-columns: 1fr;
+        gap: 3px;
+      }
       .calendar {
         --calendar-cell-height: clamp(64px, 8.2dvh, 76px);
       }
@@ -549,7 +567,10 @@
     </section>
 
     <section class="result empty" id="result-panel" aria-label="行事曆預覽">
-      <div class="result-title" id="result-title">行事曆</div>
+      <div class="result-heading">
+        <div class="result-updated-at" id="schedule-updated-at">資料更新：尚未貼上</div>
+        <div class="result-title" id="result-title">行事曆</div>
+      </div>
       <div class="output" id="output">尚無排班資料</div>
     </section>
 
@@ -619,6 +640,7 @@
     const status = document.getElementById("status");
     const resultPanel = document.getElementById("result-panel");
     const resultTitle = document.getElementById("result-title");
+    const scheduleUpdatedAt = document.getElementById("schedule-updated-at");
     const output = document.getElementById("output");
     const copyButton = document.getElementById("copy-button");
     const clearMarksButton = document.getElementById("clear-marks-button");
@@ -673,12 +695,23 @@
       return normalized;
     }
 
+    function latestKnownUpdatedAt(value = {}, weekUpdatedAt = normalizeWeekUpdatedAt(value.weekUpdatedAt)) {
+      return Math.max(
+        0,
+        Number(value.scheduleUpdatedAt) || 0,
+        Number(value.dayOffUpdatedAt) || 0,
+        ...Object.values(weekUpdatedAt),
+      );
+    }
+
     function normalizeMonthRecord(value = {}) {
+      const weekUpdatedAt = normalizeWeekUpdatedAt(value.weekUpdatedAt);
       return {
         weeks: normalizeWeeks(value.weeks),
-        weekUpdatedAt: normalizeWeekUpdatedAt(value.weekUpdatedAt),
+        weekUpdatedAt,
         changedKeys: Array.isArray(value.changedKeys) ? value.changedKeys.map(String) : [],
         scheduleInput: String(value.scheduleInput || ""),
+        scheduleUpdatedAt: latestKnownUpdatedAt(value, weekUpdatedAt),
         dayOffInput: String(value.dayOffInput || ""),
         dayOffUpdatedAt: Number(value.dayOffUpdatedAt) || 0,
         dayOffPreviousInput: String(value.dayOffPreviousInput || ""),
@@ -764,6 +797,7 @@
         month: monthKeyFromInput(),
         months: state.months,
         scheduleInput: scheduleInput.value,
+        scheduleUpdatedAt: monthData.scheduleUpdatedAt,
         updatedAt: serverTimestamp(),
         weekUpdatedAt: monthData.weekUpdatedAt,
         weeks: monthData.weeks,
@@ -785,6 +819,7 @@
           weekUpdatedAt: data.weekUpdatedAt,
           changedKeys: data.changedKeys,
           scheduleInput: data.scheduleInput,
+          scheduleUpdatedAt: data.scheduleUpdatedAt,
           dayOffInput: data.dayOffInput,
           dayOffPreviousInput: data.dayOffPreviousInput,
           dayOffPreviousUpdatedAt: data.dayOffPreviousUpdatedAt,
@@ -1126,6 +1161,18 @@
       return new Date(dateInfo.year, dateInfo.month - 1, dateInfo.day).getTime();
     }
 
+    function formatUpdatedAt(timestamp) {
+      const value = Number(timestamp) || 0;
+      if (!value) return "資料更新：尚未貼上";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "資料更新：尚未貼上";
+      return `資料更新：${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+    }
+
+    function touchDataUpdatedAt(monthData = currentMonthData()) {
+      monthData.scheduleUpdatedAt = Date.now();
+    }
+
     function lineText() {
       return formatScheduleOutput();
     }
@@ -1245,6 +1292,7 @@
         hasConflict ? "⚠為衝突" : "",
       ].filter(Boolean);
       resultTitle.textContent = titleNotes.length > 0 ? `行事曆（${titleNotes.join("、")}）` : "行事曆";
+      scheduleUpdatedAt.textContent = formatUpdatedAt(currentMonthData().scheduleUpdatedAt);
       renderCalendar();
       resultPanel.classList.toggle("empty", !text);
       status.style.color = "var(--muted)";
@@ -1298,6 +1346,7 @@
       monthData.changedKeys = [...currentChangedKeys];
       monthData.weeks[String(week)] = text;
       monthData.weekUpdatedAt[String(week)] = Date.now();
+      touchDataUpdatedAt(monthData);
       monthData.scheduleInput = text;
       saveState();
       status.style.color = "var(--muted)";
@@ -1323,6 +1372,7 @@
       monthData.dayOffUndoReady = true;
       monthData.dayOffInput = text;
       monthData.dayOffUpdatedAt = Date.now();
+      touchDataUpdatedAt(monthData);
       saveState();
       render();
       const dayOffCount = parseDayOffRows().length;
@@ -1384,7 +1434,11 @@
     monthInput.addEventListener("input", handleMonthChange);
     prevMonthButton.addEventListener("click", () => changeMonth(-1));
     nextMonthButton.addEventListener("click", () => changeMonth(1));
-    scheduleInput.addEventListener("input", saveState);
+    scheduleInput.addEventListener("input", () => {
+      touchDataUpdatedAt();
+      saveState();
+      render();
+    });
     weekButtons.forEach((button) => {
       button.addEventListener("click", () => importWeek(button.dataset.week, button));
     });
@@ -1394,6 +1448,7 @@
       monthData.weekUpdatedAt = {};
       monthData.changedKeys = [];
       monthData.scheduleInput = "";
+      monthData.scheduleUpdatedAt = 0;
       monthData.dayOffInput = "";
       monthData.dayOffUpdatedAt = 0;
       monthData.dayOffPreviousInput = "";
