@@ -379,6 +379,10 @@
       color: var(--muted);
     }
 
+    .calendar-day.next-month-data {
+      opacity: 0.5;
+    }
+
     .calendar-day.has-item {
       border-color: rgba(31, 111, 100, 0.38);
       background: #f5fbf9;
@@ -1232,6 +1236,7 @@
         const cellTime = dateTime(dateInfo);
         const dayEntries = entriesByKey.get(key) || [];
         const outside = date.getMonth() !== month - 1;
+        const nextMonthData = outside && dayEntries.length > 0 && cellTime > monthEnd.getTime();
         const today = cellTime === todayTime;
         const past = cellTime < todayTime;
         const changed = changedKeys.has(key);
@@ -1262,7 +1267,7 @@
           }
           return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
-        const classes = ["calendar-day", outside ? "outside" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
+        const classes = ["calendar-day", outside ? "outside" : "", nextMonthData ? "next-month-data" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
           .filter(Boolean)
           .join(" ");
         return `
