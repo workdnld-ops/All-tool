@@ -890,7 +890,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.20</span>
+          <span class="version">v7.15.21</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -903,9 +903,9 @@
     <section class="panel">
       <div class="tab-strip" id="box-tabs" aria-label="卡箱分頁"></div>
       <div class="month-bar">
-        <button class="icon-button" id="newer-month" type="button" aria-label="新的日期">‹</button>
+        <button class="icon-button" id="older-month" type="button" aria-label="較早月份">‹</button>
         <h2 class="month-title" id="month-title"></h2>
-        <button class="icon-button" id="older-month" type="button" aria-label="舊的日期">›</button>
+        <button class="icon-button" id="newer-month" type="button" aria-label="較晚月份">›</button>
       </div>
       <button class="button primary" id="new-card" type="button">新增卡片任務</button>
     </section>
@@ -1651,8 +1651,8 @@
       await updateBadge();
     }
 
-    document.getElementById("newer-month").addEventListener("click", () => changeMonth(1));
     document.getElementById("older-month").addEventListener("click", () => changeMonth(-1));
+    document.getElementById("newer-month").addEventListener("click", () => changeMonth(1));
     document.getElementById("new-card").addEventListener("click", () => openModal());
     document.getElementById("close-modal").addEventListener("click", closeModal);
     document.getElementById("cancel-card").addEventListener("click", closeModal);

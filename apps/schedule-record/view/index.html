@@ -62,21 +62,11 @@
       gap: 6px;
     }
 
-    .page-updated-at {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 900;
-      line-height: 1.2;
-      min-height: 16px;
-      text-align: center;
-    }
-
     header {
-      min-height: 38px;
       display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: auto minmax(0, 1fr);
       align-items: center;
-      gap: 4px;
+      gap: 4px 8px;
     }
 
     h1 {
@@ -86,7 +76,18 @@
       letter-spacing: 0;
     }
 
+    .page-updated-at {
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 900;
+      line-height: 1.2;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     .status {
+      grid-column: 1 / -1;
       min-height: 16px;
       color: var(--muted);
       font-size: 0.76rem;
@@ -404,9 +405,9 @@
 </head>
 <body>
   <main class="shell">
-    <div class="page-updated-at" id="schedule-updated-at">資料更新：尚未貼上</div>
     <header>
       <h1>排班行事曆</h1>
+      <div class="page-updated-at" id="schedule-updated-at">資料更新：尚未貼上</div>
       <div class="status" id="status">讀取排班資料中...</div>
     </header>
 
