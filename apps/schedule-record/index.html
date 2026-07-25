@@ -981,6 +981,14 @@
       return times.length >= 2 ? `${times[0]}-${times[1]}` : "";
     }
 
+    function findStoreCode(cells) {
+      for (const cell of cells) {
+        const match = normalizeText(cell).match(/^([ABC])(?:單店|跑店)$/);
+        if (match) return match[1];
+      }
+      return "";
+    }
+
     function hasLeaveText(cells) {
       const text = normalizeText(cells.join(" "));
       return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
@@ -1034,6 +1042,7 @@
         const text = normalizeText(cells.join(" "));
         const date = dateForWeekDay(week, index);
         const time = findShiftTime(cells);
+        const store = time ? findStoreCode(cells) : "";
         const isLeave = !time && hasLeaveText(cells);
         return {
           ...date,
@@ -1041,6 +1050,7 @@
           rowIndex: index,
           source: "schedule",
           sourceUpdatedAt: Number(currentMonthData().weekUpdatedAt[String(week)]) || 0,
+          store,
           text,
           time,
           type: time ? "shift" : isLeave ? "leave" : "empty",
@@ -1135,11 +1145,12 @@
 
     function shiftInfo(record) {
       const match = String(record.time || "").match(/^(\d{1,2}):(\d{2})-/);
-      if (!match) return { className: "mid", label: "中班" };
+      const store = String(record.store || "");
+      if (!match) return { className: "mid", label: `${store}中班` };
       const minutes = (Number(match[1]) * 60) + Number(match[2]);
-      if (minutes <= (10 * 60) + 59) return { className: "early", label: "早班" };
-      if (minutes >= 13 * 60) return { className: "late", label: "晚班" };
-      return { className: "mid", label: "中班" };
+      if (minutes <= (10 * 60) + 59) return { className: "early", label: `${store}早班` };
+      if (minutes >= 13 * 60) return { className: "late", label: `${store}晚班` };
+      return { className: "mid", label: `${store}中班` };
     }
 
     function formatScheduleOutput() {
@@ -1153,7 +1164,7 @@
       return new Map(
         parseWeekRows(rawText, week)
           .filter((record) => record.type !== "empty")
-          .map((record) => [recordKey(record), formatRecord(record)]),
+          .map((record) => [recordKey(record), `${formatRecord(record)} ${record.store || ""}`]),
       );
     }
 

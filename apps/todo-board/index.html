@@ -890,7 +890,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.21</span>
+          <span class="version">v7.15.22</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -1412,7 +1412,7 @@
     function activeMonthCards() {
       const selected = activeBoxId();
       return sortedCards(state.cards.filter((card) =>
-        card.boxId === selected && monthKeyFromDateKey(card.dueDate) === state.activeMonth
+        card.boxId === selected && (card.reminder?.enabled !== true || monthKeyFromDateKey(card.dueDate) === state.activeMonth)
       ));
     }
 
@@ -1509,7 +1509,7 @@
         setTimeout(render, 0);
         return;
       }
-      if (card && monthKeyFromDateKey(card.dueDate) !== state.activeMonth) {
+      if (card && card.reminder?.enabled === true && monthKeyFromDateKey(card.dueDate) !== state.activeMonth) {
         state.activeMonth = monthKeyFromDateKey(card.dueDate);
         setTimeout(render, 0);
         return;
