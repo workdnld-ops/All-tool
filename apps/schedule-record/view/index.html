@@ -468,6 +468,8 @@
       "家庭照護假",
     ];
     const SUPPORT_SHIFT_KEYWORDS = [
+      "一店裝機",
+      "二店裝機",
       "一店裝機支援休",
       "二店裝機支援休",
       "二電裝機支援休",
@@ -706,6 +708,13 @@
       return "";
     }
 
+    function findSpecialShiftLabel(cells) {
+      const text = normalizeText(cells.join(" "));
+      if (text.includes("二店裝機") || text.includes("二電裝機")) return "瑞光裝機";
+      if (text.includes("一店裝機")) return "內湖裝機";
+      return "";
+    }
+
     function hasLeaveText(cells) {
       const text = normalizeText(cells.join(" "));
       return LEAVE_KEYWORDS.some((keyword) => text.includes(keyword));
@@ -734,6 +743,7 @@
         const date = dateForWeekDay(week, index, monthKey);
         const time = findShiftTime(cells);
         const store = time ? findStoreCode(cells) : "";
+        const specialShiftLabel = time ? findSpecialShiftLabel(cells) : "";
         const isLeave = !time && hasLeaveText(cells);
         return {
           ...date,
@@ -741,6 +751,7 @@
           rowIndex: index,
           source: "schedule",
           sourceUpdatedAt: Number(monthData.weekUpdatedAt[String(week)]) || 0,
+          specialShiftLabel,
           store,
           time,
           type: time ? "shift" : isLeave ? "leave" : "empty",
@@ -846,11 +857,12 @@
     function shiftInfo(record) {
       const match = String(record.time || "").match(/^(\d{1,2}):(\d{2})-/);
       const store = String(record.store || "");
-      if (!match) return { className: "mid", label: `${store}中班` };
+      const labelFor = (shiftLabel) => String(record.specialShiftLabel || "") || `${store}${shiftLabel}`;
+      if (!match) return { className: "mid", label: labelFor("中班") };
       const minutes = (Number(match[1]) * 60) + Number(match[2]);
-      if (minutes <= (10 * 60) + 59) return { className: "early", label: `${store}早班` };
-      if (minutes >= 13 * 60) return { className: "late", label: `${store}晚班` };
-      return { className: "mid", label: `${store}中班` };
+      if (minutes <= (10 * 60) + 59) return { className: "early", label: labelFor("早班") };
+      if (minutes >= 13 * 60) return { className: "late", label: labelFor("晚班") };
+      return { className: "mid", label: labelFor("中班") };
     }
 
     function calendarRecords() {
