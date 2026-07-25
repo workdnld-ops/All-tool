@@ -254,7 +254,7 @@
       color: var(--muted);
     }
 
-    .calendar-day.next-month-data {
+    .calendar-day.adjacent-month-data {
       opacity: 0.5;
     }
 
@@ -591,6 +591,18 @@
       return { year: Number(match[1]), month: Number(match[2]) };
     }
 
+    function parseMonthKey(monthKey) {
+      const match = /^(\d{4})-(\d{2})$/.exec(monthKey || "");
+      if (!match) return parseMonthValue();
+      return { year: Number(match[1]), month: Number(match[2]) };
+    }
+
+    function monthKeyWithOffset(monthKey, offset) {
+      const { year, month } = parseMonthKey(monthKey);
+      const date = new Date(year, month - 1 + offset, 1);
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+    }
+
     function setMonthValue(year, month) {
       monthInput.value = `${year}-${pad2(month)}`;
     }
@@ -644,8 +656,8 @@
       return null;
     }
 
-    function dateForWeekDay(week, index) {
-      const { year, month } = parseMonthValue();
+    function dateForWeekDay(week, index, monthKey = monthKeyFromInput()) {
+      const { year, month } = parseMonthKey(monthKey);
       const day = ((Number(week) - 1) * 7) + index + 1;
       const date = new Date(year, month - 1, day);
       return {
@@ -711,7 +723,7 @@
       return hasSummaryHeader ? 5 : 0;
     }
 
-    function parseWeekRows(rawText, week) {
+    function parseWeekRows(rawText, week, monthKey = monthKeyFromInput(), monthData = currentMonthData(monthKey)) {
       const values = rawText
         .replace(/\r/g, "")
         .split(/\n|\t/g)
@@ -719,7 +731,7 @@
       const dataValues = values.slice(4);
       return Array.from({ length: 7 }, (_, index) => {
         const cells = dataValues.slice(index * 25, (index + 1) * 25);
-        const date = dateForWeekDay(week, index);
+        const date = dateForWeekDay(week, index, monthKey);
         const time = findShiftTime(cells);
         const store = time ? findStoreCode(cells) : "";
         const isLeave = !time && hasLeaveText(cells);
@@ -728,7 +740,7 @@
           week: Number(week),
           rowIndex: index,
           source: "schedule",
-          sourceUpdatedAt: Number(currentMonthData().weekUpdatedAt[String(week)]) || 0,
+          sourceUpdatedAt: Number(monthData.weekUpdatedAt[String(week)]) || 0,
           store,
           time,
           type: time ? "shift" : isLeave ? "leave" : "empty",
@@ -736,20 +748,21 @@
       });
     }
 
-    function scheduleRecords() {
-      return Object.entries(currentMonthData().weeks)
-        .flatMap(([week, rawText]) => parseWeekRows(rawText, week))
+    function scheduleRecords(monthKey = monthKeyFromInput()) {
+      const monthData = currentMonthData(monthKey);
+      return Object.entries(monthData.weeks)
+        .flatMap(([week, rawText]) => parseWeekRows(rawText, week, monthKey, monthData))
         .filter((record) => record.type !== "empty")
         .sort((a, b) => dateTime(a) - dateTime(b));
     }
 
-    function parseDayOffRows() {
-      const monthData = currentMonthData();
+    function parseDayOffRows(monthKey = monthKeyFromInput()) {
+      const monthData = currentMonthData(monthKey);
       const rawText = String(monthData.dayOffInput || "").replace(/\r/g, "").replace(/\n+$/g, "");
       const rawRows = rawText ? rawText.split("\n") : [];
       const rows = rawRows.map((line) => line.split("\t"));
       const dataRows = rows.slice(dayOffDataStartIndex(rows));
-      const { year, month } = parseMonthValue();
+      const { year, month } = parseMonthKey(monthKey);
       const maxDay = daysInMonth(year, month);
       const matches = [];
 
@@ -783,9 +796,9 @@
       return unique.sort((a, b) => dateTime(a) - dateTime(b));
     }
 
-    function records() {
+    function records(monthKey = monthKeyFromInput()) {
       const entriesByKey = new Map();
-      [...scheduleRecords(), ...parseDayOffRows()].forEach((record) => {
+      [...scheduleRecords(monthKey), ...parseDayOffRows(monthKey)].forEach((record) => {
         const key = recordKey(record);
         if (!entriesByKey.has(key)) entriesByKey.set(key, []);
         entriesByKey.get(key).push(record);
@@ -840,8 +853,44 @@
       return { className: "mid", label: `${store}中班` };
     }
 
+    function calendarRecords() {
+      const currentKey = monthKeyFromInput();
+      const prevKey = monthKeyWithOffset(currentKey, -1);
+      const nextKey = monthKeyWithOffset(currentKey, 1);
+      const { year, month } = parseMonthKey(currentKey);
+      const monthStart = new Date(year, month - 1, 1);
+      const monthEnd = new Date(year, month, 0);
+      const visibleStart = new Date(year, month - 1, 1 - monthStart.getDay());
+      const visibleEnd = new Date(year, month - 1, 42 - monthStart.getDay());
+      const entriesByKey = new Map();
+
+      const addEntry = (entry) => {
+        const key = recordKey(entry);
+        const current = entriesByKey.get(key);
+        if (!current || Number(entry.sourceUpdatedAt || 0) >= Number(current.sourceUpdatedAt || 0)) {
+          entriesByKey.set(key, entry);
+        }
+      };
+
+      records(prevKey)
+        .filter((entry) => {
+          const time = dateTime(entry);
+          return time >= visibleStart.getTime() && time < monthStart.getTime();
+        })
+        .forEach(addEntry);
+      records(currentKey).forEach(addEntry);
+      records(nextKey)
+        .filter((entry) => {
+          const time = dateTime(entry);
+          return time > monthEnd.getTime() && time <= visibleEnd.getTime();
+        })
+        .forEach(addEntry);
+
+      return [...entriesByKey.values()].sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
     function renderCalendar() {
-      const entries = records();
+      const entries = calendarRecords();
       if (entries.length === 0) {
         output.innerHTML = '<div class="empty-calendar">尚無排班資料</div>';
         return;
@@ -855,7 +904,12 @@
       const startOffset = monthStart.getDay();
       const totalDays = Math.ceil((calendarEnd.getTime() - monthStart.getTime()) / 86400000) + 1;
       const totalCells = Math.max(42, Math.ceil((startOffset + totalDays) / 7) * 7);
-      const changedKeys = new Set(currentMonthData().changedKeys);
+      const currentKey = monthKeyFromInput();
+      const changedKeys = new Set([
+        ...currentMonthData(monthKeyWithOffset(currentKey, -1)).changedKeys,
+        ...currentMonthData(currentKey).changedKeys,
+        ...currentMonthData(monthKeyWithOffset(currentKey, 1)).changedKeys,
+      ]);
       const entriesByKey = new Map();
       const todayTime = startOfToday();
 
@@ -868,7 +922,6 @@
       const weekdays = WEEKDAYS.map((weekday) => `<div class="calendar-weekday">週${weekday}</div>`).join("");
       const cells = Array.from({ length: totalCells }, (_, cellIndex) => {
         const dayOffset = cellIndex - startOffset;
-        if (dayOffset < 0) return '<div class="calendar-day outside"></div>';
         const date = new Date(year, month - 1, dayOffset + 1);
         const dateInfo = {
           year: date.getFullYear(),
@@ -879,7 +932,8 @@
         const cellTime = dateTime(dateInfo);
         const dayEntries = entriesByKey.get(key) || [];
         const outside = date.getMonth() !== month - 1;
-        const nextMonthData = outside && dayEntries.length > 0 && cellTime > monthEnd.getTime();
+        if (outside && dayEntries.length === 0) return '<div class="calendar-day outside"></div>';
+        const adjacentMonthData = outside && dayEntries.length > 0;
         const today = cellTime === todayTime;
         const past = cellTime < todayTime;
         const changed = changedKeys.has(key);
@@ -910,7 +964,7 @@
           }
           return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
-        const classes = ["calendar-day", outside ? "outside" : "", nextMonthData ? "next-month-data" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
+        const classes = ["calendar-day", outside ? "outside" : "", adjacentMonthData ? "adjacent-month-data" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
           .filter(Boolean)
           .join(" ");
         return `
@@ -930,7 +984,7 @@
     }
 
     function render() {
-      const entries = records();
+      const entries = calendarRecords();
       const monthData = currentMonthData();
       const hasChanged = monthData.changedKeys.length > 0;
       const hasConflict = entries.some((record) => record.conflict);
