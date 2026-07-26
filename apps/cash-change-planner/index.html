@@ -144,6 +144,7 @@
     .header-actions,
     .quick-actions,
     .summary,
+    .custom-summary,
     .settings-actions {
       display: grid;
       gap: 6px;
@@ -152,6 +153,7 @@
     .header-actions { grid-template-columns: 1fr 1fr; }
     .quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .custom-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .settings-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .panel,
@@ -210,6 +212,7 @@
       gap: 6px;
     }
 
+    .custom-grid,
     .target-grid,
     .diff-grid {
       display: grid;
@@ -218,6 +221,7 @@
     }
 
     .money-field,
+    .custom-cell,
     .diff-cell {
       display: grid;
       gap: 4px;
@@ -225,6 +229,7 @@
     }
 
     .money-field span,
+    .custom-head,
     .diff-head {
       min-height: 28px;
       border-radius: 8px;
@@ -240,6 +245,20 @@
     .money-field.receipt span {
       color: var(--gold);
       background: var(--gold-soft);
+    }
+
+    .custom-total {
+      min-height: 40px;
+      border: 1px solid var(--field-line);
+      border-radius: 8px;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      padding: 0 6px;
+      font-size: 0.9rem;
+      font-weight: 950;
+      text-align: center;
+      white-space: nowrap;
     }
 
     .diff-value {
@@ -344,6 +363,7 @@
     @media (max-width: 860px) {
       .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .money-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .custom-grid,
       .target-grid,
       .diff-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
@@ -359,6 +379,7 @@
       .settings-actions,
       .total-setting { grid-template-columns: 1fr; }
       .money-grid,
+      .custom-grid,
       .target-grid,
       .diff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .section-title span,
@@ -398,6 +419,11 @@
 
       .summary {
         grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .custom-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 4px;
       }
 
@@ -441,17 +467,20 @@
       }
 
       .money-grid,
+      .custom-grid,
       .diff-grid {
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 4px;
       }
 
       .money-field,
+      .custom-cell,
       .diff-cell {
         gap: 3px;
       }
 
       .money-field span,
+      .custom-head,
       .diff-head {
         min-height: 21px;
         font-size: 0.68rem;
@@ -459,6 +488,7 @@
       }
 
       input,
+      .custom-total,
       .diff-value {
         min-height: 32px;
         border-radius: 7px;
@@ -520,6 +550,25 @@
       </div>
       <div class="diff-grid" id="diff-grid"></div>
     </section>
+
+    <section class="panel">
+      <div class="section-title">
+        <h2>自行分配</h2>
+        <span>填入預補數量後，下方會自動顯示庫存加預補後的結果，以及和設定總額差多少。</span>
+      </div>
+      <div class="custom-summary" aria-label="自行分配總覽">
+        <div class="metric">
+          <span>預補金額</span>
+          <strong id="custom-add-total">$0</strong>
+        </div>
+        <div class="metric" id="custom-balance-card">
+          <span>分配差額</span>
+          <strong id="custom-balance-diff">$0</strong>
+        </div>
+      </div>
+      <div class="custom-grid" id="custom-input-grid"></div>
+      <div class="custom-grid" id="custom-total-grid"></div>
+    </section>
   </main>
 
   <section class="modal" id="settings-modal" aria-modal="true" role="dialog">
@@ -572,6 +621,8 @@
 
     const stockGrid = document.getElementById("stock-grid");
     const diffGrid = document.getElementById("diff-grid");
+    const customInputGrid = document.getElementById("custom-input-grid");
+    const customTotalGrid = document.getElementById("custom-total-grid");
     const status = document.getElementById("status");
     const savedNote = document.getElementById("saved-note");
     const settingsModal = document.getElementById("settings-modal");
@@ -579,6 +630,7 @@
     const targetTotalInput = document.getElementById("target-total-input");
     const settingsCheck = document.getElementById("settings-check");
     const balanceCard = document.getElementById("balance-card");
+    const customBalanceCard = document.getElementById("custom-balance-card");
 
     let settings = loadSettings();
 
@@ -597,6 +649,10 @@
 
     function targetFieldId(key) {
       return `target-${key}`;
+    }
+
+    function customFieldId(key) {
+      return `custom-${key}`;
     }
 
     function stockKeys() {
@@ -638,6 +694,13 @@
       return values;
     }
 
+    function readCustomAdds() {
+      return Object.fromEntries(DENOMS.map((denom) => {
+        const input = document.getElementById(customFieldId(denom.key));
+        return [denom.key, parseCount(input?.value)];
+      }));
+    }
+
     function setStock(values, shouldSave = true) {
       const next = { ...blankStock(), ...(values || {}) };
       DENOMS.forEach((denom) => {
@@ -649,8 +712,19 @@
       calculate(shouldSave);
     }
 
+    function clearCustomAdds() {
+      DENOMS.forEach((denom) => {
+        const input = document.getElementById(customFieldId(denom.key));
+        if (input) input.value = "0";
+      });
+    }
+
     function stockCashTotal(stock) {
       return DENOMS.reduce((sum, denom) => sum + (parseCount(stock[denom.key]) * denom.value), 0);
+    }
+
+    function customAddCashTotal(adds) {
+      return DENOMS.reduce((sum, denom) => sum + (parseCount(adds[denom.key]) * denom.value), 0);
     }
 
     function targetCashTotal() {
@@ -731,6 +805,26 @@
       ].join("");
     }
 
+    function renderCustomFields() {
+      customInputGrid.innerHTML = DENOMS.map((denom) => `
+        <label class="custom-cell">
+          <span class="custom-head">${denom.label} 預補</span>
+          <input
+            id="${customFieldId(denom.key)}"
+            data-custom-input
+            data-denom="${denom.key}"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            value="0"
+            aria-label="${denom.label} 預補數量"
+          >
+        </label>
+      `).join("");
+      renderCustomTotals(readStock());
+    }
+
     function renderSettingsFields() {
       targetTotalInput.value = String(settings.targetTotal);
       targetSettingsGrid.innerHTML = DENOMS.map((denom) => `
@@ -770,6 +864,26 @@
       }).join("");
     }
 
+    function renderCustomTotals(stock) {
+      const adds = readCustomAdds();
+      customTotalGrid.innerHTML = DENOMS.map((denom) => {
+        const total = (stock[denom.key] || 0) + (adds[denom.key] || 0);
+        return `
+          <div class="custom-cell">
+            <div class="custom-head">${denom.label} 合計</div>
+            <div class="custom-total">${total}${denom.unit}</div>
+          </div>
+        `;
+      }).join("");
+      const cashTotal = stockCashTotal(stock);
+      const addTotal = customAddCashTotal(adds);
+      const finalTotal = cashTotal + addTotal;
+      const balance = settings.targetTotal - finalTotal;
+      document.getElementById("custom-add-total").textContent = formatCurrency(addTotal);
+      document.getElementById("custom-balance-diff").textContent = formatCurrency(balance);
+      customBalanceCard.classList.toggle("warn", balance !== 0);
+    }
+
     function renderSettingsCheck() {
       const total = targetCashTotal();
       const diff = total - settings.targetTotal;
@@ -793,6 +907,7 @@
       balanceCard.classList.toggle("warn", balance !== 0);
 
       renderDiff(stock);
+      renderCustomTotals(stock);
       document.getElementById("result-text").textContent = balance === 0
         ? "庫存加收據已對齊設定總額。"
         : `庫存加收據與設定總額相差 ${formatCurrency(balance)}。`;
@@ -822,6 +937,8 @@
 
     function clearStock() {
       setStock(blankStock());
+      clearCustomAdds();
+      calculate();
       setStatus("庫存與收據已清空。");
     }
 
@@ -854,6 +971,7 @@
     }
 
     renderStockFields();
+    renderCustomFields();
     renderSettingsFields();
     const saved = loadSavedStock();
     setStock(saved?.stock || blankStock(), false);
@@ -870,6 +988,7 @@
 
     document.body.addEventListener("input", (event) => {
       if (event.target.matches("[data-stock-input]")) calculate();
+      if (event.target.matches("[data-custom-input]")) calculate(false);
       if (event.target.matches("#target-total-input, [data-target-input]")) updateSettingsFromInputs();
     });
 
