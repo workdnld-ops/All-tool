@@ -390,10 +390,10 @@
       .quick-actions,
       .settings-actions,
       .total-setting { grid-template-columns: 1fr; }
-      .money-grid,
+      .money-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
       .custom-grid,
-      .target-grid,
-      .diff-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .diff-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+      .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .section-title span,
       .metric span,
       .note { font-size: 0.7rem; }
@@ -478,34 +478,42 @@
         font-size: 0.76rem;
       }
 
+      .money-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+      .custom-grid,
+      .diff-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+      .target-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
       .money-grid,
       .custom-grid,
       .diff-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 4px;
+        gap: 3px;
       }
 
       .money-field,
       .custom-cell,
       .diff-cell {
-        gap: 3px;
+        gap: 2px;
       }
 
       .money-field span,
       .custom-head,
       .diff-head {
-        min-height: 21px;
-        font-size: 0.68rem;
+        min-height: 19px;
+        font-size: 0.56rem;
         border-radius: 6px;
+      }
+
+      .head-suffix {
+        display: none;
       }
 
       input,
       .custom-total,
       .diff-value {
-        min-height: 32px;
+        min-height: 29px;
         border-radius: 7px;
-        font-size: 0.8rem;
-        padding: 0 4px;
+        font-size: 0.68rem;
+        padding: 0 2px;
       }
     }
   </style>
@@ -827,7 +835,7 @@
     function renderCustomFields() {
       customInputGrid.innerHTML = DENOMS.map((denom) => `
         <label class="custom-cell">
-          <span class="custom-head">${denom.label} 分配</span>
+          <span class="custom-head"><span>${denom.label}</span><span class="head-suffix"> 分配</span></span>
           <input
             id="${customFieldId(denom.key)}"
             data-custom-input
@@ -888,7 +896,7 @@
         const total = (stock[denom.key] || 0) + (adds[denom.key] || 0);
         return `
           <div class="custom-cell">
-            <div class="custom-head total-head">${denom.label} 合計</div>
+            <div class="custom-head total-head"><span>${denom.label}</span><span class="head-suffix"> 合計</span></div>
             <div class="custom-total ${total < 0 ? "negative" : ""}">${total}${denom.unit}</div>
           </div>
         `;

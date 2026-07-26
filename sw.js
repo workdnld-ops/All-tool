@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v15";
+const CACHE_NAME = "ops-toolbox-v16";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
