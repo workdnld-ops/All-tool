@@ -247,11 +247,17 @@
       background: var(--gold-soft);
     }
 
+    .custom-head.total-head {
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+
     .custom-total {
       min-height: 40px;
-      border: 1px solid var(--field-line);
+      border: 1px solid rgba(36, 91, 155, 0.26);
       border-radius: 8px;
-      background: #fff;
+      background: #f2f7fd;
+      color: var(--primary);
       display: grid;
       place-items: center;
       padding: 0 6px;
@@ -259,6 +265,12 @@
       font-weight: 950;
       text-align: center;
       white-space: nowrap;
+    }
+
+    .custom-total.negative {
+      border-color: rgba(180, 35, 24, 0.34);
+      background: var(--danger-soft);
+      color: var(--danger);
     }
 
     .diff-value {
@@ -554,11 +566,11 @@
     <section class="panel">
       <div class="section-title">
         <h2>自行分配</h2>
-        <span>填入預補數量後，下方會自動顯示庫存加預補後的結果，以及和設定總額差多少。</span>
+        <span>填入自行分配數量後，下方會自動顯示庫存加分配後的結果；負數代表拿走。</span>
       </div>
       <div class="custom-summary" aria-label="自行分配總覽">
         <div class="metric">
-          <span>預補金額</span>
+          <span>調整金額</span>
           <strong id="custom-add-total">$0</strong>
         </div>
         <div class="metric" id="custom-balance-card">
@@ -639,8 +651,15 @@
       return Number.isFinite(number) && number > 0 ? number : 0;
     }
 
+    function parseSignedCount(value) {
+      const number = Number.parseInt(String(value || "").replace(/[^\d-]/g, ""), 10);
+      return Number.isFinite(number) ? number : 0;
+    }
+
     function formatCurrency(value) {
-      return `$${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
+      const number = Math.round(Number(value) || 0);
+      const sign = number < 0 ? "-" : "";
+      return `${sign}$${Math.abs(number).toLocaleString("zh-TW")}`;
     }
 
     function fieldId(key) {
@@ -697,7 +716,7 @@
     function readCustomAdds() {
       return Object.fromEntries(DENOMS.map((denom) => {
         const input = document.getElementById(customFieldId(denom.key));
-        return [denom.key, parseCount(input?.value)];
+        return [denom.key, parseSignedCount(input?.value)];
       }));
     }
 
@@ -724,7 +743,7 @@
     }
 
     function customAddCashTotal(adds) {
-      return DENOMS.reduce((sum, denom) => sum + (parseCount(adds[denom.key]) * denom.value), 0);
+      return DENOMS.reduce((sum, denom) => sum + (parseSignedCount(adds[denom.key]) * denom.value), 0);
     }
 
     function targetCashTotal() {
@@ -808,17 +827,16 @@
     function renderCustomFields() {
       customInputGrid.innerHTML = DENOMS.map((denom) => `
         <label class="custom-cell">
-          <span class="custom-head">${denom.label} 預補</span>
+          <span class="custom-head">${denom.label} 分配</span>
           <input
             id="${customFieldId(denom.key)}"
             data-custom-input
             data-denom="${denom.key}"
             type="number"
-            min="0"
             step="1"
-            inputmode="numeric"
+            inputmode="decimal"
             value="0"
-            aria-label="${denom.label} 預補數量"
+            aria-label="${denom.label} 自行分配數量"
           >
         </label>
       `).join("");
@@ -870,8 +888,8 @@
         const total = (stock[denom.key] || 0) + (adds[denom.key] || 0);
         return `
           <div class="custom-cell">
-            <div class="custom-head">${denom.label} 合計</div>
-            <div class="custom-total">${total}${denom.unit}</div>
+            <div class="custom-head total-head">${denom.label} 合計</div>
+            <div class="custom-total ${total < 0 ? "negative" : ""}">${total}${denom.unit}</div>
           </div>
         `;
       }).join("");
