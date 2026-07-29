@@ -16,6 +16,7 @@ export interface Tag {
   id: string;
   name: string;
   color: string;
+  order?: number;
 }
 
 export interface ExpenseCard {
@@ -37,10 +38,10 @@ export interface List {
 }
 
 export const DEFAULT_TAGS: Tag[] = [
-  { id: 'tag-1', name: '食物', color: 'sky' },
-  { id: 'tag-2', name: '交通', color: 'emerald' },
-  { id: 'tag-3', name: '娛樂', color: 'purple' },
-  { id: 'tag-4', name: '其他', color: 'pink' },
+  { id: 'tag-1', name: '食物', color: 'sky', order: 0 },
+  { id: 'tag-2', name: '交通', color: 'emerald', order: 1 },
+  { id: 'tag-3', name: '娛樂', color: 'purple', order: 2 },
+  { id: 'tag-4', name: '其他', color: 'pink', order: 3 },
 ];
 
 export const TAG_COLORS = [

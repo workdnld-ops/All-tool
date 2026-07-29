@@ -191,10 +191,13 @@ export function useFirebaseTags() {
       (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          const tagsArray = Object.entries(data).map(([id, tagData]: [string, any]) => ({
-            id,
-            ...tagData
-          }));
+          const tagsArray = Object.entries(data)
+            .map(([id, tagData]: [string, any], index) => ({
+              id,
+              ...tagData,
+              order: Number.isFinite(Number(tagData.order)) ? Number(tagData.order) : index
+            }))
+            .sort((a, b) => a.order - b.order);
           setTags(tagsArray);
         }
         setLoading(false);
@@ -213,10 +216,11 @@ export function useFirebaseTags() {
       const tagsRef = ref(database, `users/${userId}/tags`);
       const tagsData: any = {};
       
-      tagsToSave.forEach(tag => {
+      tagsToSave.forEach((tag, index) => {
         tagsData[tag.id] = {
           name: tag.name,
-          color: tag.color
+          color: tag.color,
+          order: index
         };
       });
       

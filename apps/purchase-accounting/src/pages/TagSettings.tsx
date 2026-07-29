@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Tag, TAG_COLORS, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -8,12 +8,127 @@ import { useFirebaseTags, useFirebaseSnackBudget } from '@/hooks/useFirebase';
 import { DEFAULT_TAGS } from '@/types';
 import { cn } from '@/lib/utils';
 import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+interface SortableTagRowProps {
+  tag: Tag;
+  isEditing: boolean;
+  tempName: string;
+  onTempNameChange: (name: string) => void;
+  onStartEditing: () => void;
+  onNameSubmit: () => void;
+  onColorChange: (color: string) => void;
+  onDelete: () => void;
+}
+
+function SortableTagRow({
+  tag,
+  isEditing,
+  tempName,
+  onTempNameChange,
+  onStartEditing,
+  onNameSubmit,
+  onColorChange,
+  onDelete,
+}: SortableTagRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tag.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'bg-card rounded-lg p-4 border border-border flex items-center gap-3',
+        isDragging && 'opacity-60 shadow-lg'
+      )}
+    >
+      <button
+        type="button"
+        className="h-10 w-8 flex items-center justify-center rounded-md text-muted-foreground touch-none active:text-primary"
+        aria-label={`拖曳排序 ${tag.name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="w-4 h-4" />
+      </button>
+
+      {isEditing ? (
+        <Input
+          value={tempName}
+          onChange={(e) => onTempNameChange(e.target.value)}
+          onBlur={onNameSubmit}
+          onKeyDown={(e) => e.key === 'Enter' && onNameSubmit()}
+          className="flex-1"
+          autoFocus
+        />
+      ) : (
+        <button
+          onClick={onStartEditing}
+          className="flex-1 text-left font-medium hover:text-primary"
+        >
+          {tag.name}
+        </button>
+      )}
+
+      <Select
+        value={tag.color}
+        onValueChange={onColorChange}
+      >
+        <SelectTrigger className="w-10 h-10 p-0 flex items-center justify-center">
+          <div className={cn('w-6 h-6 rounded', `bg-tag-${tag.color}`)} />
+        </SelectTrigger>
+        <SelectContent>
+          {TAG_COLORS.map((color) => (
+            <SelectItem key={color.value} value={color.value}>
+              <div className={cn('w-6 h-6 rounded', color.class)} />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onDelete}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
 
 export default function TagSettings() {
   const navigate = useNavigate();
@@ -26,11 +141,19 @@ export default function TagSettings() {
   const [tempNeihu, setTempNeihu] = useState('');
   const [tempRuiguang, setTempRuiguang] = useState('');
   const [editingBudget, setEditingBudget] = useState<'neihu' | 'ruiguang' | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
+
+  const normalizeTagOrder = (items: Tag[]) =>
+    items.map((tag, index) => ({ ...tag, order: index }));
 
   // 同步 Firebase 資料到本地 state
   useEffect(() => {
     if (!tagsLoading && firebaseTags.length > 0) {
-      setTags(firebaseTags);
+      setTags(normalizeTagOrder(firebaseTags));
     }
   }, [firebaseTags, tagsLoading]);
 
@@ -45,20 +168,34 @@ export default function TagSettings() {
       id: `tag-${Date.now()}`,
       name: '新標籤',
       color: 'sky',
+      order: tags.length,
     };
-    const updatedTags = [...tags, newTag];
+    const updatedTags = normalizeTagOrder([...tags, newTag]);
     setTags(updatedTags);
     await saveTags(updatedTags);
   };
 
   const handleUpdateTag = async (id: string, updates: Partial<Tag>) => {
-    const updatedTags = tags.map(tag => tag.id === id ? { ...tag, ...updates } : tag);
+    const updatedTags = normalizeTagOrder(tags.map(tag => tag.id === id ? { ...tag, ...updates } : tag));
     setTags(updatedTags);
     await saveTags(updatedTags);
   };
 
   const handleDeleteTag = async (id: string) => {
-    const updatedTags = tags.filter(tag => tag.id !== id);
+    const updatedTags = normalizeTagOrder(tags.filter(tag => tag.id !== id));
+    setTags(updatedTags);
+    await saveTags(updatedTags);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tags.findIndex((tag) => tag.id === active.id);
+    const newIndex = tags.findIndex((tag) => tag.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const updatedTags = normalizeTagOrder(arrayMove(tags, oldIndex, newIndex));
     setTags(updatedTags);
     await saveTags(updatedTags);
   };
@@ -173,58 +310,35 @@ export default function TagSettings() {
         {/* 標籤設定 */}
         <div className="space-y-3">
           <h2 className="font-semibold text-lg">標籤管理</h2>
-          {tags.map((tag) => (
-            <div
-              key={tag.id}
-              className="bg-card rounded-lg p-4 border border-border flex items-center gap-3"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={tags.map((tag) => tag.id)}
+              strategy={verticalListSortingStrategy}
             >
-              {editingId === tag.id ? (
-                <Input
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  onBlur={() => handleNameSubmit(tag.id)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit(tag.id)}
-                  className="flex-1"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => {
-                    setEditingId(tag.id);
-                    setTempName(tag.name);
-                  }}
-                  className="flex-1 text-left font-medium hover:text-primary"
-                >
-                  {tag.name}
-                </button>
-              )}
-
-              <Select
-                value={tag.color}
-                onValueChange={(color) => handleUpdateTag(tag.id, { color })}
-              >
-                <SelectTrigger className="w-10 h-10 p-0 flex items-center justify-center">
-                  <div className={cn('w-6 h-6 rounded', `bg-tag-${tag.color}`)} />
-                </SelectTrigger>
-                <SelectContent>
-                  {TAG_COLORS.map((color) => (
-                    <SelectItem key={color.value} value={color.value}>
-                      <div className={cn('w-6 h-6 rounded', color.class)} />
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => handleDeleteTag(tag.id)}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          ))}
+              <div className="space-y-3">
+                {tags.map((tag) => (
+                  <SortableTagRow
+                    key={tag.id}
+                    tag={tag}
+                    isEditing={editingId === tag.id}
+                    tempName={tempName}
+                    onTempNameChange={setTempName}
+                    onStartEditing={() => {
+                      setEditingId(tag.id);
+                      setTempName(tag.name);
+                    }}
+                    onNameSubmit={() => handleNameSubmit(tag.id)}
+                    onColorChange={(color) => handleUpdateTag(tag.id, { color })}
+                    onDelete={() => handleDeleteTag(tag.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <Button
             variant="outline"
