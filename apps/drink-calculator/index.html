@@ -477,7 +477,7 @@
       saveOrder,
       subscribeItems,
       subscribeOrders,
-    } from "./drink-data.js?v=store-line-v3";
+    } from "./drink-data.js?v=item-details-v1";
 
     const itemList = document.getElementById("item-list");
     const historyList = document.getElementById("history-list");
@@ -552,6 +552,11 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function formatLineItemName(item) {
+      const capacityMl = parseNonNegativeInteger(item.capacityMl);
+      return capacityMl > 0 ? `${item.name}(${capacityMl}ml)` : item.name;
     }
 
     function getConsumptionStats(itemId) {
@@ -788,7 +793,9 @@
           lines.push({
             id: item.id,
             name: item.name,
-            lineName: item.name,
+            lineName: formatLineItemName(item),
+            packageType: item.packageType,
+            capacityMl: item.capacityMl,
             boxes: quantity,
             pricePerCase: item.pricePerCase,
             bottlesPerCase: item.bottlesPerCase,
@@ -818,7 +825,7 @@
     function buildLineMessage() {
       calculateTotals();
       const store = getStore(selectedStoreId);
-      const lines = currentTotals.lines.map((line) => `${line.lineName} ${line.boxes}箱`);
+      const lines = currentTotals.lines.map((line) => `${line.lineName}｜${line.boxes}箱`);
       return `${store.lineName}\n\n${lines.join("\n")}\n\n感謝！`;
     }
 
@@ -866,6 +873,8 @@
           {
             name: line.name,
             lineName: line.lineName,
+            packageType: line.packageType,
+            capacityMl: line.capacityMl,
             boxes: line.boxes,
             pricePerCase: line.pricePerCase,
             bottlesPerCase: line.bottlesPerCase,

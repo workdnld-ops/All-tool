@@ -46,20 +46,14 @@ export const STORE_LIMITS = {
   },
 };
 
-export const LINE_ITEM_NAMES = {
-  fin: "Fin",
-  "tree-top-apple": "樹頂蘋果汁 320ml",
-  cola: "可樂",
-  "apple-soda": "蘋果蘇打",
-  "oolong-tea": "開喜烏龍茶",
-};
+export const PACKAGE_OPTIONS = ["鋁罐", "鋁箔包", "寶特瓶"];
 
 export const DEFAULT_ITEMS = [
-  { id: "fin", name: "FIN", pricePerCase: 350, bottlesPerCase: 24, order: 0, active: true },
-  { id: "tree-top-apple", name: "樹頂蘋果汁 320ml", pricePerCase: 480, bottlesPerCase: 24, order: 1, active: true },
-  { id: "cola", name: "可樂", pricePerCase: 345, bottlesPerCase: 24, order: 2, active: true },
-  { id: "apple-soda", name: "蘋果蘇打", pricePerCase: 365, bottlesPerCase: 24, order: 3, active: true },
-  { id: "oolong-tea", name: "開喜烏龍茶", pricePerCase: 340, bottlesPerCase: 24, order: 4, active: true },
+  { id: "fin", name: "Fin", packageType: "鋁罐", capacityMl: 330, pricePerCase: 350, bottlesPerCase: 24, order: 0, active: true },
+  { id: "tree-top-apple", name: "樹頂蘋果汁", packageType: "鋁箔包", capacityMl: 320, pricePerCase: 480, bottlesPerCase: 24, order: 1, active: true },
+  { id: "cola", name: "可樂", packageType: "鋁罐", capacityMl: 330, pricePerCase: 345, bottlesPerCase: 24, order: 2, active: true },
+  { id: "apple-soda", name: "蘋果蘇打", packageType: "鋁罐", capacityMl: 330, pricePerCase: 365, bottlesPerCase: 24, order: 3, active: true },
+  { id: "oolong-tea", name: "開喜烏龍茶", packageType: "鋁罐", capacityMl: 318, pricePerCase: 340, bottlesPerCase: 24, order: 4, active: true },
 ];
 
 export function getStore(storeId) {
@@ -72,11 +66,29 @@ export function getStoreLimit(storeId, itemId) {
 
 function normalizeItem(item, fallbackId) {
   const defaultItem = DEFAULT_ITEMS.find((candidate) => candidate.id === fallbackId);
+  const rawName = String(item.name || defaultItem?.name || "未命名品項").trim();
+  const legacyCapacityMatch = rawName.match(/\s*\(?([0-9]+)\s*ml\)?\s*$/i);
+  const capacityMl = Math.max(
+    0,
+    Number(item.capacityMl)
+      || Number(legacyCapacityMatch?.[1])
+      || Number(defaultItem?.capacityMl)
+      || 0,
+  );
+  const name = legacyCapacityMatch
+    ? rawName.slice(0, legacyCapacityMatch.index).trim()
+    : rawName;
+  const packageType = PACKAGE_OPTIONS.includes(item.packageType)
+    ? item.packageType
+    : defaultItem?.packageType || PACKAGE_OPTIONS[0];
+
   return {
     id: String(item.id || fallbackId),
-    name: String(item.name || defaultItem?.name || "未命名品項"),
+    name: name || defaultItem?.name || "未命名品項",
+    packageType,
+    capacityMl,
     pricePerCase: Math.max(0, Number(item.pricePerCase) || defaultItem?.pricePerCase || 0),
-    bottlesPerCase: Math.max(1, Number(item.bottlesPerCase) || defaultItem?.bottlesPerCase || 1),
+    bottlesPerCase: 24,
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : defaultItem?.order || 0,
     active: item.active !== false,
   };
