@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Tag, TAG_COLORS, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useFirebaseTags, useFirebaseSnackBudget } from '@/hooks/useFirebase';
+import { Textarea } from '@/components/ui/textarea';
+import { useFirebaseTags, useFirebaseSnackBudget, useFirebaseBusinessNumberText } from '@/hooks/useFirebase';
 import { DEFAULT_TAGS } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -134,6 +135,11 @@ export default function TagSettings() {
   const navigate = useNavigate();
   const { tags: firebaseTags, loading: tagsLoading, saveTags } = useFirebaseTags();
   const { snackBudget: firebaseSnackBudget, loading: budgetLoading, saveSnackBudget } = useFirebaseSnackBudget();
+  const {
+    businessNumberText: firebaseBusinessNumberText,
+    loading: businessNumberLoading,
+    saveBusinessNumberText,
+  } = useFirebaseBusinessNumberText();
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
@@ -141,6 +147,7 @@ export default function TagSettings() {
   const [tempNeihu, setTempNeihu] = useState('');
   const [tempRuiguang, setTempRuiguang] = useState('');
   const [editingBudget, setEditingBudget] = useState<'neihu' | 'ruiguang' | null>(null);
+  const [businessNumberText, setBusinessNumberText] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -162,6 +169,12 @@ export default function TagSettings() {
       setSnackBudget(firebaseSnackBudget);
     }
   }, [firebaseSnackBudget, budgetLoading]);
+
+  useEffect(() => {
+    if (!businessNumberLoading) {
+      setBusinessNumberText(firebaseBusinessNumberText);
+    }
+  }, [firebaseBusinessNumberText, businessNumberLoading]);
 
   const handleAddTag = async () => {
     const newTag: Tag = {
@@ -217,7 +230,12 @@ export default function TagSettings() {
     setEditingBudget(null);
   };
 
-  const loading = tagsLoading || budgetLoading;
+  const handleBusinessNumberSubmit = async () => {
+    if (businessNumberText === firebaseBusinessNumberText) return;
+    await saveBusinessNumberText(businessNumberText);
+  };
+
+  const loading = tagsLoading || budgetLoading || businessNumberLoading;
 
   if (loading) {
     return (
@@ -252,6 +270,20 @@ export default function TagSettings() {
       </header>
 
       <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+        <div className="space-y-3">
+          <h2 className="font-semibold text-lg">統編</h2>
+          <div className="bg-card rounded-lg p-4 border border-border">
+            <Textarea
+              value={businessNumberText}
+              onChange={(event) => setBusinessNumberText(event.target.value)}
+              onBlur={handleBusinessNumberSubmit}
+              rows={5}
+              placeholder="輸入要複製的統編文字"
+              className="min-h-28 resize-y"
+            />
+          </div>
+        </div>
+
         {/* 零食預算設定 */}
         <div className="space-y-3">
           <h2 className="font-semibold text-lg">零食預算</h2>

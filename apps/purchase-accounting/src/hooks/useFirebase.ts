@@ -367,6 +367,45 @@ export function useFirebaseSnackBudget() {
   return { snackBudget, loading, saveSnackBudget };
 }
 
+export function useFirebaseBusinessNumberText() {
+  const [businessNumberText, setBusinessNumberText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const userId = getUserId();
+
+  useEffect(() => {
+    const businessNumberRef = ref(database, `users/${userId}/businessNumberText`);
+
+    const unsubscribe = onValue(
+      businessNumberRef,
+      (snapshot) => {
+        const data = snapshot.val();
+        setBusinessNumberText(typeof data === 'string' ? data : '');
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Firebase business number text read error:', err);
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [userId]);
+
+  const saveBusinessNumberText = useCallback(async (text: string) => {
+    try {
+      const businessNumberRef = ref(database, `users/${userId}/businessNumberText`);
+      await set(businessNumberRef, text);
+      toast.success('統編文字已儲存');
+    } catch (err) {
+      console.error('Error saving business number text:', err);
+      toast.error('統編文字儲存失敗');
+      throw err;
+    }
+  }, [userId]);
+
+  return { businessNumberText, loading, saveBusinessNumberText };
+}
+
 export function useFirebaseTrackedPurchaseItems() {
   const [trackedItems, setTrackedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

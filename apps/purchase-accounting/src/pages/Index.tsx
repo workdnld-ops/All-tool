@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type WheelEvent } from 'react';
 import { Header } from '@/components/Header';
 import { List, type PurchaseSuggestion } from '@/components/List';
 import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
-import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
+import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems, useFirebaseBusinessNumberText } from '@/hooks/useFirebase';
 import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -35,6 +35,24 @@ import { Swiper as SwiperType } from 'swiper';
 import { Keyboard, Scrollbar } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/scrollbar';
+import { APP_VERSION } from '@/lib/version';
+
+async function copyTextToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    if (!copied) throw new Error('Copy command failed');
+  }
+}
 
 function formatMonthListName(date: Date) {
   return `${date.getFullYear()}/${date.getMonth() + 1}月`;
@@ -69,6 +87,11 @@ const Index = () => {
   const { archivedLists: firebaseArchivedLists, loading: archivedLoading, saveArchivedLists } = useFirebaseArchivedLists();
   const { snackBudget, loading: budgetLoading } = useFirebaseSnackBudget();
   const { trackedItems, loading: trackedItemsLoading } = useFirebaseTrackedPurchaseItems();
+  const {
+    businessNumberText,
+    loading: businessNumberLoading,
+    saveBusinessNumberText,
+  } = useFirebaseBusinessNumberText();
   
   // Local state
   const [lists, setLists] = useState<ListType[]>([]);
@@ -489,8 +512,9 @@ const Index = () => {
         lists,
         tags,
         archivedLists,
+        businessNumberText,
         exportDate: new Date().toISOString(),
-        version: '1.1.3',
+        version: APP_VERSION,
       };
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -544,6 +568,10 @@ const Index = () => {
           setArchivedLists(importData.archivedLists);
           await saveArchivedLists(importData.archivedLists);
         }
+
+        if (typeof importData.businessNumberText === 'string') {
+          await saveBusinessNumberText(importData.businessNumberText);
+        }
         
         toast.success('資料匯入成功並已同步到 Firebase');
       } catch (error) {
@@ -556,12 +584,27 @@ const Index = () => {
     event.target.value = '';
   };
 
+  const handleCopyBusinessNumber = async () => {
+    if (!businessNumberText.trim()) {
+      toast.error('尚未設定統編文字');
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(businessNumberText);
+      toast.success('統編文字已複製');
+    } catch (error) {
+      console.error('Business number copy error:', error);
+      toast.error('複製失敗，請再試一次');
+    }
+  };
+
   const activeCard = activeId
     ? lists.flatMap(l => l.cards).find(c => c.id === activeId)
     : null;
 
   // 顯示 loading 狀態
-  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading) {
+  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading || businessNumberLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -589,6 +632,7 @@ const Index = () => {
         canDeleteList={lists.length > 0}
         onExport={handleExport}
         onImport={handleImport}
+        onCopyBusinessNumber={handleCopyBusinessNumber}
       />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {

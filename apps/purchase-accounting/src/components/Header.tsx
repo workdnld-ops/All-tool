@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
 import { useNavigate } from 'react-router-dom';
+import { APP_VERSION } from '@/lib/version';
 
 interface HeaderProps {
   onAddList: () => void;
@@ -16,14 +17,15 @@ interface HeaderProps {
   canDeleteList: boolean;
   onExport: () => void;
   onImport: () => void;
+  onCopyBusinessNumber: () => void;
 }
 
-export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList, canDeleteList, onExport, onImport }: HeaderProps) {
+export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList, canDeleteList, onExport, onImport, onCopyBusinessNumber }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
     <header className="h-12 flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border px-4 flex items-center justify-between sticky top-0 z-50">
-      <h1 className="font-bold text-base">記帳本 v1.1.3</h1>
+      <h1 className="font-semibold text-xs text-muted-foreground">v{APP_VERSION}</h1>
       
       <div className="flex gap-2">
         <Button
@@ -32,6 +34,14 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
           className="h-8 px-2 text-xs font-bold"
         >
           工具箱
+        </Button>
+
+        <Button
+          variant="ghost"
+          onClick={onCopyBusinessNumber}
+          className="h-8 px-2 text-xs font-bold"
+        >
+          統編
         </Button>
 
         <Button
@@ -74,7 +84,7 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
               購買頻率統計
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/tags')}>
-              標籤設定
+              設定
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/archive')}>
               欄位封存區
