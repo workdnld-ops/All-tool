@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>待辦事項</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
@@ -36,16 +36,19 @@
       color: var(--ink);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
       -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: manipulation;
     }
 
     button,
     input,
     select,
     textarea { font: inherit; }
+
+    button {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
 
     input,
     select,
@@ -55,8 +58,11 @@
       border-radius: 8px;
       background: #fff;
       color: var(--ink);
+      -webkit-touch-callout: default;
       -webkit-user-select: text;
       user-select: text;
+      touch-action: auto;
+      pointer-events: auto;
     }
 
     input,
@@ -464,6 +470,9 @@
       padding: 10px;
       display: grid;
       gap: 8px;
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: auto;
     }
 
     .modal-head {
@@ -714,6 +723,11 @@
     }
 
     @media (hover: none) and (pointer: coarse) {
+      #title-input,
+      #notes-input {
+        font-size: 16px;
+      }
+
       .time-select-desktop {
         display: none;
       }
@@ -890,7 +904,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.22</span>
+          <span class="version">v7.15.25</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -945,7 +959,7 @@
       <div class="form-grid">
         <label class="full">
           標題
-          <input id="title-input" required maxlength="80" autocomplete="off">
+          <input id="title-input" type="text" inputmode="text" enterkeyhint="done" required maxlength="80" autocomplete="off" autocapitalize="sentences">
         </label>
         <div class="reminder-row full">
           <label>
@@ -991,7 +1005,7 @@
         </div>
         <label class="full">
           備註
-          <textarea id="notes-input" maxlength="600"></textarea>
+          <textarea id="notes-input" inputmode="text" maxlength="600" autocapitalize="sentences"></textarea>
         </label>
       </div>
 
@@ -1529,6 +1543,8 @@
     }
 
     function openModal(card = null) {
+      if (dragState.kind) finishSort();
+      document.body.classList.remove("sorting");
       const editing = Boolean(card);
       state.editingId = card?.id || "";
       modalTitle.textContent = editing ? "編輯卡片任務" : "新增卡片任務";
@@ -1551,8 +1567,6 @@
       renderRecurrenceControls();
       modal.classList.add("open");
       setMobileTimeWheelOpen(false);
-      requestAnimationFrame(() => setReminderTime(draft.reminder.time));
-      fields.title.focus();
     }
 
     function closeModal() {

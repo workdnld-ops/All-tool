@@ -124,13 +124,6 @@
       gap: 3px;
     }
 
-    .week-button.saved::after {
-      content: "✓";
-      font-size: 0.72rem;
-      line-height: 1;
-      font-weight: 900;
-    }
-
     .button.primary,
     .week-button.active {
       border-color: var(--primary);
@@ -149,6 +142,11 @@
       border-color: var(--primary);
       background: var(--primary);
       color: #fff;
+    }
+
+    .week-button.armed {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 2px rgba(180, 35, 24, 0.16);
     }
 
     .button.feedback-error {
@@ -517,10 +515,6 @@
         font-size: 1.08rem;
       }
 
-      .week-button.saved::after {
-        font-size: 0.96rem;
-      }
-
       input,
       textarea {
         font-size: 1.08rem;
@@ -726,6 +720,8 @@
     let remoteSaveTimer = 0;
     let scheduleEditorExpanded = false;
     let activeMonthKey = "";
+    let armedWeek = "";
+    let armedWeekTimer = 0;
 
     function pad2(value) {
       return String(value).padStart(2, "0");
@@ -987,6 +983,7 @@
     }
 
     function handleMonthChange() {
+      clearArmedWeek(false);
       saveScheduleInputToMonth();
       if (/^\d{4}-\d{2}$/.test(monthInput.value)) {
         localStorage.setItem(MONTH_STORAGE_KEY, monthInput.value);
@@ -1425,9 +1422,31 @@
       const monthData = currentMonthData();
       weekButtons.forEach((button) => {
         const week = button.dataset.week;
+        const updatedAt = Number(monthData.weekUpdatedAt[week]) || 0;
+        const updatedDate = updatedAt ? new Date(updatedAt) : null;
+        const dateLabel = updatedDate && !Number.isNaN(updatedDate.getTime())
+          ? `${updatedDate.getMonth() + 1}/${updatedDate.getDate()}✔`
+          : `wk${week}`;
+        button.textContent = dateLabel;
+        button.setAttribute("aria-label", `wk${week}${updatedAt ? `，${dateLabel}貼上` : ""}`);
         button.classList.toggle("active", Number(week) === state.activeWeek);
         button.classList.toggle("saved", Boolean(monthData.weeks[week]));
+        button.classList.toggle("armed", week === armedWeek);
       });
+    }
+
+    function clearArmedWeek(shouldRender = true) {
+      window.clearTimeout(armedWeekTimer);
+      armedWeekTimer = 0;
+      armedWeek = "";
+      if (shouldRender) render();
+    }
+
+    function armWeekImport(week) {
+      clearArmedWeek(false);
+      armedWeek = String(week);
+      armedWeekTimer = window.setTimeout(() => clearArmedWeek(), 1600);
+      renderWeeks();
     }
 
     function setScheduleEditorExpanded(expanded, shouldFocus = false) {
@@ -1484,8 +1503,14 @@
 
     async function importWeek(week, button) {
       state.activeWeek = Number(week);
-      const clipboardText = await readClipboardText();
-      const text = clipboardText || scheduleInput.value;
+      const monthData = currentMonthData();
+      const oldText = monthData.weeks[String(week)] || "";
+      const editedText = scheduleInput.value;
+      const hasEditedText = scheduleEditorExpanded
+        && normalizeText(editedText)
+        && editedText !== oldText;
+      const clipboardText = hasEditedText ? "" : await readClipboardText();
+      const text = hasEditedText ? editedText : (clipboardText || editedText);
       if (!normalizeText(text)) {
         status.textContent = "剪貼簿沒有內容，可先貼到文字框再按週次";
         status.style.color = "var(--danger)";
@@ -1494,8 +1519,6 @@
         return;
       }
       scheduleInput.value = text;
-      const monthData = currentMonthData();
-      const oldText = monthData.weeks[String(week)];
       const nextChangedKeys = oldText ? changedKeysForOverwrite(oldText, text, week) : [];
       const currentChangedKeys = new Set(monthData.changedKeys);
       weekDateKeys(week).forEach((key) => currentChangedKeys.delete(key));
@@ -1507,11 +1530,31 @@
       monthData.scheduleInput = text;
       saveState();
       status.style.color = "var(--muted)";
-      flashButton(button, "已覆蓋");
       render();
       status.textContent = oldText
         ? `已覆蓋 wk${week}，${nextChangedKeys.length} 筆異動以 ★ 標記`
         : `已輸入 wk${week}`;
+    }
+
+    function handleWeekClick(week, button) {
+      const weekKey = String(week);
+      if (armedWeek === weekKey) {
+        clearArmedWeek(false);
+        importWeek(weekKey, button);
+        return;
+      }
+
+      const previousWeek = state.activeWeek;
+      state.activeWeek = Number(weekKey);
+      const savedText = currentMonthData().weeks[weekKey] || "";
+      if (previousWeek !== state.activeWeek && savedText) {
+        scheduleInput.value = savedText;
+      }
+      armWeekImport(weekKey);
+      status.style.color = "var(--muted)";
+      status.textContent = savedText
+        ? `再點一次才會覆蓋 wk${weekKey}`
+        : `再點一次才會貼上 wk${weekKey}`;
     }
 
     async function importDayOff() {
@@ -1597,7 +1640,7 @@
       render();
     });
     weekButtons.forEach((button) => {
-      button.addEventListener("click", () => importWeek(button.dataset.week, button));
+      button.addEventListener("click", () => handleWeekClick(button.dataset.week, button));
     });
     document.getElementById("clear-button").addEventListener("click", () => {
       const monthData = currentMonthData();
