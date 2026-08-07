@@ -49,19 +49,36 @@ export const STORE_LIMITS = {
 export const PACKAGE_OPTIONS = ["鋁罐", "鋁箔包", "寶特瓶"];
 
 export const DEFAULT_ITEMS = [
-  { id: "fin", name: "Fin", packageType: "鋁罐", capacityMl: 330, pricePerCase: 350, bottlesPerCase: 24, order: 0, active: true },
-  { id: "tree-top-apple", name: "樹頂蘋果汁", packageType: "鋁箔包", capacityMl: 320, pricePerCase: 480, bottlesPerCase: 24, order: 1, active: true },
-  { id: "cola", name: "可樂", packageType: "鋁罐", capacityMl: 330, pricePerCase: 345, bottlesPerCase: 24, order: 2, active: true },
-  { id: "apple-soda", name: "蘋果蘇打", packageType: "鋁罐", capacityMl: 330, pricePerCase: 365, bottlesPerCase: 24, order: 3, active: true },
-  { id: "oolong-tea", name: "開喜烏龍茶", packageType: "鋁罐", capacityMl: 318, pricePerCase: 340, bottlesPerCase: 24, order: 4, active: true },
+  { id: "fin", name: "Fin", packageType: "鋁罐", capacityMl: 330, pricePerCase: 350, bottlesPerCase: 24, limits: { neihu: 13, ruiguang: 14 }, order: 0, active: true },
+  { id: "tree-top-apple", name: "樹頂蘋果汁", packageType: "鋁箔包", capacityMl: 320, pricePerCase: 480, bottlesPerCase: 24, limits: { neihu: 9, ruiguang: 12 }, order: 1, active: true },
+  { id: "cola", name: "可樂", packageType: "鋁罐", capacityMl: 330, pricePerCase: 345, bottlesPerCase: 24, limits: { neihu: 9, ruiguang: 9 }, order: 2, active: true },
+  { id: "apple-soda", name: "蘋果蘇打", packageType: "鋁罐", capacityMl: 330, pricePerCase: 365, bottlesPerCase: 24, limits: { neihu: 9, ruiguang: 10 }, order: 3, active: true },
+  { id: "oolong-tea", name: "開喜烏龍茶", packageType: "鋁罐", capacityMl: 318, pricePerCase: 340, bottlesPerCase: 24, limits: { neihu: 6, ruiguang: 11 }, order: 4, active: true },
 ];
 
 export function getStore(storeId) {
   return STORE_OPTIONS.find((store) => store.id === storeId) || STORE_OPTIONS[0];
 }
 
-export function getStoreLimit(storeId, itemId) {
+export function getStoreLimit(storeId, itemOrId) {
+  const item = typeof itemOrId === "object" && itemOrId ? itemOrId : null;
+  const itemId = item?.id || itemOrId;
+  const configuredLimit = item?.limits?.[storeId];
+
+  if (configuredLimit !== null && configuredLimit !== undefined && configuredLimit !== "") {
+    const parsedLimit = Number(configuredLimit);
+    if (Number.isFinite(parsedLimit) && parsedLimit >= 0) return parsedLimit;
+  }
+
   return STORE_LIMITS[storeId]?.[itemId] ?? Number.POSITIVE_INFINITY;
+}
+
+function normalizeLimit(value, fallback) {
+  if (value !== null && value !== undefined && value !== "") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) return roundDecimal(parsed);
+  }
+  return Number.isFinite(Number(fallback)) ? roundDecimal(Number(fallback)) : null;
 }
 
 function normalizeItem(item, fallbackId) {
@@ -81,6 +98,15 @@ function normalizeItem(item, fallbackId) {
   const packageType = PACKAGE_OPTIONS.includes(item.packageType)
     ? item.packageType
     : defaultItem?.packageType || PACKAGE_OPTIONS[0];
+  const limits = Object.fromEntries(
+    STORE_OPTIONS.map((store) => [
+      store.id,
+      normalizeLimit(
+        item.limits?.[store.id],
+        defaultItem?.limits?.[store.id] ?? STORE_LIMITS[store.id]?.[fallbackId],
+      ),
+    ]),
+  );
 
   return {
     id: String(item.id || fallbackId),
@@ -89,6 +115,7 @@ function normalizeItem(item, fallbackId) {
     capacityMl,
     pricePerCase: Math.max(0, Number(item.pricePerCase) || defaultItem?.pricePerCase || 0),
     bottlesPerCase: 24,
+    limits,
     order: Number.isFinite(Number(item.order)) ? Number(item.order) : defaultItem?.order || 0,
     active: item.active !== false,
   };
@@ -123,12 +150,35 @@ function normalizeOrders(data) {
 }
 
 export function formatCurrency(value) {
-  return `$${Math.round(Number(value) || 0).toLocaleString("zh-TW")}`;
+  return `$${roundDecimal(Number(value) || 0).toLocaleString("zh-TW", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 export function parseNonNegativeInteger(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+export function roundDecimal(value, digits = 3) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  const factor = 10 ** digits;
+  return Math.round((number + Number.EPSILON) * factor) / factor;
+}
+
+export function parseNonNegativeNumber(value) {
+  const parsed = Number.parseFloat(String(value ?? "").trim().replace(",", "."));
+  return Number.isFinite(parsed) && parsed > 0 ? roundDecimal(parsed) : 0;
+}
+
+export function formatQuantity(value) {
+  return roundDecimal(Number(value) || 0).toLocaleString("zh-TW", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3,
+    useGrouping: false,
+  });
 }
 
 export function subscribeItems(onChange, onError) {

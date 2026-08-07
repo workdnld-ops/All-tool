@@ -471,13 +471,16 @@
       STORE_OPTIONS,
       deleteOrder,
       formatCurrency,
+      formatQuantity,
       getStore,
       getStoreLimit,
       parseNonNegativeInteger,
+      parseNonNegativeNumber,
+      roundDecimal,
       saveOrder,
       subscribeItems,
       subscribeOrders,
-    } from "./drink-data.js?v=item-details-v1";
+    } from "./drink-data.js?v=decimal-limits-v1";
 
     const itemList = document.getElementById("item-list");
     const historyList = document.getElementById("history-list");
@@ -513,6 +516,13 @@
 
     function hasFixedLimit(limit) {
       return Number.isFinite(Number(limit));
+    }
+
+    function storeLimitForItem(itemOrId) {
+      const item = typeof itemOrId === "object"
+        ? itemOrId
+        : items.find((candidate) => candidate.id === itemOrId) || itemOrId;
+      return getStoreLimit(selectedStoreId, item);
     }
 
     function pricePerBottle(item) {
@@ -566,7 +576,7 @@
         return sum + (Number(order.items?.[itemId]?.boxes) || 0);
       }, 0);
       const average = total / storeOrders.length;
-      const suggestion = Math.min(getStoreLimit(selectedStoreId, itemId), Math.ceil(average));
+      const suggestion = Math.min(storeLimitForItem(itemId), Math.ceil(average));
       return { average, count: storeOrders.length, suggestion };
     }
 
@@ -597,12 +607,12 @@
       }
 
       itemList.innerHTML = visibleItems.map((item) => {
-        const limit = getStoreLimit(selectedStoreId, item.id);
+        const limit = storeLimitForItem(item);
         const fixedLimit = hasFixedLimit(limit);
         const stats = getConsumptionStats(item.id);
         const displayName = item.name;
         const inventoryValue = fixedLimit
-          ? currentInventories[item.id] || (currentQuantities[item.id] ? String(Math.max(0, limit - parseNonNegativeInteger(currentQuantities[item.id]))) : "")
+          ? currentInventories[item.id] || (currentQuantities[item.id] ? formatQuantity(Math.max(0, limit - parseNonNegativeNumber(currentQuantities[item.id]))) : "")
           : "";
         return `
           <article class="item">
@@ -631,11 +641,10 @@
                   id="inventory-${item.id}"
                   data-id="${item.id}"
                   data-role="inventory"
-                  type="number"
-                  min="0"
-                  max="${fixedLimit ? limit : ""}"
-                  step="1"
-                  inputmode="numeric"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]*[.,]?[0-9]*"
+                  enterkeyhint="done"
                   placeholder="0"
                   value="${inventoryValue}"
                   ${fixedLimit ? "" : "disabled"}
@@ -649,11 +658,10 @@
                   id="quantity-${item.id}"
                   data-id="${item.id}"
                   data-role="quantity"
-                  type="number"
-                  min="0"
-                  max="${fixedLimit ? limit : ""}"
-                  step="1"
-                  inputmode="numeric"
+                  type="text"
+                  inputmode="decimal"
+                  pattern="[0-9]*[.,]?[0-9]*"
+                  enterkeyhint="done"
                   placeholder="0"
                   value="${currentQuantities[item.id] || ""}"
                   aria-label="${escapeHtml(item.name)} 叫貨箱數"
@@ -666,19 +674,26 @@
       calculateTotals();
     }
 
-    function updatePairInputs(itemId, quantity, inventory, isLimitHit = false) {
+    function sanitizeDecimalInput(value) {
+      const normalized = String(value ?? "").replaceAll(",", ".").replace(/[^0-9.]/g, "");
+      const dotIndex = normalized.indexOf(".");
+      if (dotIndex < 0) return normalized;
+      return `${normalized.slice(0, dotIndex)}.${normalized.slice(dotIndex + 1).replaceAll(".", "")}`;
+    }
+
+    function updatePairInputs(itemId, quantity, inventory, isLimitHit = false, sourceRole = "", sourceValue = "") {
       const quantityInput = document.getElementById(`quantity-${itemId}`);
       const inventoryInput = document.getElementById(`inventory-${itemId}`);
-      const quantityValue = quantity ? String(quantity) : "";
-      const inventoryValue = inventory ? String(inventory) : "";
+      const quantityValue = quantity === null ? "" : formatQuantity(quantity);
+      const inventoryValue = inventory === null ? "" : formatQuantity(inventory);
 
       if (quantityInput) {
-        quantityInput.value = quantityValue;
+        quantityInput.value = sourceRole === "quantity" && !isLimitHit ? sourceValue : quantityValue;
         quantityInput.classList.toggle("limit-hit", isLimitHit);
       }
 
       if (inventoryInput) {
-        inventoryInput.value = inventoryValue;
+        inventoryInput.value = sourceRole === "inventory" && !isLimitHit ? sourceValue : inventoryValue;
         inventoryInput.classList.toggle("limit-hit", isLimitHit);
       }
     }
@@ -686,20 +701,21 @@
     function clearItemValues(itemId) {
       delete quantities()[itemId];
       delete inventories()[itemId];
-      updatePairInputs(itemId, 0, 0, false);
+      updatePairInputs(itemId, null, null, false);
     }
 
-    function setQuantityValue(itemId, value, shouldWarn = false) {
-      if (String(value || "").trim() === "") {
+    function setQuantityValue(itemId, value, shouldWarn = false, preserveSource = false) {
+      const sourceValue = sanitizeDecimalInput(value);
+      if (sourceValue === "") {
         clearItemValues(itemId);
         return;
       }
 
-      const limit = getStoreLimit(selectedStoreId, itemId);
+      const limit = storeLimitForItem(itemId);
       const fixedLimit = hasFixedLimit(limit);
-      const rawQuantity = parseNonNegativeInteger(value);
+      const rawQuantity = parseNonNegativeNumber(sourceValue);
       const quantity = fixedLimit ? Math.min(rawQuantity, limit) : rawQuantity;
-      const inventory = fixedLimit ? Math.max(0, limit - quantity) : 0;
+      const inventory = fixedLimit ? roundDecimal(Math.max(0, limit - quantity)) : null;
       const isLimitHit = fixedLimit && rawQuantity > limit;
 
       if (isLimitHit && shouldWarn) {
@@ -708,27 +724,35 @@
         setStatus(`${getStore(selectedStoreId).shortName} ${displayName} 上限 ${limit} 箱，已自動調整`, true);
       }
 
-      quantities()[itemId] = quantity ? String(quantity) : "";
+      quantities()[itemId] = formatQuantity(quantity);
       if (fixedLimit) {
-        inventories()[itemId] = inventory ? String(inventory) : "";
+        inventories()[itemId] = formatQuantity(inventory);
       } else {
         delete inventories()[itemId];
       }
-      updatePairInputs(itemId, quantity, inventory, isLimitHit);
+      updatePairInputs(
+        itemId,
+        quantity,
+        inventory,
+        isLimitHit,
+        preserveSource ? "quantity" : "",
+        sourceValue,
+      );
     }
 
-    function setInventoryValue(itemId, value, shouldWarn = false) {
-      if (String(value || "").trim() === "") {
+    function setInventoryValue(itemId, value, shouldWarn = false, preserveSource = false) {
+      const sourceValue = sanitizeDecimalInput(value);
+      if (sourceValue === "") {
         clearItemValues(itemId);
         return;
       }
 
-      const limit = getStoreLimit(selectedStoreId, itemId);
+      const limit = storeLimitForItem(itemId);
       if (!hasFixedLimit(limit)) return;
 
-      const rawInventory = parseNonNegativeInteger(value);
+      const rawInventory = parseNonNegativeNumber(sourceValue);
       const inventory = Math.min(rawInventory, limit);
-      const quantity = Math.max(0, limit - inventory);
+      const quantity = roundDecimal(Math.max(0, limit - inventory));
       const isLimitHit = rawInventory > limit;
 
       if (isLimitHit && shouldWarn) {
@@ -737,14 +761,21 @@
         setStatus(`${getStore(selectedStoreId).shortName} ${displayName} 上限 ${limit} 箱，已自動調整`, true);
       }
 
-      quantities()[itemId] = quantity ? String(quantity) : "";
-      inventories()[itemId] = inventory ? String(inventory) : "";
-      updatePairInputs(itemId, quantity, inventory, isLimitHit);
+      quantities()[itemId] = formatQuantity(quantity);
+      inventories()[itemId] = formatQuantity(inventory);
+      updatePairInputs(
+        itemId,
+        quantity,
+        inventory,
+        isLimitHit,
+        preserveSource ? "inventory" : "",
+        sourceValue,
+      );
     }
 
     function clampQuantity(itemId, value, shouldWarn = false) {
-      const limit = getStoreLimit(selectedStoreId, itemId);
-      const quantity = parseNonNegativeInteger(value);
+      const limit = storeLimitForItem(itemId);
+      const quantity = parseNonNegativeNumber(value);
       if (quantity > limit) {
         if (shouldWarn) {
           const item = items.find((candidate) => candidate.id === itemId);
@@ -764,27 +795,20 @@
       let price = 0;
 
       activeItems().forEach((item) => {
-        const input = document.getElementById(`quantity-${item.id}`);
-        const quantity = clampQuantity(item.id, input?.value || currentQuantities[item.id]);
-        const limit = getStoreLimit(selectedStoreId, item.id);
+        const hasQuantityValue = currentQuantities[item.id] !== undefined && currentQuantities[item.id] !== "";
+        const quantity = clampQuantity(item.id, currentQuantities[item.id]);
+        const limit = storeLimitForItem(item);
         const fixedLimit = hasFixedLimit(limit);
-        const inventory = fixedLimit && quantity > 0 ? Math.max(0, limit - quantity) : parseNonNegativeInteger(currentInventories[item.id]);
-        const subtotal = quantity * item.pricePerCase;
-        currentQuantities[item.id] = quantity ? String(quantity) : "";
+        const inventory = fixedLimit && hasQuantityValue
+          ? roundDecimal(Math.max(0, limit - quantity))
+          : parseNonNegativeNumber(currentInventories[item.id]);
+        const subtotal = roundDecimal(quantity * item.pricePerCase, 2);
+        if (hasQuantityValue) currentQuantities[item.id] = formatQuantity(quantity);
         if (fixedLimit) {
-          currentInventories[item.id] = inventory ? String(inventory) : "";
+          if (hasQuantityValue) currentInventories[item.id] = formatQuantity(inventory);
         }
-        boxes += quantity;
-        price += subtotal;
-
-        if (input && input.value !== currentQuantities[item.id]) {
-          input.value = currentQuantities[item.id];
-        }
-
-        const inventoryInput = document.getElementById(`inventory-${item.id}`);
-        if (inventoryInput && inventoryInput.value !== (currentInventories[item.id] || "")) {
-          inventoryInput.value = currentInventories[item.id] || "";
-        }
+        boxes = roundDecimal(boxes + quantity);
+        price = roundDecimal(price + subtotal, 2);
 
         const subtotalElement = document.getElementById(`subtotal-${item.id}`);
         if (subtotalElement) subtotalElement.textContent = formatCurrency(subtotal);
@@ -805,7 +829,7 @@
       });
 
       currentTotals = { boxes, price, lines };
-      totalBoxes.textContent = String(boxes);
+      totalBoxes.textContent = formatQuantity(boxes);
       totalPrice.textContent = formatCurrency(price);
       lineButton.disabled = boxes === 0;
       saveButton.disabled = boxes === 0;
@@ -825,7 +849,7 @@
     function buildLineMessage() {
       calculateTotals();
       const store = getStore(selectedStoreId);
-      const lines = currentTotals.lines.map((line) => `${line.lineName}｜${line.boxes}箱`);
+      const lines = currentTotals.lines.map((line) => `${line.lineName}｜${formatQuantity(line.boxes)}箱`);
       return `${store.lineName}\n\n${lines.join("\n")}\n\n感謝！`;
     }
 
@@ -912,14 +936,14 @@
 
       historyList.innerHTML = visibleOrders.map((order) => {
         const lines = Object.values(order.items || {})
-          .map((item) => `${escapeHtml(item.lineName || item.name)} ${item.boxes}箱`)
+          .map((item) => `${escapeHtml(item.lineName || item.name)} ${formatQuantity(item.boxes)}箱`)
           .join(" · ");
         return `
           <article class="order">
             <div class="order-head">
               <div>
                 <h2>${escapeHtml(order.storeName || "")} · ${order.date || "未記錄日期"} · ${formatCurrency(order.totalPrice)}</h2>
-                <div class="order-meta">${order.totalBoxes} 箱 · ${lines || "沒有明細"}</div>
+                <div class="order-meta">${formatQuantity(order.totalBoxes)} 箱 · ${lines || "沒有明細"}</div>
               </div>
               <button class="delete" data-delete-order="${order.id}" type="button">刪除</button>
             </div>
@@ -943,9 +967,21 @@
       const id = event.target.dataset.id;
       if (!id) return;
       if (event.target.dataset.role === "inventory") {
-        setInventoryValue(id, event.target.value, true);
+        setInventoryValue(id, event.target.value, true, true);
       } else {
-        setQuantityValue(id, event.target.value, true);
+        setQuantityValue(id, event.target.value, true, true);
+      }
+      calculateTotals();
+    });
+
+    itemList.addEventListener("focusout", (event) => {
+      if (!(event.target instanceof HTMLInputElement)) return;
+      const id = event.target.dataset.id;
+      if (!id) return;
+      if (event.target.dataset.role === "inventory") {
+        setInventoryValue(id, event.target.value);
+      } else if (event.target.dataset.role === "quantity") {
+        setQuantityValue(id, event.target.value);
       }
       calculateTotals();
     });

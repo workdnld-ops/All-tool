@@ -125,9 +125,10 @@
       padding: 0 6px;
     }
 
-    .button.danger.active {
-      background: var(--danger);
-      color: #fff;
+    .button.active {
+      border-color: var(--primary);
+      background: #e4f0ee;
+      color: var(--primary);
     }
 
     .add-panel,
@@ -168,7 +169,7 @@
     .heading,
     .item {
       display: grid;
-      grid-template-columns: 28px minmax(74px, 1.4fr) minmax(60px, 0.85fr) 48px 50px 30px auto;
+      grid-template-columns: 28px minmax(74px, 1.4fr) minmax(60px, 0.85fr) 48px 50px 48px auto;
       gap: 3px;
       align-items: center;
     }
@@ -240,6 +241,27 @@
     .field-package { grid-column: 3; grid-row: 1; }
     .field-capacity { grid-column: 4; grid-row: 1; }
     .field-price { grid-column: 5; grid-row: 1; }
+    .field-limit-neihu { grid-column: 5; grid-row: 1; }
+    .field-limit-ruiguang { grid-column: 6; grid-row: 1; }
+
+    .field-limit,
+    .detail-label {
+      display: none;
+    }
+
+    .detail-mode .field-price,
+    .detail-mode .toggle,
+    .detail-mode .normal-label {
+      display: none;
+    }
+
+    .detail-mode .field-limit {
+      display: grid;
+    }
+
+    .detail-mode .detail-label {
+      display: inline;
+    }
 
     input,
     select {
@@ -294,7 +316,7 @@
       display: none;
     }
 
-    .delete-mode .item-delete {
+    .detail-mode .item-delete {
       display: inline-flex;
     }
 
@@ -322,7 +344,7 @@
       .toggle,
       .toggle input { min-height: 18px; height: 18px; }
       .heading,
-      .item { grid-template-columns: 26px minmax(70px, 1.4fr) minmax(58px, 0.85fr) 46px 48px 28px auto; }
+      .item { grid-template-columns: 26px minmax(70px, 1.4fr) minmax(58px, 0.85fr) 46px 48px 44px auto; }
     }
 
     @media (max-width: 560px) {
@@ -349,7 +371,7 @@
       <div class="header-actions">
         <a class="button" href="../../index.html">工具箱</a>
         <a class="button" href="index.html">返回</a>
-        <button class="button danger" id="delete-mode-button" type="button" aria-pressed="false">刪除品項</button>
+        <button class="button" id="detail-mode-button" type="button" aria-pressed="false">品項細節</button>
       </div>
     </header>
 
@@ -377,7 +399,7 @@
         </label>
         <label class="field add-price">
           <span>箱價</span>
-          <input id="new-price" type="number" min="0" inputmode="numeric" placeholder="箱價">
+          <input id="new-price" type="number" min="0" step="any" inputmode="decimal" placeholder="箱價">
         </label>
         <button class="button primary" id="add-button" type="button">新增</button>
       </div>
@@ -388,9 +410,9 @@
       <span>品名</span>
       <span>包裝</span>
       <span>ml</span>
-      <span>箱價</span>
-      <span>啟用</span>
-      <span></span>
+      <span><span class="normal-label">箱價</span><span class="detail-label">內湖上限</span></span>
+      <span><span class="normal-label">啟用</span><span class="detail-label">瑞光上限</span></span>
+      <span><span class="detail-label">刪除</span></span>
     </div>
 
     <section class="item-list" id="item-list" aria-label="飲料品項設定"></section>
@@ -421,14 +443,16 @@
       addItem,
       deleteItem,
       parseNonNegativeInteger,
+      parseNonNegativeNumber,
       saveItem,
       subscribeItems,
-    } from "./drink-data.js?v=item-details-v1";
+    } from "./drink-data.js?v=decimal-limits-v1";
 
+    const shell = document.querySelector(".shell");
     const status = document.getElementById("status");
     const itemList = document.getElementById("item-list");
     const addButton = document.getElementById("add-button");
-    const deleteModeButton = document.getElementById("delete-mode-button");
+    const detailModeButton = document.getElementById("detail-mode-button");
     const newName = document.getElementById("new-name");
     const newPackage = document.getElementById("new-package");
     const newCapacity = document.getElementById("new-capacity");
@@ -436,7 +460,7 @@
     let items = [];
     let dragged = null;
     let pointerDrag = null;
-    let deleteMode = false;
+    let detailMode = false;
     const autoSaveTimers = new Map();
 
     function setStatus(message, isError = false) {
@@ -495,7 +519,15 @@
           </label>
           <label class="field field-price">
             <span>箱價</span>
-            <input data-id="${item.id}" data-field="pricePerCase" type="number" min="0" inputmode="numeric" value="${item.pricePerCase}" aria-label="${escapeHtml(item.name)} 箱價">
+            <input data-id="${item.id}" data-field="pricePerCase" type="number" min="0" step="any" inputmode="decimal" value="${item.pricePerCase}" aria-label="${escapeHtml(item.name)} 箱價">
+          </label>
+          <label class="field field-limit field-limit-neihu">
+            <span>內湖上限</span>
+            <input data-id="${item.id}" data-field="limit-neihu" type="number" min="0" step="any" inputmode="decimal" value="${item.limits?.neihu ?? ""}" aria-label="${escapeHtml(item.name)} 內湖叫貨上限">
+          </label>
+          <label class="field field-limit field-limit-ruiguang">
+            <span>瑞光上限</span>
+            <input data-id="${item.id}" data-field="limit-ruiguang" type="number" min="0" step="any" inputmode="decimal" value="${item.limits?.ruiguang ?? ""}" aria-label="${escapeHtml(item.name)} 瑞光叫貨上限">
           </label>
           <label class="toggle" aria-label="${escapeHtml(item.name)} 啟用">
             <input data-id="${item.id}" data-field="active" type="checkbox" ${item.active ? "checked" : ""}>
@@ -503,14 +535,19 @@
           <button class="button danger item-delete" data-delete-item="${item.id}" type="button" aria-label="刪除 ${escapeHtml(item.name)}">刪</button>
         </article>
       `).join("");
-      itemList.classList.toggle("delete-mode", deleteMode);
+      shell.classList.toggle("detail-mode", detailMode);
+    }
+
+    function optionalLimitValue(id, storeId) {
+      const rawValue = itemValue(id, `limit-${storeId}`).value.trim();
+      return rawValue === "" ? null : parseNonNegativeNumber(rawValue);
     }
 
     async function handleAddItem() {
       const name = newName.value.trim();
       const packageType = newPackage.value;
       const capacityMl = parseNonNegativeInteger(newCapacity.value);
-      const pricePerCase = parseNonNegativeInteger(newPrice.value);
+      const pricePerCase = parseNonNegativeNumber(newPrice.value);
 
       if (!name) {
         setStatus("請輸入品項名稱", true);
@@ -531,6 +568,7 @@
           capacityMl,
           pricePerCase,
           bottlesPerCase: 24,
+          limits: { neihu: null, ruiguang: null },
           order: items.length,
         });
         newName.value = "";
@@ -548,7 +586,11 @@
       const name = itemValue(id, "name").value.trim();
       const packageType = itemValue(id, "packageType").value;
       const capacityMl = parseNonNegativeInteger(itemValue(id, "capacityMl").value);
-      const pricePerCase = parseNonNegativeInteger(itemValue(id, "pricePerCase").value);
+      const pricePerCase = parseNonNegativeNumber(itemValue(id, "pricePerCase").value);
+      const limits = {
+        neihu: optionalLimitValue(id, "neihu"),
+        ruiguang: optionalLimitValue(id, "ruiguang"),
+      };
       const order = items.find((item) => item.id === id)?.order || 0;
       const active = itemValue(id, "active").checked;
 
@@ -563,7 +605,7 @@
       }
 
       try {
-        await saveItem({ id, name, packageType, capacityMl, pricePerCase, bottlesPerCase: 24, order, active });
+        await saveItem({ id, name, packageType, capacityMl, pricePerCase, bottlesPerCase: 24, limits, order, active });
         setStatus("品項已儲存");
       } catch (error) {
         console.error(error);
@@ -739,13 +781,13 @@
     }, true);
 
     addButton.addEventListener("click", handleAddItem);
-    deleteModeButton.addEventListener("click", () => {
-      deleteMode = !deleteMode;
-      deleteModeButton.setAttribute("aria-pressed", String(deleteMode));
-      deleteModeButton.classList.toggle("active", deleteMode);
-      deleteModeButton.textContent = deleteMode ? "完成" : "刪除品項";
-      itemList.classList.toggle("delete-mode", deleteMode);
-      setStatus(deleteMode ? "請點選品項右側的刪除鍵" : "設定已同步");
+    detailModeButton.addEventListener("click", () => {
+      detailMode = !detailMode;
+      detailModeButton.setAttribute("aria-pressed", String(detailMode));
+      detailModeButton.classList.toggle("active", detailMode);
+      detailModeButton.textContent = detailMode ? "完成" : "品項細節";
+      shell.classList.toggle("detail-mode", detailMode);
+      setStatus(detailMode ? "可設定兩店叫貨上限或刪除品項" : "設定已同步");
     });
 
     subscribeItems(
