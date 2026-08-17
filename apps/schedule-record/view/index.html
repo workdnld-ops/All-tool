@@ -270,8 +270,8 @@
     }
 
     .calendar-day.internship {
-      outline: 2px solid var(--blue);
-      outline-offset: -2px;
+      border-color: #12899a;
+      background: #c9f1f5;
     }
 
     .calendar-day.conflict {
@@ -287,6 +287,11 @@
       border-color: #d5dde2;
       background: #f1f3f5;
       color: #8a949b;
+    }
+
+    .calendar-day.past.internship:not(.today):not(.conflict) {
+      border-color: #5caab5;
+      background: #d5ecef;
     }
 
     .day-number {
