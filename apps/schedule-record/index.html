@@ -391,6 +391,11 @@
       background: #fff8ea;
     }
 
+    .calendar-day.internship {
+      outline: 2px solid var(--blue);
+      outline-offset: -2px;
+    }
+
     .calendar-day.conflict {
       border-color: var(--danger);
       background: var(--danger-soft);
@@ -1127,6 +1132,7 @@
         const isLeave = !time && hasLeaveText(cells);
         return {
           ...date,
+          internship: text.includes("實習"),
           week: Number(week),
           rowIndex: index,
           source: "schedule",
@@ -1146,6 +1152,14 @@
         .flatMap(([week, rawText]) => parseWeekRows(rawText, week, monthKey, monthData))
         .filter((record) => record.type !== "empty")
         .sort((a, b) => dateTime(a) - dateTime(b));
+    }
+
+    function internshipDateKeys(monthKey = activeMonthKey || monthKeyFromInput()) {
+      const monthData = readMonthData(monthKey);
+      return Object.entries(monthData.weeks)
+        .flatMap(([week, rawText]) => parseWeekRows(rawText, week, monthKey, monthData))
+        .filter((record) => record.internship)
+        .map(recordKey);
     }
 
     function parseDayOffRows(monthKey = activeMonthKey || monthKeyFromInput()) {
@@ -1248,7 +1262,7 @@
       return new Map(
         parseWeekRows(rawText, week)
           .filter((record) => record.type !== "empty")
-          .map((record) => [recordKey(record), `${formatRecord(record)} ${record.store || ""} ${record.specialShiftLabel || ""}`]),
+          .map((record) => [recordKey(record), `${formatRecord(record)} ${record.store || ""} ${record.specialShiftLabel || ""} ${record.internship ? "實習" : ""}`]),
       );
     }
 
@@ -1345,6 +1359,11 @@
         ...readMonthData(currentKey).changedKeys,
         ...readMonthData(monthKeyWithOffset(currentKey, 1)).changedKeys,
       ]);
+      const internshipKeys = new Set([
+        ...internshipDateKeys(monthKeyWithOffset(currentKey, -1)),
+        ...internshipDateKeys(currentKey),
+        ...internshipDateKeys(monthKeyWithOffset(currentKey, 1)),
+      ]);
       const entriesByKey = new Map();
       const todayTime = startOfToday();
 
@@ -1373,6 +1392,7 @@
         const past = cellTime < todayTime;
         const changed = changedKeys.has(key);
         const conflict = dayEntries.some((entry) => entry.conflict);
+        const internship = internshipKeys.has(key);
         const items = dayEntries.map((entry) => {
           const marker = changed ? "★ " : "";
           const warning = entry.conflict ? "⚠ " : "";
@@ -1399,7 +1419,7 @@
           }
           return `<div class="${classes}">${escapeHtml(label)}</div>`;
         }).join("");
-        const classes = ["calendar-day", outside ? "outside" : "", adjacentMonthData ? "adjacent-month-data" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", conflict ? "conflict" : ""]
+        const classes = ["calendar-day", outside ? "outside" : "", adjacentMonthData ? "adjacent-month-data" : "", dayEntries.length ? "has-item" : "", past ? "past" : "", today ? "today" : "", changed ? "changed" : "", internship ? "internship" : "", conflict ? "conflict" : ""]
           .filter(Boolean)
           .join(" ");
         return `
