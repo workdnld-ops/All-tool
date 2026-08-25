@@ -569,6 +569,21 @@
       return capacityMl > 0 ? `${item.name}(${capacityMl}ml)` : item.name;
     }
 
+    function getFinCanFreeBoxes(line) {
+      const isFinCan = String(line.name || "").trim().toLowerCase() === "fin"
+        && line.packageType === "鋁罐";
+      if (!isFinCan) return 0;
+
+      const promotionUnits = Math.floor((Number(line.boxes) + 1e-9) / 7.5);
+      return promotionUnits * 2;
+    }
+
+    function formatLineOrderItem(line) {
+      const freeBoxes = getFinCanFreeBoxes(line);
+      const promotionText = freeBoxes > 0 ? ` 送${formatQuantity(freeBoxes)}箱` : "";
+      return `${line.lineName}｜${formatQuantity(line.boxes)}箱${promotionText}`;
+    }
+
     function getConsumptionStats(itemId) {
       const storeOrders = orders.filter((order) => order.storeId === selectedStoreId).slice(0, 6);
       if (storeOrders.length === 0) return { average: 0, count: 0, suggestion: 0 };
@@ -849,7 +864,7 @@
     function buildLineMessage() {
       calculateTotals();
       const store = getStore(selectedStoreId);
-      const lines = currentTotals.lines.map((line) => `${line.lineName}｜${formatQuantity(line.boxes)}箱`);
+      const lines = currentTotals.lines.map(formatLineOrderItem);
       return `${store.lineName}\n\n${lines.join("\n")}\n\n感謝！`;
     }
 
