@@ -5,7 +5,7 @@ import { Tag, TAG_COLORS, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/ty
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirebaseTags, useFirebaseSnackBudget, useFirebaseBusinessNumberText } from '@/hooks/useFirebase';
+import { useFirebaseTags, useFirebaseSnackBudget, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
 import { DEFAULT_TAGS } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -140,6 +140,11 @@ export default function TagSettings() {
     loading: businessNumberLoading,
     saveBusinessNumberText,
   } = useFirebaseBusinessNumberText();
+  const {
+    snackCopyText: firebaseSnackCopyText,
+    loading: snackCopyTextLoading,
+    saveSnackCopyText,
+  } = useFirebaseSnackCopyText();
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
@@ -148,6 +153,7 @@ export default function TagSettings() {
   const [tempRuiguang, setTempRuiguang] = useState('');
   const [editingBudget, setEditingBudget] = useState<'neihu' | 'ruiguang' | null>(null);
   const [businessNumberText, setBusinessNumberText] = useState('');
+  const [snackCopyText, setSnackCopyText] = useState('');
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
@@ -175,6 +181,12 @@ export default function TagSettings() {
       setBusinessNumberText(firebaseBusinessNumberText);
     }
   }, [firebaseBusinessNumberText, businessNumberLoading]);
+
+  useEffect(() => {
+    if (!snackCopyTextLoading) {
+      setSnackCopyText(firebaseSnackCopyText);
+    }
+  }, [firebaseSnackCopyText, snackCopyTextLoading]);
 
   const handleAddTag = async () => {
     const newTag: Tag = {
@@ -235,7 +247,12 @@ export default function TagSettings() {
     await saveBusinessNumberText(businessNumberText);
   };
 
-  const loading = tagsLoading || budgetLoading || businessNumberLoading;
+  const handleSnackCopyTextSubmit = async () => {
+    if (snackCopyText === firebaseSnackCopyText) return;
+    await saveSnackCopyText(snackCopyText);
+  };
+
+  const loading = tagsLoading || budgetLoading || businessNumberLoading || snackCopyTextLoading;
 
   if (loading) {
     return (
@@ -279,6 +296,20 @@ export default function TagSettings() {
               onBlur={handleBusinessNumberSubmit}
               rows={5}
               placeholder="輸入要複製的統編文字"
+              className="min-h-28 resize-y"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h2 className="font-semibold text-lg">零食</h2>
+          <div className="bg-card rounded-lg p-4 border border-border">
+            <Textarea
+              value={snackCopyText}
+              onChange={(event) => setSnackCopyText(event.target.value)}
+              onBlur={handleSnackCopyTextSubmit}
+              rows={5}
+              placeholder="輸入按下零食按鈕時要複製的文字"
               className="min-h-28 resize-y"
             />
           </div>

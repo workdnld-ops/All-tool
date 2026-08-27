@@ -406,6 +406,45 @@ export function useFirebaseBusinessNumberText() {
   return { businessNumberText, loading, saveBusinessNumberText };
 }
 
+export function useFirebaseSnackCopyText() {
+  const [snackCopyText, setSnackCopyText] = useState('');
+  const [loading, setLoading] = useState(true);
+  const userId = getUserId();
+
+  useEffect(() => {
+    const snackCopyTextRef = ref(database, `users/${userId}/snackCopyText`);
+
+    const unsubscribe = onValue(
+      snackCopyTextRef,
+      (snapshot) => {
+        const data = snapshot.val();
+        setSnackCopyText(typeof data === 'string' ? data : '');
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Firebase snack copy text read error:', err);
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [userId]);
+
+  const saveSnackCopyText = useCallback(async (text: string) => {
+    try {
+      const snackCopyTextRef = ref(database, `users/${userId}/snackCopyText`);
+      await set(snackCopyTextRef, text);
+      toast.success('零食文字已儲存');
+    } catch (err) {
+      console.error('Error saving snack copy text:', err);
+      toast.error('零食文字儲存失敗');
+      throw err;
+    }
+  }, [userId]);
+
+  return { snackCopyText, loading, saveSnackCopyText };
+}
+
 export function useFirebaseTrackedPurchaseItems() {
   const [trackedItems, setTrackedItems] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

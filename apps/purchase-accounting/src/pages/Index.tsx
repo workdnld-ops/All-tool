@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type WheelEvent } from 'react';
 import { Header } from '@/components/Header';
 import { List, type PurchaseSuggestion } from '@/components/List';
 import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
-import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems, useFirebaseBusinessNumberText } from '@/hooks/useFirebase';
+import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
 import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -92,6 +92,11 @@ const Index = () => {
     loading: businessNumberLoading,
     saveBusinessNumberText,
   } = useFirebaseBusinessNumberText();
+  const {
+    snackCopyText,
+    loading: snackCopyTextLoading,
+    saveSnackCopyText,
+  } = useFirebaseSnackCopyText();
   
   // Local state
   const [lists, setLists] = useState<ListType[]>([]);
@@ -513,6 +518,7 @@ const Index = () => {
         tags,
         archivedLists,
         businessNumberText,
+        snackCopyText,
         exportDate: new Date().toISOString(),
         version: APP_VERSION,
       };
@@ -572,6 +578,10 @@ const Index = () => {
         if (typeof importData.businessNumberText === 'string') {
           await saveBusinessNumberText(importData.businessNumberText);
         }
+
+        if (typeof importData.snackCopyText === 'string') {
+          await saveSnackCopyText(importData.snackCopyText);
+        }
         
         toast.success('資料匯入成功並已同步到 Firebase');
       } catch (error) {
@@ -599,12 +609,27 @@ const Index = () => {
     }
   };
 
+  const handleCopySnackText = async () => {
+    if (!snackCopyText.trim()) {
+      toast.error('尚未設定零食文字');
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(snackCopyText);
+      toast.success('零食文字已複製');
+    } catch (error) {
+      console.error('Snack text copy error:', error);
+      toast.error('複製失敗，請再試一次');
+    }
+  };
+
   const activeCard = activeId
     ? lists.flatMap(l => l.cards).find(c => c.id === activeId)
     : null;
 
   // 顯示 loading 狀態
-  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading || businessNumberLoading) {
+  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading || businessNumberLoading || snackCopyTextLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -633,6 +658,7 @@ const Index = () => {
         onExport={handleExport}
         onImport={handleImport}
         onCopyBusinessNumber={handleCopyBusinessNumber}
+        onCopySnackText={handleCopySnackText}
       />
 
       <AlertDialog open={showDeleteDialog} onOpenChange={(open) => {

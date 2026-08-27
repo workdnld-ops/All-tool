@@ -18,9 +18,10 @@ interface HeaderProps {
   onExport: () => void;
   onImport: () => void;
   onCopyBusinessNumber: () => void;
+  onCopySnackText: () => void;
 }
 
-export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList, canDeleteList, onExport, onImport, onCopyBusinessNumber }: HeaderProps) {
+export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList, canDeleteList, onExport, onImport, onCopyBusinessNumber, onCopySnackText }: HeaderProps) {
   const navigate = useNavigate();
 
   return (
@@ -42,6 +43,14 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
           className="h-8 px-2 text-xs font-bold"
         >
           統編
+        </Button>
+
+        <Button
+          variant="ghost"
+          onClick={onCopySnackText}
+          className="h-8 px-2 text-xs font-bold"
+        >
+          零食
         </Button>
 
         <Button
