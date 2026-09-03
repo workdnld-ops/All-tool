@@ -490,8 +490,7 @@
 
     <div class="actions">
       <button class="primary-button" id="add-item" type="button">新增品項</button>
-      <button class="secondary-button" id="clear-quantities" type="button">清空數量</button>
-      <button class="danger-button" id="reset-all" type="button">全部重設</button>
+      <button class="secondary-button" id="clear-numbers" type="button">清空數字</button>
     </div>
 
     <section class="item-list" id="item-list" aria-label="品項費用"></section>
@@ -858,28 +857,23 @@
       newCard?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
 
-    document.getElementById("clear-quantities").addEventListener("click", () => {
-      const hasQuantity = state.items.some((item) => item.quantities.some((value) => toNumber(value) > 0));
-      if (!hasQuantity) {
-        showToast("目前沒有數量需要清空");
+    document.getElementById("clear-numbers").addEventListener("click", () => {
+      const hasNumbers = state.items.some((item) =>
+        toNumber(item.price) > 0 || item.quantities.some((value) => toNumber(value) > 0)
+      );
+      if (!hasNumbers) {
+        showToast("目前沒有數字需要清空");
         return;
       }
-      if (!window.confirm("清空全部門市的品項數量？品名、單價與稅別會保留。")) return;
+      if (!window.confirm("清空所有品項的單價與六店數量？門市名稱、品項名稱和稅別會保留。")) return;
       state.items.forEach((item) => {
+        item.price = "";
         item.quantities = Array(STORE_COUNT).fill("");
       });
       persistState();
       renderItems();
       renderSummary();
-      showToast("數量已清空");
-    });
-
-    document.getElementById("reset-all").addEventListener("click", () => {
-      if (!window.confirm("全部重設會清除門市名稱、品項、單價和數量，確定繼續？")) return;
-      state = defaultState();
-      persistState();
-      renderAll();
-      showToast("已回復初始狀態");
+      showToast("單價與數量已清空");
     });
 
     document.getElementById("store-settings").addEventListener("toggle", (event) => {
