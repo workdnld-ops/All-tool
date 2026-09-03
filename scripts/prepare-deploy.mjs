@@ -17,6 +17,7 @@ const copyItems = [
   ["apps/schedule-record", "apps/schedule-record"],
   ["apps/todo-board", "apps/todo-board"],
   ["apps/cash-change-planner", "apps/cash-change-planner"],
+  ["apps/store-cost-sharing", "apps/store-cost-sharing"],
   ["workers", "workers"],
 ];
 

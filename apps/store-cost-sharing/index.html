@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#23685f">
+  <title>各店費用分擔</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f7;
+      --surface: #ffffff;
+      --ink: #18242a;
+      --muted: #66737b;
+      --line: #d9e1e4;
+      --primary: #23685f;
+      --primary-soft: #e5f0ed;
+      --money: #965d00;
+      --danger: #aa2e25;
+      --shadow: 0 6px 18px rgba(25, 42, 48, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button,
+    a,
+    summary,
+    label {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    input {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: manipulation;
+    }
+
+    button,
+    input {
+      min-width: 0;
+      border-radius: 8px;
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button { cursor: pointer; }
+
+    .shell {
+      width: min(980px, 100%);
+      margin: 0 auto;
+      padding: max(14px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .title-wrap { min-width: 0; }
+
+    h1 {
+      margin: 0;
+      font-size: 1.55rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .save-status {
+      min-height: 1.2em;
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .toolbox-link,
+    .secondary-button,
+    .primary-button,
+    .danger-button,
+    .icon-button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .toolbox-link {
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      padding: 0 13px;
+      text-decoration: none;
+      box-shadow: var(--shadow);
+    }
+
+    .summary-band {
+      margin: 0 -12px 12px;
+      padding: 14px 12px;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .grand-total {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 11px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .grand-total-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      opacity: 0.85;
+    }
+
+    .grand-total-value {
+      margin-top: 2px;
+      font-size: clamp(1.8rem, 8vw, 2.65rem);
+      line-height: 1;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tax-breakdown {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      min-width: 180px;
+      text-align: right;
+      font-size: 0.78rem;
+    }
+
+    .tax-breakdown strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 0.98rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .store-totals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+      padding-top: 11px;
+    }
+
+    .store-total {
+      min-width: 0;
+      padding: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.26);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .store-total-name {
+      overflow: hidden;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .store-total-value {
+      margin-top: 2px;
+      overflow: hidden;
+      font-size: 1rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .settings {
+      margin-bottom: 10px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .settings summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 46px;
+      padding: 0 12px;
+      font-weight: 850;
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .settings summary::-webkit-details-marker { display: none; }
+
+    .settings summary::after {
+      content: "展開";
+      color: var(--primary);
+      font-size: 0.82rem;
+    }
+
+    .settings[open] summary::after { content: "收起"; }
+
+    .store-name-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 0 12px 12px;
+    }
+
+    .field-label {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 750;
+    }
+
+    .text-input,
+    .number-input {
+      width: 100%;
+      height: 42px;
+      padding: 0 10px;
+      border: 1px solid #bcc9ce;
+      outline: none;
+      color: var(--ink);
+      background: #fff;
+      font-size: 1rem;
+    }
+
+    .text-input:focus,
+    .number-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(35, 104, 95, 0.12);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .primary-button,
+    .secondary-button,
+    .danger-button {
+      padding: 0 13px;
+    }
+
+    .primary-button {
+      border-color: var(--primary);
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .danger-button { color: var(--danger); }
+
+    .item-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .item-head {
+      display: grid;
+      grid-template-columns: minmax(120px, 1.5fr) minmax(92px, 0.8fr) auto auto;
+      align-items: end;
+      gap: 8px;
+      padding: 11px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tax-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 42px;
+      padding: 0 7px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: #f9fbfb;
+      font-size: 0.8rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tax-toggle input {
+      width: 21px;
+      height: 21px;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .icon-button {
+      width: 42px;
+      padding: 0;
+      color: var(--danger);
+      font-size: 1.2rem;
+    }
+
+    .stores-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+    }
+
+    .store-entry {
+      min-width: 0;
+      padding: 9px;
+      background: var(--surface);
+    }
+
+    .store-entry-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 5px;
+      margin-bottom: 5px;
+    }
+
+    .store-entry-name {
+      overflow: hidden;
+      font-size: 0.78rem;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .store-entry-cost {
+      color: var(--money);
+      font-size: 0.75rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .quantity-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .quantity-wrap .number-input {
+      height: 38px;
+      text-align: center;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .unit {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .item-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 11px;
+      color: var(--muted);
+      background: #f9fbfb;
+      font-size: 0.78rem;
+    }
+
+    .item-foot strong {
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .empty-state {
+      padding: 28px 16px;
+      border: 1px dashed #b9c7cc;
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+      background: var(--surface);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 10;
+      max-width: calc(100vw - 28px);
+      padding: 9px 14px;
+      border-radius: 8px;
+      color: #fff;
+      background: rgba(24, 36, 42, 0.94);
+      font-size: 0.86rem;
+      font-weight: 800;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 8px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    @media (max-width: 620px) {
+      .shell { padding-left: 10px; padding-right: 10px; }
+      h1 { font-size: 1.32rem; }
+      .summary-band { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
+      .grand-total { align-items: flex-start; flex-direction: column; gap: 9px; }
+      .tax-breakdown { width: 100%; text-align: left; }
+      .item-head { grid-template-columns: minmax(0, 1.25fr) minmax(88px, 0.75fr) auto; }
+      .item-head .name-field { grid-column: 1 / 2; }
+      .item-head .price-field { grid-column: 2 / 3; }
+      .tax-toggle { grid-column: 1 / 3; justify-content: center; }
+      .icon-button { grid-column: 3; grid-row: 1 / 3; align-self: stretch; height: auto; }
+    }
+
+    @media (max-width: 390px) {
+      .store-name-grid,
+      .store-totals,
+      .stores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .toolbox-link { min-height: 38px; padding: 0 10px; }
+      .actions button { flex: 1 1 calc(50% - 8px); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="title-wrap">
+        <h1>各店費用分擔</h1>
+        <p class="save-status" id="save-status">資料已自動保存</p>
+      </div>
+      <a class="toolbox-link" href="../../index.html">工具箱</a>
+    </header>
+
+    <section class="summary-band" aria-label="費用總結">
+      <div class="grand-total">
+        <div>
+          <div class="grand-total-label">六店合計</div>
+          <div class="grand-total-value" id="grand-total">$0</div>
+        </div>
+        <div class="tax-breakdown">
+          <div>未稅<strong id="subtotal">$0</strong></div>
+          <div>5% 稅額<strong id="tax-total">$0</strong></div>
+        </div>
+      </div>
+      <div class="store-totals" id="store-totals"></div>
+    </section>
+
+    <details class="settings" id="store-settings">
+      <summary>門市名稱設定</summary>
+      <div class="store-name-grid" id="store-name-grid"></div>
+    </details>
+
+    <div class="actions">
+      <button class="primary-button" id="add-item" type="button">新增品項</button>
+      <button class="secondary-button" id="clear-quantities" type="button">清空數量</button>
+      <button class="danger-button" id="reset-all" type="button">全部重設</button>
+    </div>
+
+    <section class="item-list" id="item-list" aria-label="品項費用"></section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const STORAGE_KEY = "storeCostSharingStateV1";
+    const STORE_COUNT = 6;
+    const DEFAULT_STORE_NAMES = Array.from({ length: STORE_COUNT }, (_, index) => `門市${index + 1}`);
+    const moneyFormatter = new Intl.NumberFormat("zh-TW", {
+      style: "currency",
+      currency: "TWD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+
+    const itemList = document.getElementById("item-list");
+    const storeNameGrid = document.getElementById("store-name-grid");
+    const storeTotals = document.getElementById("store-totals");
+    const grandTotal = document.getElementById("grand-total");
+    const subtotal = document.getElementById("subtotal");
+    const taxTotal = document.getElementById("tax-total");
+    const saveStatus = document.getElementById("save-status");
+    const toast = document.getElementById("toast");
+    let toastTimer = 0;
+    let saveTimer = 0;
+
+    function createId() {
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    function createBlankItem() {
+      return {
+        id: createId(),
+        name: "",
+        price: "",
+        taxed: false,
+        quantities: Array(STORE_COUNT).fill(""),
+      };
+    }
+
+    function defaultState() {
+      return {
+        stores: [...DEFAULT_STORE_NAMES],
+        items: [createBlankItem()],
+        settingsOpen: false,
+      };
+    }
+
+    function normalizeDecimal(value) {
+      const cleaned = String(value ?? "").replace(/,/g, ".").replace(/[^0-9.]/g, "");
+      const [whole = "", ...decimalParts] = cleaned.split(".");
+      if (decimalParts.length === 0) return whole;
+      return `${whole}.${decimalParts.join("")}`;
+    }
+
+    function toNumber(value) {
+      const number = Number.parseFloat(value);
+      return Number.isFinite(number) && number >= 0 ? number : 0;
+    }
+
+    function loadState() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (!stored || !Array.isArray(stored.stores) || !Array.isArray(stored.items)) return defaultState();
+        const stores = Array.from({ length: STORE_COUNT }, (_, index) => String(stored.stores[index] || DEFAULT_STORE_NAMES[index]));
+        const items = stored.items.map((item) => ({
+          id: String(item.id || createId()),
+          name: String(item.name || ""),
+          price: normalizeDecimal(item.price),
+          taxed: Boolean(item.taxed),
+          quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
+        }));
+        return {
+          stores,
+          items: items.length ? items : [createBlankItem()],
+          settingsOpen: Boolean(stored.settingsOpen),
+        };
+      } catch {
+        return defaultState();
+      }
+    }
+
+    let state = loadState();
+
+    function persistState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      saveStatus.textContent = "資料已自動保存";
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(() => {
+        saveStatus.textContent = "隨時可繼續填寫";
+      }, 1600);
+    }
+
+    function showToast(message) {
+      window.clearTimeout(toastTimer);
+      toast.textContent = message;
+      toast.classList.add("show");
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 1700);
+    }
+
+    function storeLabel(index) {
+      return state.stores[index].trim() || `門市${index + 1}`;
+    }
+
+    function itemAmount(item, storeIndex) {
+      const base = toNumber(item.price) * toNumber(item.quantities[storeIndex]);
+      return base * (item.taxed ? 1.05 : 1);
+    }
+
+    function calculateTotals() {
+      const perStore = Array(STORE_COUNT).fill(0);
+      let beforeTax = 0;
+      let tax = 0;
+
+      state.items.forEach((item) => {
+        const unitPrice = toNumber(item.price);
+        item.quantities.forEach((quantity, storeIndex) => {
+          const base = unitPrice * toNumber(quantity);
+          beforeTax += base;
+          tax += item.taxed ? base * 0.05 : 0;
+          perStore[storeIndex] += base * (item.taxed ? 1.05 : 1);
+        });
+      });
+
+      return { perStore, beforeTax, tax, total: beforeTax + tax };
+    }
+
+    function renderStoreNames() {
+      storeNameGrid.replaceChildren();
+      state.stores.forEach((name, index) => {
+        const label = document.createElement("label");
+        label.className = "field-label";
+        label.textContent = `門市 ${index + 1}`;
+        const input = document.createElement("input");
+        input.className = "text-input";
+        input.type = "text";
+        input.maxLength = 18;
+        input.value = name;
+        input.dataset.storeName = String(index);
+        input.setAttribute("autocomplete", "off");
+        label.append(input);
+        storeNameGrid.append(label);
+      });
+    }
+
+    function renderSummary() {
+      const totals = calculateTotals();
+      grandTotal.textContent = moneyFormatter.format(totals.total);
+      subtotal.textContent = moneyFormatter.format(totals.beforeTax);
+      taxTotal.textContent = moneyFormatter.format(totals.tax);
+      storeTotals.replaceChildren();
+
+      totals.perStore.forEach((value, index) => {
+        const block = document.createElement("div");
+        block.className = "store-total";
+        const name = document.createElement("div");
+        name.className = "store-total-name";
+        name.textContent = storeLabel(index);
+        const amount = document.createElement("div");
+        amount.className = "store-total-value";
+        amount.textContent = moneyFormatter.format(value);
+        block.append(name, amount);
+        storeTotals.append(block);
+      });
+    }
+
+    function itemCard(item) {
+      const article = document.createElement("article");
+      article.className = "item-card";
+      article.dataset.itemId = item.id;
+
+      const head = document.createElement("div");
+      head.className = "item-head";
+
+      const nameLabel = document.createElement("label");
+      nameLabel.className = "field-label name-field";
+      nameLabel.textContent = "品項名稱";
+      const nameInput = document.createElement("input");
+      nameInput.className = "text-input";
+      nameInput.type = "text";
+      nameInput.maxLength = 40;
+      nameInput.value = item.name;
+      nameInput.dataset.field = "name";
+      nameInput.placeholder = "例如：影印紙";
+      nameInput.setAttribute("autocomplete", "off");
+      nameLabel.append(nameInput);
+
+      const priceLabel = document.createElement("label");
+      priceLabel.className = "field-label price-field";
+      priceLabel.textContent = "品項單價";
+      const priceInput = document.createElement("input");
+      priceInput.className = "number-input";
+      priceInput.type = "text";
+      priceInput.inputMode = "decimal";
+      priceInput.value = item.price;
+      priceInput.dataset.field = "price";
+      priceInput.placeholder = "0";
+      priceInput.setAttribute("autocomplete", "off");
+      priceLabel.append(priceInput);
+
+      const taxLabel = document.createElement("label");
+      taxLabel.className = "tax-toggle";
+      const taxInput = document.createElement("input");
+      taxInput.type = "checkbox";
+      taxInput.checked = item.taxed;
+      taxInput.dataset.field = "taxed";
+      taxLabel.append(taxInput, document.createTextNode("加計 5% 稅"));
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "icon-button";
+      deleteButton.type = "button";
+      deleteButton.dataset.action = "delete";
+      deleteButton.setAttribute("aria-label", `刪除${item.name || "此品項"}`);
+      deleteButton.title = "刪除品項";
+      deleteButton.textContent = "×";
+
+      head.append(nameLabel, priceLabel, taxLabel, deleteButton);
+
+      const grid = document.createElement("div");
+      grid.className = "stores-grid";
+      item.quantities.forEach((quantity, storeIndex) => {
+        const entry = document.createElement("div");
+        entry.className = "store-entry";
+        const entryHead = document.createElement("div");
+        entryHead.className = "store-entry-head";
+        const entryName = document.createElement("div");
+        entryName.className = "store-entry-name";
+        entryName.textContent = storeLabel(storeIndex);
+        const cost = document.createElement("div");
+        cost.className = "store-entry-cost";
+        cost.dataset.costStore = String(storeIndex);
+        cost.textContent = moneyFormatter.format(itemAmount(item, storeIndex));
+        entryHead.append(entryName, cost);
+
+        const quantityWrap = document.createElement("div");
+        quantityWrap.className = "quantity-wrap";
+        const quantityInput = document.createElement("input");
+        quantityInput.className = "number-input";
+        quantityInput.type = "text";
+        quantityInput.inputMode = "decimal";
+        quantityInput.value = quantity;
+        quantityInput.dataset.quantityStore = String(storeIndex);
+        quantityInput.placeholder = "0";
+        quantityInput.setAttribute("aria-label", `${storeLabel(storeIndex)}數量`);
+        quantityInput.setAttribute("autocomplete", "off");
+        const unit = document.createElement("span");
+        unit.className = "unit";
+        unit.textContent = "個";
+        quantityWrap.append(quantityInput, unit);
+        entry.append(entryHead, quantityWrap);
+        grid.append(entry);
+      });
+
+      const foot = document.createElement("div");
+      foot.className = "item-foot";
+      const totalQuantity = item.quantities.reduce((sum, value) => sum + toNumber(value), 0);
+      const totalAmount = item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0);
+      foot.innerHTML = `<span>總數量 <strong data-item-quantity>${totalQuantity.toLocaleString("zh-TW", { maximumFractionDigits: 3 })}</strong></span><span>品項合計 <strong data-item-total>${moneyFormatter.format(totalAmount)}</strong></span>`;
+
+      article.append(head, grid, foot);
+      return article;
+    }
+
+    function renderItems() {
+      itemList.replaceChildren();
+      if (state.items.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-state";
+        empty.textContent = "尚未新增品項";
+        itemList.append(empty);
+        return;
+      }
+      state.items.forEach((item) => itemList.append(itemCard(item)));
+    }
+
+    function renderAll() {
+      document.getElementById("store-settings").open = state.settingsOpen;
+      renderStoreNames();
+      renderItems();
+      renderSummary();
+    }
+
+    function findItem(id) {
+      return state.items.find((item) => item.id === id);
+    }
+
+    function updateItemCard(article, item) {
+      article.querySelectorAll("[data-cost-store]").forEach((element) => {
+        const storeIndex = Number(element.dataset.costStore);
+        element.textContent = moneyFormatter.format(itemAmount(item, storeIndex));
+      });
+      const totalQuantity = item.quantities.reduce((sum, value) => sum + toNumber(value), 0);
+      const totalAmount = item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0);
+      article.querySelector("[data-item-quantity]").textContent = totalQuantity.toLocaleString("zh-TW", { maximumFractionDigits: 3 });
+      article.querySelector("[data-item-total]").textContent = moneyFormatter.format(totalAmount);
+      renderSummary();
+    }
+
+    storeNameGrid.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-store-name]");
+      if (!input) return;
+      state.stores[Number(input.dataset.storeName)] = input.value;
+      persistState();
+      renderItems();
+      renderSummary();
+    });
+
+    itemList.addEventListener("input", (event) => {
+      const article = event.target.closest("[data-item-id]");
+      if (!article) return;
+      const item = findItem(article.dataset.itemId);
+      if (!item) return;
+
+      if (event.target.matches("[data-field='name']")) {
+        item.name = event.target.value;
+      } else if (event.target.matches("[data-field='price']")) {
+        const next = normalizeDecimal(event.target.value);
+        event.target.value = next;
+        item.price = next;
+      } else if (event.target.matches("[data-quantity-store]")) {
+        const next = normalizeDecimal(event.target.value);
+        event.target.value = next;
+        item.quantities[Number(event.target.dataset.quantityStore)] = next;
+      }
+      persistState();
+      updateItemCard(article, item);
+    });
+
+    itemList.addEventListener("change", (event) => {
+      const article = event.target.closest("[data-item-id]");
+      if (!article || !event.target.matches("[data-field='taxed']")) return;
+      const item = findItem(article.dataset.itemId);
+      if (!item) return;
+      item.taxed = event.target.checked;
+      persistState();
+      updateItemCard(article, item);
+    });
+
+    itemList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action='delete']");
+      if (!button) return;
+      const article = button.closest("[data-item-id]");
+      const item = findItem(article.dataset.itemId);
+      if (!item) return;
+      const label = item.name.trim() || "此空白品項";
+      if (!window.confirm(`確定刪除「${label}」？`)) return;
+      state.items = state.items.filter((candidate) => candidate.id !== item.id);
+      persistState();
+      renderItems();
+      renderSummary();
+      showToast("品項已刪除");
+    });
+
+    document.getElementById("add-item").addEventListener("click", () => {
+      const item = createBlankItem();
+      state.items.push(item);
+      persistState();
+      renderItems();
+      const newCard = itemList.querySelector(`[data-item-id="${item.id}"]`);
+      newCard?.querySelector("[data-field='name']")?.focus({ preventScroll: true });
+      newCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    document.getElementById("clear-quantities").addEventListener("click", () => {
+      const hasQuantity = state.items.some((item) => item.quantities.some((value) => toNumber(value) > 0));
+      if (!hasQuantity) {
+        showToast("目前沒有數量需要清空");
+        return;
+      }
+      if (!window.confirm("清空全部門市的品項數量？品名、單價與稅別會保留。")) return;
+      state.items.forEach((item) => {
+        item.quantities = Array(STORE_COUNT).fill("");
+      });
+      persistState();
+      renderItems();
+      renderSummary();
+      showToast("數量已清空");
+    });
+
+    document.getElementById("reset-all").addEventListener("click", () => {
+      if (!window.confirm("全部重設會清除門市名稱、品項、單價和數量，確定繼續？")) return;
+      state = defaultState();
+      persistState();
+      renderAll();
+      showToast("已回復初始狀態");
+    });
+
+    document.getElementById("store-settings").addEventListener("toggle", (event) => {
+      state.settingsOpen = event.currentTarget.open;
+      persistState();
+    });
+
+    document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener("touchend", (event) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) event.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+
+    renderAll();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("../../sw.js", { updateViaCache: "none" }).then((registration) => registration.update()).catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
