@@ -5,19 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useFirebaseArchivedLists, useFirebaseLists, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
-import { normalizeItemName, usePurchaseFrequency, usePurchaseItemNames, ItemFrequency } from '@/hooks/usePurchaseFrequency';
+import { useFirebaseArchivedLists, useFirebaseLists, useFirebaseTags, useFirebaseTrackedPurchaseItems } from '@/hooks/useFirebase';
+import { normalizeItemName, PURCHASE_STORE_NAMES, usePurchaseFrequency, usePurchaseItemNames, ItemFrequency } from '@/hooks/usePurchaseFrequency';
 import { toast } from 'sonner';
 
 const PurchaseFrequency = () => {
   const navigate = useNavigate();
   const { lists, loading: listsLoading } = useFirebaseLists();
   const { archivedLists, loading: archivedLoading } = useFirebaseArchivedLists();
+  const { tags, loading: tagsLoading } = useFirebaseTags();
   const { trackedItems, loading: trackedItemsLoading, saveTrackedItems } = useFirebaseTrackedPurchaseItems();
   const [newItemName, setNewItemName] = useState('');
+  const [selectedStore, setSelectedStore] = useState<typeof PURCHASE_STORE_NAMES[number]>('內湖');
   const allLists = useMemo(() => [...lists, ...archivedLists], [lists, archivedLists]);
   const availableItemNames = usePurchaseItemNames(allLists);
-  const frequencies = usePurchaseFrequency(allLists, trackedItems);
+  const frequencies = usePurchaseFrequency(allLists, trackedItems, tags);
+  const storeFrequencies = frequencies.filter(item => item.tagName === selectedStore);
+  const storeTags = useMemo(
+    () => new Map(tags.filter(tag => PURCHASE_STORE_NAMES.includes(tag.name.trim() as typeof PURCHASE_STORE_NAMES[number])).map(tag => [tag.name.trim(), tag])),
+    [tags]
+  );
   const trackedNameSet = useMemo(
     () => new Set(trackedItems.map(normalizeItemName).filter(Boolean)),
     [trackedItems]
@@ -169,25 +176,52 @@ const PurchaseFrequency = () => {
           </CardContent>
         </Card>
 
-        {listsLoading || archivedLoading || trackedItemsLoading ? (
+        <div className="mb-3 grid grid-cols-2 gap-2 rounded-lg border border-border bg-card p-1.5">
+          {PURCHASE_STORE_NAMES.map((storeName) => {
+            const storeTag = storeTags.get(storeName);
+            const isSelected = selectedStore === storeName;
+            const tagColor = storeTag ? `hsl(var(--tag-${storeTag.color}))` : undefined;
+            return (
+              <button
+                key={storeName}
+                type="button"
+                onClick={() => setSelectedStore(storeName)}
+                className="h-9 rounded-md border-2 px-3 text-sm font-bold transition-colors"
+                style={{
+                  borderColor: tagColor || 'hsl(var(--border))',
+                  backgroundColor: isSelected ? tagColor : 'transparent',
+                  color: isSelected ? '#fff' : tagColor,
+                }}
+              >
+                {storeName}（{frequencies.filter(item => item.tagName === storeName).length}）
+              </button>
+            );
+          })}
+        </div>
+
+        {listsLoading || archivedLoading || trackedItemsLoading || tagsLoading ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <div className="mb-4 h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
               <p>讀取購買紀錄中...</p>
             </CardContent>
           </Card>
-        ) : frequencies.length === 0 ? (
+        ) : storeFrequencies.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <TrendingUp className="w-12 h-12 mb-4 opacity-50" />
-              <p>尚無購買記錄</p>
-              <p className="text-sm mt-2">請先在主頁面新增卡片並填寫內容和日期</p>
+              <p>{selectedStore}尚無購買記錄</p>
+              <p className="text-sm mt-2">請確認卡片已選擇「{selectedStore}」標籤並填寫日期</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
-            {frequencies.map((item, index) => (
-              <Card key={index} className={getStatusColor(item.status)}>
+            {storeFrequencies.map((item) => (
+              <Card
+                key={`${item.tagId}-${item.itemName}`}
+                className={getStatusColor(item.status)}
+                style={{ borderColor: `hsl(var(--tag-${item.tagColor}))` }}
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base font-semibold">

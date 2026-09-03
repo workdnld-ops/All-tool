@@ -113,7 +113,7 @@ const Index = () => {
   const wheelLockRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sortedLists = useMemo(() => [...lists].sort((a, b) => a.order - b.order), [lists]);
-  const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems);
+  const purchaseFrequencies = usePurchaseFrequency([...lists, ...archivedLists], trackedItems, tags);
   const suggestionsByListId = useMemo(() => {
     const suggestionMap: Record<string, PurchaseSuggestion[]> = {};
 
@@ -122,17 +122,18 @@ const Index = () => {
       if (!monthInfo) return;
 
       const { start, end } = monthRange(monthInfo);
-      const existingNames = new Set(
+      const existingItems = new Set(
         list.cards
           .filter((card) => card.status !== 'excluded')
-          .map((card) => normalizeItemName(card.content))
+          .map((card) => `${card.tagId ?? ''}\u0000${normalizeItemName(card.content)}`)
           .filter(Boolean)
       );
 
       suggestionMap[list.id] = purchaseFrequencies
         .filter((item) => {
           if (item.averageDaysBetween <= 0) return false;
-          if (existingNames.has(normalizeItemName(item.itemName))) return false;
+          const itemKey = `${item.tagId}\u0000${normalizeItemName(item.itemName)}`;
+          if (existingItems.has(itemKey)) return false;
 
           const alreadyPurchasedInMonth = item.records.some((record) =>
             record.date >= start && record.date <= end
@@ -145,6 +146,9 @@ const Index = () => {
         .slice(0, 8)
         .map((item) => ({
           itemName: item.itemName,
+          tagId: item.tagId,
+          tagName: item.tagName,
+          tagColor: item.tagColor,
           lastAmount: item.records[item.records.length - 1]?.amount || 0,
           nextPurchaseDate: item.nextPurchaseDate,
           averageDaysBetween: item.averageDaysBetween,
@@ -339,6 +343,7 @@ const Index = () => {
 
     const existing = list.cards.some((card) =>
       card.status !== 'excluded'
+      && card.tagId === suggestion.tagId
       && normalizeItemName(card.content) === normalizeItemName(suggestion.itemName)
     );
     if (existing) {
@@ -350,7 +355,7 @@ const Index = () => {
       id: `card-${Date.now()}`,
       status: 'none',
       date: '',
-      tagId: null,
+      tagId: suggestion.tagId,
       content: suggestion.itemName,
       amount: suggestion.lastAmount,
       invoiceType: 'none',

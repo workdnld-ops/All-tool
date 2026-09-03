@@ -32,6 +32,9 @@ interface ListProps {
 
 export interface PurchaseSuggestion {
   itemName: string;
+  tagId: string;
+  tagName: string;
+  tagColor: string;
   lastAmount: number;
   nextPurchaseDate: Date;
   averageDaysBetween: number;
@@ -449,15 +452,22 @@ export function List({
             <div className="mt-2 flex flex-wrap gap-1.5">
               {purchaseSuggestions.map((suggestion) => (
                 <button
-                  key={suggestion.itemName}
+                  key={`${suggestion.tagId}-${suggestion.itemName}`}
                   type="button"
                   onClick={() => onAddSuggestedCard?.(suggestion)}
-                  className="max-w-full rounded-md border border-primary/30 bg-background px-2 py-1 text-left text-xs font-semibold text-foreground shadow-sm active:scale-[0.99]"
+                  className="max-w-full rounded-md border-2 bg-background px-2 py-1 text-left text-xs font-semibold text-foreground shadow-sm active:scale-[0.99]"
+                  style={{ borderColor: `hsl(var(--tag-${suggestion.tagColor}))` }}
                   title={`預估 ${suggestion.nextPurchaseDate.getMonth() + 1}/${suggestion.nextPurchaseDate.getDate()}，平均 ${suggestion.averageDaysBetween} 天`}
                 >
-                  <span className="block truncate">+ {suggestion.itemName}</span>
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="h-2 w-2 flex-shrink-0 rounded-full"
+                      style={{ backgroundColor: `hsl(var(--tag-${suggestion.tagColor}))` }}
+                    />
+                    <span className="truncate">+ {suggestion.itemName}</span>
+                  </span>
                   <span className="block text-[10px] font-medium text-muted-foreground">
-                    預估 {suggestion.nextPurchaseDate.getMonth() + 1}/{suggestion.nextPurchaseDate.getDate()}
+                    {suggestion.tagName} · 預估 {suggestion.nextPurchaseDate.getMonth() + 1}/{suggestion.nextPurchaseDate.getDate()}
                   </span>
                 </button>
               ))}

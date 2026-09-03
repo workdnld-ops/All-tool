@@ -1,14 +1,20 @@
 import { useMemo } from 'react';
-import { ExpenseCard } from '@/types';
+import { ExpenseCard, Tag } from '@/types';
+
+export const PURCHASE_STORE_NAMES = ['內湖', '瑞光'] as const;
 
 export interface PurchaseRecord {
   date: Date;
   amount: number;
   listName: string;
+  tagId: string;
 }
 
 export interface ItemFrequency {
   itemName: string;
+  tagId: string;
+  tagName: string;
+  tagColor: string;
   records: PurchaseRecord[];
   averageDaysBetween: number;
   lastPurchaseDate: Date;
@@ -57,30 +63,37 @@ export function usePurchaseItemNames(lists: List[]) {
   }, [lists]);
 }
 
-function parsePurchaseDate(value: string, today: Date) {
+function parsePurchaseDate(value: string, listName: string) {
   const [month, day] = value.split('/').map(Number);
-  if (!month || !day) return null;
+  const listMonth = parseMonthListName(listName);
+  if (!listMonth || !month || month < 1 || month > 12 || !day || day < 1 || day > 31) return null;
 
-  const purchaseDate = new Date(today.getFullYear(), month - 1, day);
+  const purchaseDate = new Date(listMonth.year, month - 1, day);
   purchaseDate.setHours(0, 0, 0, 0);
 
-  const daysInFuture = Math.floor(
-    (purchaseDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (daysInFuture > 31) {
-    purchaseDate.setFullYear(purchaseDate.getFullYear() - 1);
+  if (
+    Number.isNaN(purchaseDate.getTime())
+    || purchaseDate.getMonth() !== month - 1
+    || purchaseDate.getDate() !== day
+  ) {
+    return null;
   }
 
   return purchaseDate;
 }
 
-export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] = []) {
+export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] = [], tags: Tag[] = []) {
   const itemFrequencies = useMemo(() => {
-    const itemMap = new Map<string, PurchaseRecord[]>();
+    const itemMap = new Map<string, {
+      itemName: string;
+      tag: Tag;
+      records: PurchaseRecord[];
+    }>();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const trackedNames = new Set(trackedItemNames.map(normalizeItemName).filter(Boolean));
+    const tagMap = new Map(tags.map(tag => [tag.id, tag]));
+    const storeNames = new Set<string>(PURCHASE_STORE_NAMES);
 
     // 收集所有卡片記錄
     lists.forEach(list => {
@@ -89,21 +102,26 @@ export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] =
       list.cards.forEach(card => {
         if (card.status === 'excluded') return;
 
+        const tag = card.tagId ? tagMap.get(card.tagId) : undefined;
+        if (!tag || !storeNames.has(tag.name.trim())) return;
+
         const itemName = normalizeItemName(card.content);
         if (!itemName || !card.date) return;
         if (trackedNames.size > 0 && !trackedNames.has(itemName)) return;
 
-        const purchaseDate = parsePurchaseDate(card.date, today);
+        const purchaseDate = parsePurchaseDate(card.date, list.name);
         if (!purchaseDate) return;
 
-        if (!itemMap.has(itemName)) {
-          itemMap.set(itemName, []);
+        const itemKey = `${tag.id}\u0000${itemName}`;
+        if (!itemMap.has(itemKey)) {
+          itemMap.set(itemKey, { itemName, tag, records: [] });
         }
 
-        itemMap.get(itemName)!.push({
+        itemMap.get(itemKey)!.records.push({
           date: purchaseDate,
           amount: card.amount,
           listName: list.name,
+          tagId: tag.id,
         });
       });
     });
@@ -111,12 +129,15 @@ export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] =
     // 計算每個品項的統計資料
     const frequencies: ItemFrequency[] = [];
 
-    itemMap.forEach((records, itemName) => {
+    itemMap.forEach(({ records, itemName, tag }) => {
       if (records.length < 2) {
         // 只有一筆記錄，無法計算頻率
         const record = records[0];
         frequencies.push({
           itemName,
+          tagId: tag.id,
+          tagName: tag.name.trim(),
+          tagColor: tag.color,
           records,
           averageDaysBetween: 0,
           lastPurchaseDate: record.date,
@@ -162,6 +183,9 @@ export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] =
 
       frequencies.push({
         itemName,
+        tagId: tag.id,
+        tagName: tag.name.trim(),
+        tagColor: tag.color,
         records: sortedRecords,
         averageDaysBetween,
         lastPurchaseDate,
@@ -177,9 +201,12 @@ export function usePurchaseFrequency(lists: List[], trackedItemNames: string[] =
       if (statusOrder[a.status] !== statusOrder[b.status]) {
         return statusOrder[a.status] - statusOrder[b.status];
       }
+      const storeDiff = PURCHASE_STORE_NAMES.indexOf(a.tagName as typeof PURCHASE_STORE_NAMES[number])
+        - PURCHASE_STORE_NAMES.indexOf(b.tagName as typeof PURCHASE_STORE_NAMES[number]);
+      if (storeDiff !== 0) return storeDiff;
       return a.itemName.localeCompare(b.itemName, 'zh-TW');
     });
-  }, [lists, trackedItemNames]);
+  }, [lists, trackedItemNames, tags]);
 
   return itemFrequencies;
 }
