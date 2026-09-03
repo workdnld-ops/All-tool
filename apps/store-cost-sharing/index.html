@@ -180,12 +180,35 @@
     }
 
     .store-total-name {
+      width: 100%;
+      padding: 0;
+      border: 0;
       overflow: hidden;
       color: rgba(255, 255, 255, 0.82);
+      background: transparent;
+      text-align: left;
       font-size: 0.76rem;
       font-weight: 700;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: text;
+    }
+
+    .store-total-name::after {
+      content: " ✎";
+      font-size: 0.68rem;
+      opacity: 0.72;
+    }
+
+    .store-name-editor {
+      width: 100%;
+      height: 28px;
+      padding: 0 6px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      color: var(--ink);
+      background: #fff;
+      font-size: 0.76rem;
+      font-weight: 750;
     }
 
     .store-total-value {
@@ -196,41 +219,6 @@
       font-variant-numeric: tabular-nums;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    .settings {
-      margin-bottom: 10px;
-      border-top: 1px solid var(--line);
-      border-bottom: 1px solid var(--line);
-      background: var(--surface);
-    }
-
-    .settings summary {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 46px;
-      padding: 0 12px;
-      font-weight: 850;
-      list-style: none;
-      cursor: pointer;
-    }
-
-    .settings summary::-webkit-details-marker { display: none; }
-
-    .settings summary::after {
-      content: "展開";
-      color: var(--primary);
-      font-size: 0.82rem;
-    }
-
-    .settings[open] summary::after { content: "收起"; }
-
-    .store-name-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      padding: 0 12px 12px;
     }
 
     .field-label {
@@ -451,7 +439,6 @@
     }
 
     @media (max-width: 390px) {
-      .store-name-grid,
       .store-totals,
       .stores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .toolbox-link { min-height: 38px; padding: 0 10px; }
@@ -483,13 +470,9 @@
       <div class="store-totals" id="store-totals"></div>
     </section>
 
-    <details class="settings" id="store-settings">
-      <summary>門市名稱設定</summary>
-      <div class="store-name-grid" id="store-name-grid"></div>
-    </details>
-
     <div class="actions">
       <button class="primary-button" id="add-item" type="button">新增品項</button>
+      <button class="secondary-button" id="copy-output" type="button">複製文字</button>
       <button class="secondary-button" id="clear-numbers" type="button">清空數字</button>
     </div>
 
@@ -510,7 +493,6 @@
     });
 
     const itemList = document.getElementById("item-list");
-    const storeNameGrid = document.getElementById("store-name-grid");
     const storeTotals = document.getElementById("store-totals");
     const grandTotal = document.getElementById("grand-total");
     const subtotal = document.getElementById("subtotal");
@@ -538,7 +520,6 @@
       return {
         stores: [...DEFAULT_STORE_NAMES],
         items: [createBlankItem()],
-        settingsOpen: false,
       };
     }
 
@@ -552,6 +533,10 @@
     function toNumber(value) {
       const number = Number.parseFloat(value);
       return Number.isFinite(number) && number >= 0 ? number : 0;
+    }
+
+    function roundMoney(value) {
+      return Math.round((value + Number.EPSILON) * 100) / 100;
     }
 
     function loadState() {
@@ -569,7 +554,6 @@
         return {
           stores,
           items: items.length ? items : [createBlankItem()],
-          settingsOpen: Boolean(stored.settingsOpen),
         };
       } catch {
         return defaultState();
@@ -598,9 +582,14 @@
       return state.stores[index].trim() || `門市${index + 1}`;
     }
 
+    function itemCost(item, storeIndex) {
+      const base = roundMoney(toNumber(item.price) * toNumber(item.quantities[storeIndex]));
+      const tax = item.taxed ? roundMoney(base * 0.05) : 0;
+      return { base, tax, total: roundMoney(base + tax) };
+    }
+
     function itemAmount(item, storeIndex) {
-      const base = toNumber(item.price) * toNumber(item.quantities[storeIndex]);
-      return base * (item.taxed ? 1.05 : 1);
+      return itemCost(item, storeIndex).total;
     }
 
     function calculateTotals() {
@@ -609,34 +598,16 @@
       let tax = 0;
 
       state.items.forEach((item) => {
-        const unitPrice = toNumber(item.price);
-        item.quantities.forEach((quantity, storeIndex) => {
-          const base = unitPrice * toNumber(quantity);
-          beforeTax += base;
-          tax += item.taxed ? base * 0.05 : 0;
-          perStore[storeIndex] += base * (item.taxed ? 1.05 : 1);
+        item.quantities.forEach((_, storeIndex) => {
+          const cost = itemCost(item, storeIndex);
+          beforeTax = roundMoney(beforeTax + cost.base);
+          tax = roundMoney(tax + cost.tax);
+          perStore[storeIndex] = roundMoney(perStore[storeIndex] + cost.total);
         });
       });
 
-      return { perStore, beforeTax, tax, total: beforeTax + tax };
-    }
-
-    function renderStoreNames() {
-      storeNameGrid.replaceChildren();
-      state.stores.forEach((name, index) => {
-        const label = document.createElement("label");
-        label.className = "field-label";
-        label.textContent = `門市 ${index + 1}`;
-        const input = document.createElement("input");
-        input.className = "text-input";
-        input.type = "text";
-        input.maxLength = 18;
-        input.value = name;
-        input.dataset.storeName = String(index);
-        input.setAttribute("autocomplete", "off");
-        label.append(input);
-        storeNameGrid.append(label);
-      });
+      const total = roundMoney(perStore.reduce((sum, value) => sum + value, 0));
+      return { perStore, beforeTax, tax, total };
     }
 
     function renderSummary() {
@@ -649,9 +620,13 @@
       totals.perStore.forEach((value, index) => {
         const block = document.createElement("div");
         block.className = "store-total";
-        const name = document.createElement("div");
+        const name = document.createElement("button");
+        name.type = "button";
         name.className = "store-total-name";
         name.textContent = storeLabel(index);
+        name.dataset.editStore = String(index);
+        name.title = "點擊編輯門市名稱";
+        name.setAttribute("aria-label", `編輯門市名稱：${storeLabel(index)}`);
         const amount = document.createElement("div");
         amount.className = "store-total-value";
         amount.textContent = moneyFormatter.format(value);
@@ -750,7 +725,7 @@
       const foot = document.createElement("div");
       foot.className = "item-foot";
       const totalQuantity = item.quantities.reduce((sum, value) => sum + toNumber(value), 0);
-      const totalAmount = item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0);
+      const totalAmount = roundMoney(item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0));
       foot.innerHTML = `<span>總數量 <strong data-item-quantity>${totalQuantity.toLocaleString("zh-TW", { maximumFractionDigits: 3 })}</strong></span><span>品項合計 <strong data-item-total>${moneyFormatter.format(totalAmount)}</strong></span>`;
 
       article.append(head, grid, foot);
@@ -770,8 +745,6 @@
     }
 
     function renderAll() {
-      document.getElementById("store-settings").open = state.settingsOpen;
-      renderStoreNames();
       renderItems();
       renderSummary();
     }
@@ -786,19 +759,50 @@
         element.textContent = moneyFormatter.format(itemAmount(item, storeIndex));
       });
       const totalQuantity = item.quantities.reduce((sum, value) => sum + toNumber(value), 0);
-      const totalAmount = item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0);
+      const totalAmount = roundMoney(item.quantities.reduce((sum, _, index) => sum + itemAmount(item, index), 0));
       article.querySelector("[data-item-quantity]").textContent = totalQuantity.toLocaleString("zh-TW", { maximumFractionDigits: 3 });
       article.querySelector("[data-item-total]").textContent = moneyFormatter.format(totalAmount);
       renderSummary();
     }
 
-    storeNameGrid.addEventListener("input", (event) => {
-      const input = event.target.closest("[data-store-name]");
-      if (!input) return;
-      state.stores[Number(input.dataset.storeName)] = input.value;
-      persistState();
-      renderItems();
-      renderSummary();
+    function beginStoreNameEdit(button) {
+      const index = Number(button.dataset.editStore);
+      if (!Number.isInteger(index)) return;
+      const block = button.closest(".store-total");
+      const input = document.createElement("input");
+      input.className = "store-name-editor";
+      input.type = "text";
+      input.maxLength = 40;
+      input.value = state.stores[index];
+      input.setAttribute("aria-label", `門市 ${index + 1} 名稱`);
+      input.setAttribute("autocomplete", "off");
+      button.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let cancelled = false;
+      const finish = () => {
+        if (!input.isConnected) return;
+        if (!cancelled) state.stores[index] = input.value.trim() || `門市${index + 1}`;
+        persistState();
+        renderItems();
+        renderSummary();
+      };
+
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") input.blur();
+        if (event.key === "Escape") {
+          cancelled = true;
+          input.blur();
+        }
+      });
+      input.addEventListener("blur", finish, { once: true });
+      block.scrollIntoView({ block: "nearest" });
+    }
+
+    storeTotals.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-edit-store]");
+      if (button) beginStoreNameEdit(button);
     });
 
     itemList.addEventListener("input", (event) => {
@@ -876,9 +880,40 @@
       showToast("單價與數量已清空");
     });
 
-    document.getElementById("store-settings").addEventListener("toggle", (event) => {
-      state.settingsOpen = event.currentTarget.open;
-      persistState();
+    async function copyOutputText() {
+      const totals = calculateTotals();
+      const text = totals.perStore
+        .map((value, index) => ({ value, name: storeLabel(index) }))
+        .filter(({ value }) => value > 0)
+        .map(({ value, name }) => `${name}   ${moneyFormatter.format(value)}`)
+        .join("\n");
+
+      if (!text) {
+        showToast("目前沒有可輸出的分擔金額");
+        return;
+      }
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.append(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        showToast("分擔文字已複製");
+      } catch {
+        showToast("複製失敗，請再試一次");
+      }
+    }
+
+    document.getElementById("copy-output").addEventListener("click", () => {
+      copyOutputText();
     });
 
     document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
