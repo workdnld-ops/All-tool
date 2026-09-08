@@ -43,19 +43,24 @@
     return DEFAULT_ADDRESSES.map((entry) => ({ ...entry }));
   }
 
+  function normalize(entries) {
+    const source = Array.isArray(entries) ? entries : [];
+    return DEFAULT_ADDRESSES.map((fallback, index) => {
+      const entry = source[index] || {};
+      return {
+        storeName: typeof entry.storeName === "string" ? entry.storeName : fallback.storeName,
+        recipient: typeof entry.recipient === "string" ? entry.recipient : fallback.recipient,
+        phone: typeof entry.phone === "string" ? entry.phone : fallback.phone,
+        address: typeof entry.address === "string" ? entry.address : fallback.address,
+      };
+    });
+  }
+
   function load() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
       if (!Array.isArray(stored)) return cloneDefaults();
-      return DEFAULT_ADDRESSES.map((fallback, index) => {
-        const entry = stored[index] || {};
-        return {
-          storeName: typeof entry.storeName === "string" ? entry.storeName : fallback.storeName,
-          recipient: typeof entry.recipient === "string" ? entry.recipient : fallback.recipient,
-          phone: typeof entry.phone === "string" ? entry.phone : fallback.phone,
-          address: typeof entry.address === "string" ? entry.address : fallback.address,
-        };
-      });
+      return normalize(stored);
     } catch {
       return cloneDefaults();
     }
@@ -75,6 +80,8 @@
   }
 
   window.StoreCostAddresses = {
+    defaults: cloneDefaults,
+    normalize,
     load,
     save,
     format,

@@ -464,23 +464,86 @@
     }
 
     @media (max-width: 620px) {
-      .shell { padding-left: 10px; padding-right: 10px; }
-      h1 { font-size: 1.32rem; }
-      .summary-band { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
-      .grand-total { align-items: flex-start; flex-direction: column; gap: 9px; }
-      .tax-breakdown { width: 100%; text-align: left; }
-      .item-head { grid-template-columns: minmax(0, 1.25fr) minmax(88px, 0.75fr); }
-      .item-head .name-field { grid-column: 1 / 2; }
-      .item-head .price-field { grid-column: 2 / 3; }
-      .tax-toggle { grid-column: 1 / 2; justify-content: center; }
-      .icon-button { grid-column: 2; }
+      .shell {
+        padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+      }
+
+      .topbar { gap: 6px; margin-bottom: 5px; }
+      h1 { font-size: 1.12rem; }
+      .save-status { margin-top: 1px; font-size: 0.66rem; }
+      .top-actions { gap: 4px; }
+      .toolbox-link { min-height: 32px; padding: 0 8px; font-size: 0.75rem; box-shadow: none; }
+
+      .item-tabs { gap: 4px; margin-bottom: 5px; padding-bottom: 2px; }
+      .item-tab { min-height: 31px; max-width: 132px; padding: 0 9px; font-size: 0.72rem; }
+
+      .summary-band {
+        margin: 0 -8px 5px;
+        padding: 7px 8px;
+      }
+
+      .grand-total {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 6px;
+      }
+
+      .grand-total-label { font-size: 0.68rem; }
+      .grand-total-value { margin-top: 0; font-size: 1.55rem; }
+      .tax-breakdown { display: flex; gap: 12px; min-width: 0; text-align: right; font-size: 0.64rem; }
+      .tax-breakdown strong { margin-top: 0; font-size: 0.78rem; }
+      .store-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-top: 6px; }
+      .store-total { padding: 4px 5px; }
+      .store-total-name { font-size: 0.62rem; }
+      .store-total-name::after { display: none; }
+      .store-total-value { margin-top: 0; font-size: 0.78rem; }
+
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+        margin-bottom: 5px;
+      }
+
+      .actions button {
+        min-height: 32px;
+        padding: 0 3px;
+        font-size: 0.69rem;
+        white-space: nowrap;
+      }
+
+      .item-list { gap: 5px; }
+      .item-card { box-shadow: none; }
+      .item-head {
+        grid-template-columns: minmax(0, 1.5fr) minmax(62px, 0.72fr) auto 32px;
+        gap: 4px;
+        padding: 6px;
+      }
+      .field-label { gap: 2px; font-size: 0.62rem; }
+      .text-input, .number-input { height: 32px; padding: 0 6px; font-size: 0.82rem; }
+      .tax-toggle { min-height: 32px; padding: 0 4px; font-size: 0.65rem; }
+      .tax-toggle input { width: 17px; height: 17px; }
+      .icon-button { width: 32px; min-height: 32px; font-size: 1rem; }
+      .stores-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .store-entry { padding: 5px; }
+      .store-entry-head { gap: 2px; margin-bottom: 2px; }
+      .store-entry-name { font-size: 0.64rem; }
+      .store-entry-cost { font-size: 0.62rem; }
+      .quantity-wrap { gap: 2px; }
+      .quantity-wrap .number-input { height: 30px; font-size: 0.78rem; }
+      .unit { font-size: 0.62rem; }
+      .item-foot { padding: 5px 7px; font-size: 0.66rem; }
+      .item-foot strong { font-size: 0.74rem; }
     }
 
     @media (max-width: 390px) {
-      .store-totals,
-      .stores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .toolbox-link { min-height: 38px; padding: 0 10px; }
-      .actions button { flex: 1 1 calc(50% - 8px); }
+      .shell { padding-left: 6px; padding-right: 6px; }
+      .summary-band { margin-left: -6px; margin-right: -6px; padding-left: 6px; padding-right: 6px; }
+      .actions button { font-size: 0.64rem; }
+      .item-head { grid-template-columns: minmax(0, 1.4fr) minmax(58px, 0.68fr) auto 30px; }
+      .tax-toggle { font-size: 0.6rem; }
     }
   </style>
 </head>
@@ -489,7 +552,7 @@
     <header class="topbar">
       <div class="title-wrap">
         <h1>各店費用分擔</h1>
-        <p class="save-status" id="save-status">資料已自動保存</p>
+        <p class="save-status" id="save-status">正在同步資料...</p>
       </div>
       <div class="top-actions">
         <a class="toolbox-link" href="settings.html">設定</a>
@@ -526,7 +589,13 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="addresses.js"></script>
-  <script>
+  <script type="module">
+    import {
+      saveAddressBook,
+      saveCostState,
+      subscribeAddressBook,
+      subscribeCostState,
+    } from "./cost-data.js";
     const STORAGE_KEY = "storeCostSharingStateV1";
     const STORE_COUNT = 6;
     const DEFAULT_STORE_NAMES = Array.from({ length: STORE_COUNT }, (_, index) => `門市${index + 1}`);
@@ -547,6 +616,9 @@
     const toast = document.getElementById("toast");
     let toastTimer = 0;
     let saveTimer = 0;
+    let cloudSaveTimer = 0;
+    let cloudReady = false;
+    let pendingCloudSave = false;
 
     function createId() {
       return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -587,23 +659,27 @@
       return Math.round((value + Number.EPSILON) * 100) / 100;
     }
 
+    function normalizeState(stored, preferredActiveItemId = "") {
+      if (!stored || !Array.isArray(stored.stores) || !Array.isArray(stored.items)) return defaultState();
+      const stores = Array.from({ length: STORE_COUNT }, (_, index) => String(stored.stores[index] || DEFAULT_STORE_NAMES[index]));
+      const items = stored.items.map((item) => ({
+        id: String(item.id || createId()),
+        name: String(item.name || ""),
+        price: normalizeDecimal(item.price),
+        taxed: Boolean(item.taxed),
+        quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
+      }));
+      const normalizedItems = items.length ? items : [createBlankItem()];
+      const requestedActiveId = preferredActiveItemId || stored.activeItemId;
+      const activeItemId = normalizedItems.some((item) => item.id === requestedActiveId)
+        ? requestedActiveId
+        : normalizedItems[0].id;
+      return { stores, items: normalizedItems, activeItemId };
+    }
+
     function loadState() {
       try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-        if (!stored || !Array.isArray(stored.stores) || !Array.isArray(stored.items)) return defaultState();
-        const stores = Array.from({ length: STORE_COUNT }, (_, index) => String(stored.stores[index] || DEFAULT_STORE_NAMES[index]));
-        const items = stored.items.map((item) => ({
-          id: String(item.id || createId()),
-          name: String(item.name || ""),
-          price: normalizeDecimal(item.price),
-          taxed: Boolean(item.taxed),
-          quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
-        }));
-        const normalizedItems = items.length ? items : [createBlankItem()];
-        const activeItemId = normalizedItems.some((item) => item.id === stored.activeItemId)
-          ? stored.activeItemId
-          : normalizedItems[0].id;
-        return { stores, items: normalizedItems, activeItemId };
+        return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"));
       } catch {
         return defaultState();
       }
@@ -611,12 +687,52 @@
 
     let state = loadState();
 
-    function persistState() {
+    function cloudState() {
+      return { stores: state.stores, items: state.items };
+    }
+
+    function stateSignature(value = state) {
+      return JSON.stringify({ stores: value.stores, items: value.items });
+    }
+
+    function hasMeaningfulState(value) {
+      const customStores = value.stores.some((name, index) => name !== DEFAULT_STORE_NAMES[index]);
+      const meaningfulItems = value.items.length > 1 || value.items.some((item) =>
+        item.name.trim() || toNumber(item.price) > 0 || item.taxed || item.quantities.some((quantity) => toNumber(quantity) > 0)
+      );
+      return customStores || meaningfulItems;
+    }
+
+    function cacheState() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      saveStatus.textContent = "資料已自動保存";
+    }
+
+    function queueCloudSave() {
+      pendingCloudSave = true;
+      if (!cloudReady) {
+        return;
+      }
+      window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = window.setTimeout(async () => {
+        saveStatus.textContent = "正在同步資料...";
+        try {
+          await saveCostState(cloudState());
+          pendingCloudSave = false;
+          saveStatus.textContent = "資料已同步";
+        } catch (error) {
+          console.error("Store cost sharing save error:", error);
+          saveStatus.textContent = "已保存在此裝置，稍後再同步";
+        }
+      }, 450);
+    }
+
+    function persistState(syncToCloud = true) {
+      cacheState();
+      saveStatus.textContent = syncToCloud ? "資料已保存，等待同步" : "資料已同步";
+      if (syncToCloud) queueCloudSave();
       window.clearTimeout(saveTimer);
       saveTimer = window.setTimeout(() => {
-        saveStatus.textContent = "隨時可繼續填寫";
+        if (!syncToCloud || !pendingCloudSave) saveStatus.textContent = "資料已同步";
       }, 1600);
     }
 
@@ -912,7 +1028,7 @@
       const tab = event.target.closest("[data-item-tab]");
       if (!tab || tab.dataset.itemTab === state.activeItemId) return;
       state.activeItemId = tab.dataset.itemTab;
-      persistState();
+      persistState(false);
       renderAll();
       itemTabs.querySelector(`[data-item-tab="${CSS.escape(state.activeItemId)}"]`)?.scrollIntoView({
         behavior: "smooth",
@@ -931,6 +1047,7 @@
       if (!window.confirm(`確定刪除「${label}」？`)) return;
       const deletedIndex = state.items.findIndex((candidate) => candidate.id === item.id);
       state.items = state.items.filter((candidate) => candidate.id !== item.id);
+      if (state.items.length === 0) state.items.push(createBlankItem());
       state.activeItemId = state.items[Math.min(deletedIndex, state.items.length - 1)]?.id || "";
       persistState();
       renderAll();
@@ -1021,6 +1138,54 @@
     }, { passive: false });
 
     renderAll();
+
+    subscribeCostState(
+      (remoteData) => {
+        cloudReady = true;
+        if (remoteData?.stores && remoteData?.items) {
+          const remoteState = normalizeState(remoteData, state.activeItemId);
+          if (stateSignature(remoteState) !== stateSignature()) {
+            state = remoteState;
+            cacheState();
+            renderAll();
+          }
+          pendingCloudSave = false;
+          saveStatus.textContent = "資料已同步";
+          return;
+        }
+
+        if (hasMeaningfulState(state)) {
+          saveStatus.textContent = "正在上傳原有紀錄...";
+          queueCloudSave();
+        } else {
+          pendingCloudSave = false;
+          saveStatus.textContent = "尚無雲端資料";
+        }
+      },
+      () => {
+        cloudReady = false;
+        saveStatus.textContent = "目前使用此裝置資料";
+      },
+    );
+
+    subscribeAddressBook(
+      (remoteData) => {
+        if (remoteData?.entries) {
+          const remoteAddresses = window.StoreCostAddresses.normalize(remoteData.entries);
+          window.StoreCostAddresses.save(remoteAddresses);
+          return;
+        }
+        const localAddresses = window.StoreCostAddresses.load();
+        if (JSON.stringify(localAddresses) !== JSON.stringify(window.StoreCostAddresses.defaults())) {
+          saveAddressBook(localAddresses).catch((error) => console.error("Address migration error:", error));
+        }
+      },
+      () => {},
+    );
+
+    window.addEventListener("online", () => {
+      if (pendingCloudSave) queueCloudSave();
+    });
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {

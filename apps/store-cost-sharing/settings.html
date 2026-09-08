@@ -174,7 +174,7 @@
     <header class="topbar">
       <div>
         <h1>分店地址設定</h1>
-        <p class="status" id="status">修改後自動保存</p>
+        <p class="status" id="status">正在同步地址...</p>
       </div>
       <div class="nav-actions">
         <a class="nav-link" href="index.html">返回</a>
@@ -186,18 +186,41 @@
   </main>
 
   <script src="addresses.js"></script>
-  <script>
+  <script type="module">
+    import { saveAddressBook, subscribeAddressBook } from "./cost-data.js";
+
     const addressList = document.getElementById("address-list");
     const status = document.getElementById("status");
     let addresses = window.StoreCostAddresses.load();
     let statusTimer = 0;
+    let cloudTimer = 0;
+    let cloudReady = false;
+    let pendingCloudSave = false;
+
+    function queueCloudSave() {
+      pendingCloudSave = true;
+      if (!cloudReady) return;
+      window.clearTimeout(cloudTimer);
+      cloudTimer = window.setTimeout(async () => {
+        status.textContent = "正在同步地址...";
+        try {
+          await saveAddressBook(addresses);
+          pendingCloudSave = false;
+          status.textContent = "地址已同步";
+        } catch (error) {
+          console.error("Address save error:", error);
+          status.textContent = "已保存在此裝置，稍後再同步";
+        }
+      }, 450);
+    }
 
     function saveAddresses() {
       window.StoreCostAddresses.save(addresses);
-      status.textContent = "地址已自動保存";
+      status.textContent = "地址已保存，等待同步";
+      queueCloudSave();
       window.clearTimeout(statusTimer);
       statusTimer = window.setTimeout(() => {
-        status.textContent = "修改後自動保存";
+        if (!pendingCloudSave) status.textContent = "地址已同步";
       }, 1500);
     }
 
@@ -248,6 +271,39 @@
 
     document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
     render();
+
+    subscribeAddressBook(
+      (remoteData) => {
+        cloudReady = true;
+        if (remoteData?.entries) {
+          const remoteAddresses = window.StoreCostAddresses.normalize(remoteData.entries);
+          if (JSON.stringify(remoteAddresses) !== JSON.stringify(addresses)) {
+            addresses = remoteAddresses;
+            window.StoreCostAddresses.save(addresses);
+            render();
+          }
+          pendingCloudSave = false;
+          status.textContent = "地址已同步";
+          return;
+        }
+
+        if (JSON.stringify(addresses) !== JSON.stringify(window.StoreCostAddresses.defaults())) {
+          status.textContent = "正在上傳原有地址...";
+          queueCloudSave();
+        } else {
+          pendingCloudSave = false;
+          status.textContent = "地址已就緒";
+        }
+      },
+      () => {
+        cloudReady = false;
+        status.textContent = "目前使用此裝置地址";
+      },
+    );
+
+    window.addEventListener("online", () => {
+      if (pendingCloudSave) queueCloudSave();
+    });
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
