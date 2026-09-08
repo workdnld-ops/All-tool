@@ -81,6 +81,12 @@
       margin-bottom: 12px;
     }
 
+    .top-actions {
+      display: flex;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+
     .title-wrap { min-width: 0; }
 
     h1 {
@@ -121,6 +127,38 @@
     .summary-band {
       margin: 0 -12px 12px;
       padding: 14px 12px;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    .item-tabs {
+      display: flex;
+      gap: 7px;
+      margin: 0 0 10px;
+      padding: 2px 0 4px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .item-tab {
+      flex: 0 0 auto;
+      max-width: 190px;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: var(--surface);
+      font-size: 0.84rem;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-tab[aria-selected="true"] {
+      border-color: var(--primary);
       color: #fff;
       background: var(--primary);
     }
@@ -431,11 +469,11 @@
       .summary-band { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
       .grand-total { align-items: flex-start; flex-direction: column; gap: 9px; }
       .tax-breakdown { width: 100%; text-align: left; }
-      .item-head { grid-template-columns: minmax(0, 1.25fr) minmax(88px, 0.75fr) auto; }
+      .item-head { grid-template-columns: minmax(0, 1.25fr) minmax(88px, 0.75fr); }
       .item-head .name-field { grid-column: 1 / 2; }
       .item-head .price-field { grid-column: 2 / 3; }
-      .tax-toggle { grid-column: 1 / 3; justify-content: center; }
-      .icon-button { grid-column: 3; grid-row: 1 / 3; align-self: stretch; height: auto; }
+      .tax-toggle { grid-column: 1 / 2; justify-content: center; }
+      .icon-button { grid-column: 2; }
     }
 
     @media (max-width: 390px) {
@@ -453,8 +491,13 @@
         <h1>各店費用分擔</h1>
         <p class="save-status" id="save-status">資料已自動保存</p>
       </div>
-      <a class="toolbox-link" href="../../index.html">工具箱</a>
+      <div class="top-actions">
+        <a class="toolbox-link" href="settings.html">設定</a>
+        <a class="toolbox-link" href="../../index.html">工具箱</a>
+      </div>
     </header>
+
+    <nav class="item-tabs" id="item-tabs" aria-label="品項分頁" role="tablist"></nav>
 
     <section class="summary-band" aria-label="費用總結">
       <div class="grand-total">
@@ -473,6 +516,7 @@
     <div class="actions">
       <button class="primary-button" id="add-item" type="button">新增品項</button>
       <button class="secondary-button" id="copy-output" type="button">複製文字</button>
+      <button class="secondary-button" id="copy-addresses" type="button">分店地址</button>
       <button class="secondary-button" id="clear-numbers" type="button">清空數字</button>
     </div>
 
@@ -481,6 +525,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="addresses.js"></script>
   <script>
     const STORAGE_KEY = "storeCostSharingStateV1";
     const STORE_COUNT = 6;
@@ -493,6 +538,7 @@
     });
 
     const itemList = document.getElementById("item-list");
+    const itemTabs = document.getElementById("item-tabs");
     const storeTotals = document.getElementById("store-totals");
     const grandTotal = document.getElementById("grand-total");
     const subtotal = document.getElementById("subtotal");
@@ -517,9 +563,11 @@
     }
 
     function defaultState() {
+      const item = createBlankItem();
       return {
         stores: [...DEFAULT_STORE_NAMES],
-        items: [createBlankItem()],
+        items: [item],
+        activeItemId: item.id,
       };
     }
 
@@ -551,10 +599,11 @@
           taxed: Boolean(item.taxed),
           quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
         }));
-        return {
-          stores,
-          items: items.length ? items : [createBlankItem()],
-        };
+        const normalizedItems = items.length ? items : [createBlankItem()];
+        const activeItemId = normalizedItems.some((item) => item.id === stored.activeItemId)
+          ? stored.activeItemId
+          : normalizedItems[0].id;
+        return { stores, items: normalizedItems, activeItemId };
       } catch {
         return defaultState();
       }
@@ -592,22 +641,42 @@
       return itemCost(item, storeIndex).total;
     }
 
+    function activeItem() {
+      return state.items.find((item) => item.id === state.activeItemId) || null;
+    }
+
     function calculateTotals() {
       const perStore = Array(STORE_COUNT).fill(0);
       let beforeTax = 0;
       let tax = 0;
 
-      state.items.forEach((item) => {
+      const item = activeItem();
+      if (item) {
         item.quantities.forEach((_, storeIndex) => {
           const cost = itemCost(item, storeIndex);
           beforeTax = roundMoney(beforeTax + cost.base);
           tax = roundMoney(tax + cost.tax);
           perStore[storeIndex] = roundMoney(perStore[storeIndex] + cost.total);
         });
-      });
+      }
 
       const total = roundMoney(perStore.reduce((sum, value) => sum + value, 0));
       return { perStore, beforeTax, tax, total };
+    }
+
+    function renderTabs() {
+      itemTabs.replaceChildren();
+      state.items.forEach((item, index) => {
+        const button = document.createElement("button");
+        button.className = "item-tab";
+        button.type = "button";
+        button.role = "tab";
+        button.dataset.itemTab = item.id;
+        button.setAttribute("aria-selected", String(item.id === state.activeItemId));
+        button.textContent = item.name.trim() || `品項 ${index + 1}`;
+        button.title = button.textContent;
+        itemTabs.append(button);
+      });
     }
 
     function renderSummary() {
@@ -734,17 +803,19 @@
 
     function renderItems() {
       itemList.replaceChildren();
-      if (state.items.length === 0) {
+      const item = activeItem();
+      if (!item) {
         const empty = document.createElement("div");
         empty.className = "empty-state";
         empty.textContent = "尚未新增品項";
         itemList.append(empty);
         return;
       }
-      state.items.forEach((item) => itemList.append(itemCard(item)));
+      itemList.append(itemCard(item));
     }
 
     function renderAll() {
+      renderTabs();
       renderItems();
       renderSummary();
     }
@@ -813,6 +884,7 @@
 
       if (event.target.matches("[data-field='name']")) {
         item.name = event.target.value;
+        renderTabs();
       } else if (event.target.matches("[data-field='price']")) {
         const next = normalizeDecimal(event.target.value);
         event.target.value = next;
@@ -836,6 +908,19 @@
       updateItemCard(article, item);
     });
 
+    itemTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-item-tab]");
+      if (!tab || tab.dataset.itemTab === state.activeItemId) return;
+      state.activeItemId = tab.dataset.itemTab;
+      persistState();
+      renderAll();
+      itemTabs.querySelector(`[data-item-tab="${CSS.escape(state.activeItemId)}"]`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    });
+
     itemList.addEventListener("click", (event) => {
       const button = event.target.closest("[data-action='delete']");
       if (!button) return;
@@ -844,55 +929,40 @@
       if (!item) return;
       const label = item.name.trim() || "此空白品項";
       if (!window.confirm(`確定刪除「${label}」？`)) return;
+      const deletedIndex = state.items.findIndex((candidate) => candidate.id === item.id);
       state.items = state.items.filter((candidate) => candidate.id !== item.id);
+      state.activeItemId = state.items[Math.min(deletedIndex, state.items.length - 1)]?.id || "";
       persistState();
-      renderItems();
-      renderSummary();
+      renderAll();
       showToast("品項已刪除");
     });
 
     document.getElementById("add-item").addEventListener("click", () => {
       const item = createBlankItem();
       state.items.push(item);
+      state.activeItemId = item.id;
       persistState();
-      renderItems();
-      const newCard = itemList.querySelector(`[data-item-id="${item.id}"]`);
-      newCard?.querySelector("[data-field='name']")?.focus({ preventScroll: true });
-      newCard?.scrollIntoView({ behavior: "smooth", block: "center" });
+      renderAll();
+      itemTabs.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "end" });
+      itemList.querySelector("[data-field='name']")?.focus({ preventScroll: true });
     });
 
     document.getElementById("clear-numbers").addEventListener("click", () => {
-      const hasNumbers = state.items.some((item) =>
-        toNumber(item.price) > 0 || item.quantities.some((value) => toNumber(value) > 0)
-      );
+      const item = activeItem();
+      const hasNumbers = item && (toNumber(item.price) > 0 || item.quantities.some((value) => toNumber(value) > 0));
       if (!hasNumbers) {
         showToast("目前沒有數字需要清空");
         return;
       }
-      if (!window.confirm("清空所有品項的單價與六店數量？門市名稱、品項名稱和稅別會保留。")) return;
-      state.items.forEach((item) => {
-        item.price = "";
-        item.quantities = Array(STORE_COUNT).fill("");
-      });
+      if (!window.confirm("清空目前品項的單價與六店數量？門市名稱、品項名稱和稅別會保留。")) return;
+      item.price = "";
+      item.quantities = Array(STORE_COUNT).fill("");
       persistState();
-      renderItems();
-      renderSummary();
+      renderAll();
       showToast("單價與數量已清空");
     });
 
-    async function copyOutputText() {
-      const totals = calculateTotals();
-      const text = totals.perStore
-        .map((value, index) => ({ value, name: storeLabel(index) }))
-        .filter(({ value }) => value > 0)
-        .map(({ value, name }) => `${name}   ${moneyFormatter.format(value)}`)
-        .join("\n");
-
-      if (!text) {
-        showToast("目前沒有可輸出的分擔金額");
-        return;
-      }
-
+    async function copyText(text, successMessage) {
       try {
         if (navigator.clipboard?.writeText) {
           await navigator.clipboard.writeText(text);
@@ -906,14 +976,39 @@
           document.execCommand("copy");
           textarea.remove();
         }
-        showToast("分擔文字已複製");
+        showToast(successMessage);
       } catch {
         showToast("複製失敗，請再試一次");
       }
     }
 
+    function copyOutputText() {
+      const totals = calculateTotals();
+      const text = totals.perStore
+        .map((value, index) => ({ value, name: storeLabel(index) }))
+        .filter(({ value }) => value > 0)
+        .map(({ value, name }) => `${name}   ${moneyFormatter.format(value)}`)
+        .join("\n");
+
+      if (!text) {
+        showToast("目前沒有可輸出的分擔金額");
+        return;
+      }
+      copyText(text, "分擔文字已複製");
+    }
+
+    function copyAddresses() {
+      const addresses = window.StoreCostAddresses.load();
+      const text = window.StoreCostAddresses.format(addresses);
+      copyText(text, "六店地址已複製");
+    }
+
     document.getElementById("copy-output").addEventListener("click", () => {
       copyOutputText();
+    });
+
+    document.getElementById("copy-addresses").addEventListener("click", () => {
+      copyAddresses();
     });
 
     document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });

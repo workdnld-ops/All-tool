@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#23685f">
+  <title>分店地址設定</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f7;
+      --surface: #fff;
+      --ink: #18242a;
+      --muted: #66737b;
+      --line: #d9e1e4;
+      --primary: #23685f;
+      --shadow: 0 6px 18px rgba(25, 42, 48, 0.07);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    button, a, label {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+      touch-action: manipulation;
+    }
+
+    .shell {
+      width: min(820px, 100%);
+      margin: 0 auto;
+      padding: max(14px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .status {
+      min-height: 1.2em;
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+
+    .nav-link {
+      min-height: 40px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .address-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .address-card {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .address-card h2 {
+      margin: 0 0 9px;
+      color: var(--primary);
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    .fields {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr);
+      gap: 8px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 750;
+    }
+
+    label.wide { grid-column: 1 / -1; }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid #bcc9ce;
+      border-radius: 8px;
+      outline: none;
+      color: var(--ink);
+      background: #fff;
+      font: inherit;
+      font-size: 0.95rem;
+    }
+
+    input { height: 40px; padding: 0 9px; }
+    textarea { min-height: 66px; padding: 8px 9px; resize: vertical; }
+
+    input:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(35, 104, 95, 0.12);
+    }
+
+    @media (max-width: 620px) {
+      .shell { padding-left: 10px; padding-right: 10px; }
+      h1 { font-size: 1.25rem; }
+      .address-list { grid-template-columns: 1fr; }
+      .address-card { padding: 10px; }
+    }
+
+    @media (max-width: 390px) {
+      .topbar { align-items: flex-start; }
+      .nav-link { min-height: 38px; padding: 0 9px; font-size: 0.8rem; }
+      .fields { grid-template-columns: 1fr; }
+      label.wide { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <h1>分店地址設定</h1>
+        <p class="status" id="status">修改後自動保存</p>
+      </div>
+      <div class="nav-actions">
+        <a class="nav-link" href="index.html">返回</a>
+        <a class="nav-link" href="../../index.html">工具箱</a>
+      </div>
+    </header>
+
+    <section class="address-list" id="address-list" aria-label="六店寄送地址"></section>
+  </main>
+
+  <script src="addresses.js"></script>
+  <script>
+    const addressList = document.getElementById("address-list");
+    const status = document.getElementById("status");
+    let addresses = window.StoreCostAddresses.load();
+    let statusTimer = 0;
+
+    function saveAddresses() {
+      window.StoreCostAddresses.save(addresses);
+      status.textContent = "地址已自動保存";
+      window.clearTimeout(statusTimer);
+      statusTimer = window.setTimeout(() => {
+        status.textContent = "修改後自動保存";
+      }, 1500);
+    }
+
+    function field(labelText, fieldName, value, index, wide = false, multiline = false) {
+      const label = document.createElement("label");
+      if (wide) label.className = "wide";
+      label.textContent = labelText;
+      const input = document.createElement(multiline ? "textarea" : "input");
+      input.value = value;
+      input.dataset.index = String(index);
+      input.dataset.field = fieldName;
+      input.maxLength = multiline ? 160 : 40;
+      input.setAttribute("autocomplete", "off");
+      if (fieldName === "phone") input.inputMode = "tel";
+      label.append(input);
+      return label;
+    }
+
+    function render() {
+      addressList.replaceChildren();
+      addresses.forEach((entry, index) => {
+        const card = document.createElement("article");
+        card.className = "address-card";
+        const title = document.createElement("h2");
+        title.textContent = `分店 ${index + 1}`;
+        const fields = document.createElement("div");
+        fields.className = "fields";
+        fields.append(
+          field("分店名稱", "storeName", entry.storeName, index),
+          field("收件人", "recipient", entry.recipient, index),
+          field("收件人電話", "phone", entry.phone, index, true),
+          field("收件地址", "address", entry.address, index, true, true)
+        );
+        card.append(title, fields);
+        addressList.append(card);
+      });
+    }
+
+    addressList.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-index][data-field]");
+      if (!input) return;
+      const index = Number(input.dataset.index);
+      const fieldName = input.dataset.field;
+      if (!addresses[index] || !fieldName) return;
+      addresses[index][fieldName] = input.value;
+      saveAddresses();
+    });
+
+    document.addEventListener("dblclick", (event) => event.preventDefault(), { passive: false });
+    render();
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("../../sw.js", { updateViaCache: "none" }).then((registration) => registration.update()).catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
