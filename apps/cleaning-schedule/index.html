@@ -189,6 +189,13 @@
       color: var(--muted);
     }
 
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     label {
       display: grid;
       gap: 4px;
@@ -332,7 +339,10 @@
       <section class="store-tabs" id="store-tabs" aria-label="選擇店別"></section>
 
       <section class="panel">
-        <div class="panel-title">選擇該店人力</div>
+        <div class="panel-heading">
+          <div class="panel-title">選擇該店人力</div>
+          <button class="mini-button" id="paste-staff" type="button">貼上人力</button>
+        </div>
         <div class="chip-list" id="staff-list"></div>
       </section>
 
@@ -406,6 +416,7 @@
     const assignmentList = document.getElementById("assignment-list");
     const extraTaskList = document.getElementById("extra-task-list");
     const doneExtraNote = document.getElementById("done-extra-note");
+    const pasteStaffButton = document.getElementById("paste-staff");
 
     let staff = [];
     let tasks = [];
@@ -416,6 +427,13 @@
       { staffIds: [], taskIds: [], assignments: {}, extraTaskIds: [], extraNote: "" },
     ]));
     let draggedStaffId = "";
+
+    const STAFF_ALIASES = new Map([
+      ["baishu", "百數"],
+      ["baishuwu", "百數"],
+      ["kang", "阿康"],
+      ["xiaoq", "小Q"],
+    ]);
 
     function setStatus(message, isError = false) {
       status.textContent = message;
@@ -463,6 +481,79 @@
 
     function findStaff(id) {
       return staff.find((member) => member.id === id);
+    }
+
+    function nameKey(value) {
+      return String(value || "")
+        .normalize("NFKC")
+        .toLowerCase()
+        .replace(/[^a-z0-9\u3400-\u9fff]/g, "");
+    }
+
+    function matchPastedStaff(text) {
+      const members = activeStaff();
+      const segments = String(text || "")
+        .split(/[\t\r\n,，、;；|/]+|\s{2,}/)
+        .map((value) => value.trim())
+        .filter(Boolean);
+      const matchedIds = [];
+      const unmatched = [];
+
+      for (const segment of segments) {
+        const segmentKey = nameKey(segment);
+        const wordKeys = segment.split(/\s+/).map(nameKey).filter(Boolean);
+        const aliasName = STAFF_ALIASES.get(segmentKey)
+          || wordKeys.map((key) => STAFF_ALIASES.get(key)).find(Boolean);
+        const member = members.find((candidate) => {
+          const candidateKey = nameKey(candidate.name);
+          if (aliasName && nameKey(aliasName) === candidateKey) return true;
+          if (segmentKey === candidateKey || wordKeys.includes(candidateKey)) return true;
+          return /^[a-z0-9]+$/.test(candidateKey)
+            && candidateKey.length >= 3
+            && segmentKey.startsWith(candidateKey);
+        });
+
+        if (member) {
+          if (!matchedIds.includes(member.id)) matchedIds.push(member.id);
+        } else {
+          unmatched.push(segment);
+        }
+      }
+
+      return { matchedIds, unmatched };
+    }
+
+    async function pasteCurrentStoreStaff() {
+      let text = "";
+      try {
+        text = await navigator.clipboard.readText();
+      } catch {
+        // Safari may require manual paste when clipboard permission is unavailable.
+      }
+      if (!text.trim()) {
+        text = window.prompt(`請貼上${currentStore().name}的人力名單`) || "";
+      }
+      if (!text.trim()) return;
+
+      const { matchedIds, unmatched } = matchPastedStaff(text);
+      if (matchedIds.length === 0) {
+        flashButton(pasteStaffButton, "未辨識", true);
+        setStatus("沒有辨識到設定中的同仁，原本人力選擇未變更。", true);
+        return;
+      }
+
+      const current = currentPlan();
+      current.staffIds = matchedIds;
+      for (const taskId of Object.keys(current.assignments)) {
+        current.assignments[taskId] = (current.assignments[taskId] || [])
+          .filter((staffId) => matchedIds.includes(staffId));
+      }
+      renderChips();
+      flashButton(pasteStaffButton, `已選 ${matchedIds.length} 人`);
+      const unmatchedText = unmatched.length > 0
+        ? `；未辨識：${unmatched.join("、")}`
+        : "";
+      setStatus(`${currentStore().name}已選擇 ${matchedIds.length} 人${unmatchedText}`, unmatched.length > 0);
     }
 
     function findTask(id) {
@@ -782,6 +873,10 @@
         ids.push(button.dataset.staff);
       }
       renderChips();
+    });
+
+    pasteStaffButton.addEventListener("click", () => {
+      pasteCurrentStoreStaff();
     });
 
     taskList.addEventListener("click", (event) => {
