@@ -1426,9 +1426,13 @@
 
     function activeMonthCards() {
       const selected = activeBoxId();
-      return sortedCards(state.cards.filter((card) =>
-        card.boxId === selected && (card.reminder?.enabled !== true || monthKeyFromDateKey(card.dueDate) === state.activeMonth)
-      ));
+      return sortedCards(state.cards.filter((card) => {
+        if (card.boxId !== selected) return false;
+        if (card.reminder?.enabled !== true) return true;
+        const dueMonth = monthKeyFromDateKey(card.dueDate);
+        if (dueMonth === state.activeMonth) return true;
+        return !card.completed && dueMonth < state.activeMonth;
+      }));
     }
 
     function overdueOrTodayCount() {
