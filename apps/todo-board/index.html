@@ -422,6 +422,10 @@
       gap: 8px;
     }
 
+    .card.no-drag .card-head {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
     .done {
       width: 24px;
       height: 24px;
@@ -558,6 +562,10 @@
       font-size: 0.78rem;
       font-weight: 900;
       line-height: 1.15;
+    }
+
+    .pin-row {
+      justify-self: start;
     }
 
     input.check-box {
@@ -809,6 +817,10 @@
         overflow-wrap: anywhere;
       }
 
+      .pin-row {
+        font-size: 0.78rem;
+      }
+
       input.check-box {
         width: 28px;
         min-width: 28px;
@@ -905,7 +917,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.15.25</span>
+          <span class="version">v7.16.0</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -961,6 +973,10 @@
         <label class="full">
           標題
           <input id="title-input" type="text" inputmode="text" enterkeyhint="done" required maxlength="80" autocomplete="off" autocapitalize="sentences">
+        </label>
+        <label class="check-row pin-row full">
+          <input class="check-box" id="pinned-input" type="checkbox">
+          <span>置頂（可手動排序）</span>
         </label>
         <div class="reminder-row full">
           <label>
@@ -1093,6 +1109,7 @@
       title: document.getElementById("title-input"),
       dueDate: document.getElementById("due-input"),
       notes: document.getElementById("notes-input"),
+      pinned: document.getElementById("pinned-input"),
       reminderEnabled: document.getElementById("reminder-enabled-input"),
       reminderHourSelect: document.getElementById("reminder-hour-select"),
       reminderMinuteSelect: document.getElementById("reminder-minute-select"),
@@ -1322,14 +1339,39 @@
       return items.map((item) => item.id).join("|");
     }
 
+    function reminderSortPriority(card, today) {
+      if (card.reminder?.enabled !== true) return 4;
+      if (card.dueDate < today) return 0;
+      if (card.dueDate === today) return 1;
+      if (card.dueDate === addDays(today, 1)) return 2;
+      return 3;
+    }
+
     function sortedCards(cards) {
-      return [...cards].sort((a, b) =>
-        a.order - b.order || a.dueDate.localeCompare(b.dueDate) || a.createdAt.localeCompare(b.createdAt)
-      );
+      const today = todayKey();
+      return [...cards].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.completed) {
+          return a.order - b.order || a.dueDate.localeCompare(b.dueDate) || a.createdAt.localeCompare(b.createdAt);
+        }
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        if (a.pinned) {
+          return a.order - b.order || a.createdAt.localeCompare(b.createdAt);
+        }
+        return reminderSortPriority(a, today) - reminderSortPriority(b, today)
+          || a.dueDate.localeCompare(b.dueDate)
+          || a.order - b.order
+          || a.createdAt.localeCompare(b.createdAt);
+      });
     }
 
     function activeVisibleCards() {
       return activeMonthCards().filter((card) => state.activeTab === "done" ? card.completed : !card.completed);
+    }
+
+    function sortableVisibleCards() {
+      const visible = activeVisibleCards();
+      return state.activeTab === "open" ? visible.filter((card) => card.pinned) : visible;
     }
 
     function mergeOrderedCards(orderedCards) {
@@ -1367,7 +1409,7 @@
     }
 
     async function persistCardOrder() {
-      const ordered = normalizeOrder(activeVisibleCards());
+      const ordered = normalizeOrder(sortableVisibleCards());
       mergeOrderedCards(ordered);
       await Promise.all(ordered.map((card) => updateCard(card.id, { order: card.order })));
       setStatus("卡片順序已更新。");
@@ -1389,7 +1431,7 @@
 
       const cardTarget = target?.closest("[data-card-id]");
       if (!cardTarget) return;
-      const visible = activeVisibleCards();
+      const visible = sortableVisibleCards();
       const before = orderSignature(visible);
       const ordered = reorderById(visible, dragState.id, cardTarget.dataset.cardId);
       if (orderSignature(ordered) === before) return;
@@ -1480,12 +1522,14 @@
               ? "reminder-soon"
               : "";
       const metaParts = [
+        card.pinned && !card.completed ? "置頂" : "",
         reminderEnabled ? escapeHtml(card.dueDate) : "",
         card.completedAt ? `完成於 ${escapeHtml(card.completedAt.slice(0, 10))}` : "",
       ].filter(Boolean);
       const cardMeta = metaParts.length > 0 ? `<div class="card-meta">${metaParts.join(" · ")}</div>` : "";
+      const canDrag = state.activeTab === "done" || card.pinned;
       return `
-        <article class="card ${card.completed ? "completed" : ""} ${dateClass} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
+        <article class="card ${card.completed ? "completed" : ""} ${canDrag ? "" : "no-drag"} ${dateClass} ${dragState.kind === "card" && dragState.id === card.id ? "dragging" : ""}" data-card-id="${card.id}">
           <div class="card-head">
             <button class="done" data-complete="${card.id}" type="button" aria-label="完成">${card.completed ? "✓" : ""}</button>
             <div>
@@ -1493,7 +1537,7 @@
               ${cardMeta}
             </div>
             <button class="button" data-edit="${card.id}" type="button">編輯</button>
-            <button class="drag-handle" type="button" data-drag-card-id="${card.id}" aria-label="拖移 ${escapeHtml(card.title)}">☰</button>
+            ${canDrag ? `<button class="drag-handle" type="button" data-drag-card-id="${card.id}" aria-label="拖移 ${escapeHtml(card.title)}">☰</button>` : ""}
           </div>
           ${card.notes ? `<div class="card-notes">${escapeHtml(card.notes)}</div>` : ""}
         </article>
@@ -1561,6 +1605,7 @@
       fields.title.value = editing ? draft.title : "";
       fields.dueDate.value = draft.dueDate;
       fields.notes.value = draft.notes;
+      fields.pinned.checked = draft.pinned;
       fields.reminderEnabled.checked = draft.reminder.enabled;
       setReminderTime(draft.reminder.time);
       fields.daysBefore.value = draft.reminder.daysBefore;
@@ -1583,15 +1628,22 @@
 
     function formCard() {
       const existing = state.cards.find((card) => card.id === state.editingId);
+      const boxId = existing?.boxId || activeBoxId();
+      const pinned = fields.pinned.checked;
+      const nextPinnedOrder = state.cards
+        .filter((card) => card.boxId === boxId && !card.completed && card.pinned && card.id !== existing?.id)
+        .reduce((highest, card) => Math.max(highest, card.order), -1) + 1;
       return normalizeCard({
         ...(existing || {}),
         id: state.editingId,
-        boxId: existing?.boxId || activeBoxId(),
+        boxId,
         title: fields.title.value.trim(),
         dueDate: fields.dueDate.value,
         notes: fields.notes.value.trim(),
         completed: existing?.completed === true,
         completedAt: existing?.completedAt || "",
+        pinned,
+        order: pinned && existing?.pinned !== true ? nextPinnedOrder : existing?.order,
         reminder: {
           enabled: fields.reminderEnabled.checked,
           daysBefore: fields.daysBefore.value,

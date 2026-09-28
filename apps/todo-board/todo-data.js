@@ -68,6 +68,7 @@ export function normalizeCard(card, fallbackId) {
     updatedAt: card.updatedAt || new Date().toISOString(),
     completed: card.completed === true,
     completedAt: card.completedAt || "",
+    pinned: card.pinned === true,
     reminder: {
       enabled: reminder.enabled === true,
       daysBefore: Math.max(0, Number.parseInt(reminder.daysBefore, 10) || 0),
