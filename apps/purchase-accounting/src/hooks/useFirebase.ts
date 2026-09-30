@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ref, set, update, remove, onValue, get, off } from 'firebase/database';
 import { database, getUserId } from '@/lib/firebase';
-import { List as ListType, Tag, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
+import { List as ListType, Tag } from '@/types';
 import { toast } from 'sonner';
 
 export function useFirebaseLists() {
@@ -24,6 +24,7 @@ export function useFirebaseLists() {
               id,
               name: listData.name || '未命名',
               order: listData.order || 0,
+              snackBudget: listData.snackBudget || undefined,
               cards: listData.cards 
                 ? Object.entries(listData.cards)
                     .map(([cardId, cardData]: [string, any]) => ({
@@ -87,6 +88,7 @@ export function useFirebaseLists() {
         listsData[list.id] = {
           name: list.name,
           order: list.order,
+          ...(list.snackBudget ? { snackBudget: list.snackBudget } : {}),
           cards: cardsData
         };
       });
@@ -254,6 +256,7 @@ export function useFirebaseArchivedLists() {
               id,
               name: listData.name || '未命名',
               order: listData.order || 0,
+              snackBudget: listData.snackBudget || undefined,
               cards: listData.cards 
                 ? Object.entries(listData.cards)
                     .map(([cardId, cardData]: [string, any]) => ({
@@ -305,6 +308,7 @@ export function useFirebaseArchivedLists() {
         archivedData[list.id] = {
           name: list.name,
           order: list.order,
+          ...(list.snackBudget ? { snackBudget: list.snackBudget } : {}),
           cards: cardsData
         };
       });
@@ -319,52 +323,6 @@ export function useFirebaseArchivedLists() {
   }, [userId]);
 
   return { archivedLists, loading, saveArchivedLists };
-}
-
-export function useFirebaseSnackBudget() {
-  const [snackBudget, setSnackBudget] = useState<SnackBudgetSettings>(DEFAULT_SNACK_BUDGET);
-  const [loading, setLoading] = useState(true);
-  const userId = getUserId();
-
-  useEffect(() => {
-    const budgetRef = ref(database, `users/${userId}/snackBudget`);
-    
-    const unsubscribe = onValue(
-      budgetRef,
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-          setSnackBudget({
-            neihu: data.neihu ?? DEFAULT_SNACK_BUDGET.neihu,
-            ruiguang: data.ruiguang ?? DEFAULT_SNACK_BUDGET.ruiguang,
-          });
-        } else {
-          setSnackBudget(DEFAULT_SNACK_BUDGET);
-        }
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Firebase snack budget read error:', err);
-        setLoading(false);
-      }
-    );
-
-    return () => off(budgetRef, 'value', unsubscribe);
-  }, [userId]);
-
-  const saveSnackBudget = useCallback(async (budget: SnackBudgetSettings) => {
-    try {
-      const budgetRef = ref(database, `users/${userId}/snackBudget`);
-      await set(budgetRef, budget);
-      toast.success('✓ 已同步 Firebase');
-    } catch (err) {
-      console.error('Error saving snack budget:', err);
-      toast.error('預算同步失敗');
-      throw err;
-    }
-  }, [userId]);
-
-  return { snackBudget, loading, saveSnackBudget };
 }
 
 export function useFirebaseBusinessNumberText() {

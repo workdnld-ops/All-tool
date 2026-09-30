@@ -5,10 +5,11 @@ export interface SnackBudgetSettings {
   ruiguang: number;
 }
 
-export const DEFAULT_SNACK_BUDGET: SnackBudgetSettings = {
-  neihu: 1300,
-  ruiguang: 1800,
-};
+export interface MonthlySnackBudget extends SnackBudgetSettings {
+  employeeCount: number;
+  total: number;
+  updatedAt: string;
+}
 
 export type InvoiceType = 'paper' | 'electronic' | 'none';
 
@@ -35,6 +36,7 @@ export interface List {
   name: string;
   cards: ExpenseCard[];
   order: number;
+  snackBudget?: MonthlySnackBudget;
 }
 
 export const DEFAULT_TAGS: Tag[] = [

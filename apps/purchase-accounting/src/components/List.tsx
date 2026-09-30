@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, MoreVertical, Undo, Archive as ArchiveIcon, ArrowUpDown, Camera } from 'lucide-react';
-import { List as ListType, ExpenseCard as ExpenseCardType, Tag, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
+import { Plus, Trash2, MoreVertical, Undo, Archive as ArchiveIcon, ArrowUpDown, Camera, ClipboardPaste } from 'lucide-react';
+import { List as ListType, ExpenseCard as ExpenseCardType, Tag } from '@/types';
 import { ExpenseCard } from './ExpenseCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,11 +13,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from './ui/dropdown-menu';
+import { toast } from 'sonner';
 
 interface ListProps {
   list: ListType;
   tags: Tag[];
-  snackBudget: SnackBudgetSettings;
   purchaseSuggestions?: PurchaseSuggestion[];
   onUpdateList: (id: string, updates: Partial<ListType>) => void;
   onAddCard: () => void;
@@ -43,7 +43,6 @@ export interface PurchaseSuggestion {
 export function List({ 
   list, 
   tags, 
-  snackBudget,
   purchaseSuggestions = [],
   onUpdateList, 
   onAddCard,
@@ -92,8 +91,44 @@ export function List({
     })
     .reduce((sum, card) => sum + card.amount, 0);
 
-  const neihuRemaining = snackBudget.neihu - neihuSnackTotal;
-  const ruiguangRemaining = snackBudget.ruiguang - ruiguangSnackTotal;
+  const neihuBudget = list.snackBudget?.neihu ?? 0;
+  const ruiguangBudget = list.snackBudget?.ruiguang ?? 0;
+  const neihuRemaining = neihuBudget - neihuSnackTotal;
+  const ruiguangRemaining = ruiguangBudget - ruiguangSnackTotal;
+
+  const handlePasteSnackBudget = async () => {
+    let text = '';
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      text = window.prompt('請貼上當月同仁名單（可從 Excel 或文字檔貼上）') || '';
+    }
+
+    const employeeNames = [...new Set(
+      text
+        .split(/\t|\r?\n/)
+        .map((name) => name.trim())
+        .filter(Boolean)
+    )];
+
+    if (employeeNames.length === 0) {
+      toast.error('沒有讀取到同仁名單');
+      return;
+    }
+
+    const employeeCount = employeeNames.length;
+    const total = employeeCount * 150;
+    onUpdateList(list.id, {
+      snackBudget: {
+        employeeCount,
+        total,
+        neihu: employeeCount * 50,
+        ruiguang: employeeCount * 100,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+    toast.success(`已依 ${employeeCount} 位同仁計算當月預算`);
+  };
 
   const handleNameSubmit = () => {
     onUpdateList(list.id, { name: tempName });
@@ -415,22 +450,39 @@ export function List({
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="text-2xl font-bold text-primary">
             ${totalAmount.toLocaleString('zh-TW')}
           </div>
-          <div className="flex text-xs" style={{ marginRight: '2.5ch' }}>
-            <div className="flex flex-col text-white shrink-0">
-              <span>內湖：</span>
-              <span>瑞光：</span>
-            </div>
-            <div className="flex flex-col">
-              <span className={neihuRemaining < 0 ? 'text-red-500' : ''}>
-                ${neihuRemaining.toLocaleString('zh-TW')}
-              </span>
-              <span className={ruiguangRemaining < 0 ? 'text-red-500' : ''}>
-                ${ruiguangRemaining.toLocaleString('zh-TW')}
-              </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePasteSnackBudget}
+              className="h-8 shrink-0 px-2 text-xs"
+            >
+              <ClipboardPaste className="mr-1 h-3.5 w-3.5" />
+              貼上預算
+            </Button>
+            <div className="min-w-[96px] text-xs">
+              {list.snackBudget ? (
+                <>
+                  <div className="flex justify-between gap-2">
+                    <span>內湖</span>
+                    <span className={neihuRemaining < 0 ? 'text-red-500' : ''}>
+                      ${neihuRemaining.toLocaleString('zh-TW')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>瑞光</span>
+                    <span className={ruiguangRemaining < 0 ? 'text-red-500' : ''}>
+                      ${ruiguangRemaining.toLocaleString('zh-TW')}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <span className="text-muted-foreground">尚未設定當月預算</span>
+              )}
             </div>
           </div>
         </div>

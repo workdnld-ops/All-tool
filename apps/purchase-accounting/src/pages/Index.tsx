@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, type WheelEvent } from 'react';
 import { Header } from '@/components/Header';
 import { List, type PurchaseSuggestion } from '@/components/List';
 import { List as ListType, ExpenseCard, Tag, DEFAULT_TAGS } from '@/types';
-import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseSnackBudget, useFirebaseTrackedPurchaseItems, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
+import { useFirebaseLists, useFirebaseTags, useFirebaseArchivedLists, useFirebaseTrackedPurchaseItems, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
 import { normalizeItemName, parseMonthListName, usePurchaseFrequency } from '@/hooks/usePurchaseFrequency';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -85,7 +85,6 @@ const Index = () => {
   const { lists: firebaseLists, loading: listsLoading, saveLists } = useFirebaseLists();
   const { tags: firebaseTags, loading: tagsLoading, saveTags } = useFirebaseTags();
   const { archivedLists: firebaseArchivedLists, loading: archivedLoading, saveArchivedLists } = useFirebaseArchivedLists();
-  const { snackBudget, loading: budgetLoading } = useFirebaseSnackBudget();
   const { trackedItems, loading: trackedItemsLoading } = useFirebaseTrackedPurchaseItems();
   const {
     businessNumberText,
@@ -634,7 +633,7 @@ const Index = () => {
     : null;
 
   // 顯示 loading 狀態
-  if (listsLoading || tagsLoading || archivedLoading || budgetLoading || trackedItemsLoading || businessNumberLoading || snackCopyTextLoading) {
+  if (listsLoading || tagsLoading || archivedLoading || trackedItemsLoading || businessNumberLoading || snackCopyTextLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -796,7 +795,6 @@ const Index = () => {
                     <List
                       list={list}
                       tags={tags}
-                      snackBudget={snackBudget}
                       purchaseSuggestions={suggestionsByListId[list.id] || []}
                       onUpdateList={handleUpdateList}
                       onAddCard={() => handleAddCard(list.id)}

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Tag, TAG_COLORS, SnackBudgetSettings, DEFAULT_SNACK_BUDGET } from '@/types';
+import { Tag, TAG_COLORS } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useFirebaseTags, useFirebaseSnackBudget, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
+import { useFirebaseTags, useFirebaseBusinessNumberText, useFirebaseSnackCopyText } from '@/hooks/useFirebase';
 import { DEFAULT_TAGS } from '@/types';
 import { cn } from '@/lib/utils';
 import {
@@ -134,7 +134,6 @@ function SortableTagRow({
 export default function TagSettings() {
   const navigate = useNavigate();
   const { tags: firebaseTags, loading: tagsLoading, saveTags } = useFirebaseTags();
-  const { snackBudget: firebaseSnackBudget, loading: budgetLoading, saveSnackBudget } = useFirebaseSnackBudget();
   const {
     businessNumberText: firebaseBusinessNumberText,
     loading: businessNumberLoading,
@@ -148,10 +147,6 @@ export default function TagSettings() {
   const [tags, setTags] = useState<Tag[]>(DEFAULT_TAGS);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempName, setTempName] = useState('');
-  const [snackBudget, setSnackBudget] = useState<SnackBudgetSettings>(DEFAULT_SNACK_BUDGET);
-  const [tempNeihu, setTempNeihu] = useState('');
-  const [tempRuiguang, setTempRuiguang] = useState('');
-  const [editingBudget, setEditingBudget] = useState<'neihu' | 'ruiguang' | null>(null);
   const [businessNumberText, setBusinessNumberText] = useState('');
   const [snackCopyText, setSnackCopyText] = useState('');
   const sensors = useSensors(
@@ -169,12 +164,6 @@ export default function TagSettings() {
       setTags(normalizeTagOrder(firebaseTags));
     }
   }, [firebaseTags, tagsLoading]);
-
-  useEffect(() => {
-    if (!budgetLoading) {
-      setSnackBudget(firebaseSnackBudget);
-    }
-  }, [firebaseSnackBudget, budgetLoading]);
 
   useEffect(() => {
     if (!businessNumberLoading) {
@@ -232,16 +221,6 @@ export default function TagSettings() {
     setEditingId(null);
   };
 
-  const handleBudgetSubmit = async (type: 'neihu' | 'ruiguang') => {
-    const value = type === 'neihu' ? parseInt(tempNeihu) : parseInt(tempRuiguang);
-    if (!isNaN(value) && value >= 0) {
-      const updatedBudget = { ...snackBudget, [type]: value };
-      setSnackBudget(updatedBudget);
-      await saveSnackBudget(updatedBudget);
-    }
-    setEditingBudget(null);
-  };
-
   const handleBusinessNumberSubmit = async () => {
     if (businessNumberText === firebaseBusinessNumberText) return;
     await saveBusinessNumberText(businessNumberText);
@@ -252,7 +231,7 @@ export default function TagSettings() {
     await saveSnackCopyText(snackCopyText);
   };
 
-  const loading = tagsLoading || budgetLoading || businessNumberLoading || snackCopyTextLoading;
+  const loading = tagsLoading || businessNumberLoading || snackCopyTextLoading;
 
   if (loading) {
     return (
@@ -312,61 +291,6 @@ export default function TagSettings() {
               placeholder="輸入按下零食按鈕時要複製的文字"
               className="min-h-28 resize-y"
             />
-          </div>
-        </div>
-
-        {/* 零食預算設定 */}
-        <div className="space-y-3">
-          <h2 className="font-semibold text-lg">零食預算</h2>
-          <div className="bg-card rounded-lg p-4 border border-border space-y-3">
-            <div className="flex items-center gap-3">
-              <span className="w-16 text-muted-foreground">內湖：</span>
-              {editingBudget === 'neihu' ? (
-                <Input
-                  value={tempNeihu}
-                  onChange={(e) => setTempNeihu(e.target.value)}
-                  onBlur={() => handleBudgetSubmit('neihu')}
-                  onKeyDown={(e) => e.key === 'Enter' && handleBudgetSubmit('neihu')}
-                  className="flex-1"
-                  inputMode="numeric"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => {
-                    setEditingBudget('neihu');
-                    setTempNeihu(snackBudget.neihu.toString());
-                  }}
-                  className="flex-1 text-left font-medium hover:text-primary"
-                >
-                  ${snackBudget.neihu.toLocaleString('zh-TW')}
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-16 text-muted-foreground">瑞光：</span>
-              {editingBudget === 'ruiguang' ? (
-                <Input
-                  value={tempRuiguang}
-                  onChange={(e) => setTempRuiguang(e.target.value)}
-                  onBlur={() => handleBudgetSubmit('ruiguang')}
-                  onKeyDown={(e) => e.key === 'Enter' && handleBudgetSubmit('ruiguang')}
-                  className="flex-1"
-                  inputMode="numeric"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => {
-                    setEditingBudget('ruiguang');
-                    setTempRuiguang(snackBudget.ruiguang.toString());
-                  }}
-                  className="flex-1 text-left font-medium hover:text-primary"
-                >
-                  ${snackBudget.ruiguang.toLocaleString('zh-TW')}
-                </button>
-              )}
-            </div>
           </div>
         </div>
 
