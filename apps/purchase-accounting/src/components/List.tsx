@@ -58,6 +58,8 @@ export function List({
   const [tempName, setTempName] = useState(list.name);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
+  const [editingBudget, setEditingBudget] = useState<'neihu' | 'ruiguang' | null>(null);
+  const [tempBudget, setTempBudget] = useState('');
   const suggestionStorageKey = `purchase-suggestions-open:${list.id}`;
   const [areSuggestionsOpen, setAreSuggestionsOpen] = useState(false);
 
@@ -95,6 +97,8 @@ export function List({
   const ruiguangBudget = list.snackBudget?.ruiguang ?? 0;
   const neihuRemaining = neihuBudget - neihuSnackTotal;
   const ruiguangRemaining = ruiguangBudget - ruiguangSnackTotal;
+  const displayedNeihuBudget = list.snackBudget ? neihuRemaining : 0;
+  const displayedRuiguangBudget = list.snackBudget ? ruiguangRemaining : 0;
 
   const handlePasteSnackBudget = async () => {
     let text = '';
@@ -128,6 +132,36 @@ export function List({
       },
     });
     toast.success(`已依 ${employeeCount} 位同仁計算當月預算`);
+  };
+
+  const startBudgetEdit = (store: 'neihu' | 'ruiguang') => {
+    setEditingBudget(store);
+    setTempBudget(String(list.snackBudget?.[store] ?? 0));
+  };
+
+  const saveManualBudget = (store: 'neihu' | 'ruiguang') => {
+    const value = Number.parseInt(tempBudget.replace(/,/g, ''), 10);
+    if (!Number.isFinite(value) || value < 0) {
+      toast.error('請輸入正確的預算金額');
+      setEditingBudget(null);
+      return;
+    }
+
+    const currentBudget = list.snackBudget || {
+      employeeCount: 0,
+      total: 0,
+      neihu: 0,
+      ruiguang: 0,
+      updatedAt: '',
+    };
+    const nextBudget = {
+      ...currentBudget,
+      [store]: value,
+      total: store === 'neihu' ? value + currentBudget.ruiguang : currentBudget.neihu + value,
+      updatedAt: new Date().toISOString(),
+    };
+    setEditingBudget(null);
+    onUpdateList(list.id, { snackBudget: nextBudget });
   };
 
   const handleNameSubmit = () => {
@@ -457,31 +491,64 @@ export function List({
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={handlePasteSnackBudget}
-              className="h-8 shrink-0 px-2 text-xs"
+              className="h-8 w-8 shrink-0"
+              aria-label="貼上當月同仁名單並計算預算"
+              title="貼上當月同仁名單並計算預算"
             >
-              <ClipboardPaste className="mr-1 h-3.5 w-3.5" />
-              貼上預算
+              <ClipboardPaste className="h-4 w-4" />
             </Button>
-            <div className="min-w-[96px] text-xs">
-              {list.snackBudget ? (
-                <>
-                  <div className="flex justify-between gap-2">
-                    <span>內湖</span>
-                    <span className={neihuRemaining < 0 ? 'text-red-500' : ''}>
-                      ${neihuRemaining.toLocaleString('zh-TW')}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span>瑞光</span>
-                    <span className={ruiguangRemaining < 0 ? 'text-red-500' : ''}>
-                      ${ruiguangRemaining.toLocaleString('zh-TW')}
-                    </span>
-                  </div>
-                </>
+            <div className="grid grid-cols-[auto_auto] items-center justify-end gap-x-2 text-right text-xs">
+              <span>內湖</span>
+              {editingBudget === 'neihu' ? (
+                <Input
+                  value={tempBudget}
+                  onChange={(event) => setTempBudget(event.target.value)}
+                  onBlur={() => saveManualBudget('neihu')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') saveManualBudget('neihu');
+                    if (event.key === 'Escape') setEditingBudget(null);
+                  }}
+                  className="h-6 w-16 px-1 py-0 text-right text-xs tabular-nums"
+                  inputMode="numeric"
+                  aria-label="內湖當月預算"
+                  autoFocus
+                />
               ) : (
-                <span className="text-muted-foreground">尚未設定當月預算</span>
+                <button
+                  type="button"
+                  onClick={() => startBudgetEdit('neihu')}
+                  className={`text-right tabular-nums hover:text-primary ${displayedNeihuBudget < 0 ? 'text-red-500' : ''}`}
+                  title="點擊編輯內湖當月預算"
+                >
+                  ${displayedNeihuBudget.toLocaleString('zh-TW')}
+                </button>
+              )}
+              <span>瑞光</span>
+              {editingBudget === 'ruiguang' ? (
+                <Input
+                  value={tempBudget}
+                  onChange={(event) => setTempBudget(event.target.value)}
+                  onBlur={() => saveManualBudget('ruiguang')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') saveManualBudget('ruiguang');
+                    if (event.key === 'Escape') setEditingBudget(null);
+                  }}
+                  className="h-6 w-16 px-1 py-0 text-right text-xs tabular-nums"
+                  inputMode="numeric"
+                  aria-label="瑞光當月預算"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => startBudgetEdit('ruiguang')}
+                  className={`text-right tabular-nums hover:text-primary ${displayedRuiguangBudget < 0 ? 'text-red-500' : ''}`}
+                  title="點擊編輯瑞光當月預算"
+                >
+                  ${displayedRuiguangBudget.toLocaleString('zh-TW')}
+                </button>
               )}
             </div>
           </div>
