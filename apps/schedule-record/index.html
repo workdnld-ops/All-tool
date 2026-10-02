@@ -683,15 +683,23 @@
       "優先",
       "次優",
       "排休",
+      "海外休",
+      "休或不在",
       "公假",
       "事假休",
       "滑雪假休",
       "年假例休",
       "例假日休",
       "休息日休",
+      "婚假",
       "家庭照護假",
     ];
     const SUPPORT_SHIFT_KEYWORDS = [
+      "台北訓練",
+      "新竹支援休",
+      "桃園支援休",
+      "台中支援休",
+      "高雄支援休",
       "一店裝機",
       "二店裝機",
       "一店裝機支援休",
@@ -1076,6 +1084,11 @@
 
     function findSpecialShiftLabel(cells) {
       const text = normalizeText(cells.join(" "));
+      if (text.includes("台北訓練")) return "台北訓練";
+      if (text.includes("新竹支援休")) return "新竹支援";
+      if (text.includes("桃園支援休")) return "桃園支援";
+      if (text.includes("台中支援休")) return "台中支援";
+      if (text.includes("高雄支援休")) return "高雄支援";
       if (text.includes("二店裝機") || text.includes("二電裝機")) return "瑞光裝機";
       if (text.includes("一店裝機")) return "內湖裝機";
       return "";
