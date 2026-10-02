@@ -216,9 +216,6 @@ export function List({
     try {
       const screenshotCards = list.cards.filter(card => card.status !== 'excluded');
 
-      // 高DPI縮放比例 (提高清晰度)
-      const SCALE = 3; // 3倍解析度，確保文字清晰
-      
       // 創建canvas - iPhone 15 Pro寬度375px
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d', { 
@@ -231,7 +228,8 @@ export function List({
       }
 
       // 多列佈局參數 (邏輯尺寸)
-      const CARDS_PER_COLUMN = 10;  // 每列最多10張卡片
+      const TARGET_CARDS_PER_COLUMN = 10;
+      const MAX_COLUMNS = 2;
       const CARD_HEIGHT = 30;       // 每張卡片高度
       const HEADER_HEIGHT = 80;     // 標題區高度
       const PADDING = 15;           // 邊距
@@ -260,8 +258,12 @@ export function List({
       // 單張卡片寬度 = 左邊距 + 日期 + 間距 + 內容(9字) + 間距 + 金額 + 右邊距
       const singleCardWidth = CARD_PADDING + dateWidth + 8 + contentWidth + 8 + amountWidth + CARD_PADDING;
 
-      // 計算列數
-      const totalColumns = Math.max(1, Math.ceil(screenshotCards.length / CARDS_PER_COLUMN));
+      // 最多使用兩欄，超過 20 筆時改向下延伸，避免 iOS 裁掉過寬畫布。
+      const totalColumns = Math.max(
+        1,
+        Math.min(MAX_COLUMNS, Math.ceil(screenshotCards.length / TARGET_CARDS_PER_COLUMN))
+      );
+      const cardsPerColumn = Math.max(1, Math.ceil(screenshotCards.length / totalColumns));
       
       // 動態計算圖片寬度 = 左邊距 + (單列寬度 × 列數) + (列間距 × (列數-1)) + 右邊距
       const imageWidth = PADDING + (singleCardWidth * totalColumns) + (COLUMN_GAP * (totalColumns - 1)) + PADDING;
@@ -269,15 +271,22 @@ export function List({
       // 確保最小寬度為375px（iPhone寬度）
       const finalImageWidth = Math.max(imageWidth, 375);
 
-      // 圖片高度固定 (標題 + 10行卡片 + 邊距)
-      const imageHeight = HEADER_HEIGHT + (CARDS_PER_COLUMN * CARD_HEIGHT) + (PADDING * 2);
+      // 高度依實際行數增加，確保每張卡片都在畫布範圍內。
+      const imageHeight = HEADER_HEIGHT + (cardsPerColumn * CARD_HEIGHT) + (PADDING * 2);
+
+      // 在 iOS 畫布限制內盡量保留 3 倍解析度，長圖則自動降低倍率。
+      const maxCanvasDimension = 8192;
+      const maxCanvasPixels = 16_000_000;
+      const dimensionScale = Math.min(maxCanvasDimension / finalImageWidth, maxCanvasDimension / imageHeight);
+      const areaScale = Math.sqrt(maxCanvasPixels / (finalImageWidth * imageHeight));
+      const scale = Math.max(1, Math.min(3, dimensionScale, areaScale));
 
       // 設置canvas實際尺寸 (高DPI)
-      canvas.width = finalImageWidth * SCALE;
-      canvas.height = imageHeight * SCALE;
+      canvas.width = Math.ceil(finalImageWidth * scale);
+      canvas.height = Math.ceil(imageHeight * scale);
 
       // 縮放繪圖上下文
-      ctx.scale(SCALE, SCALE);
+      ctx.scale(scale, scale);
 
       // 啟用文字平滑
       ctx.textBaseline = 'middle';
@@ -308,7 +317,7 @@ export function List({
       // 繪製多列卡片
       for (let col = 0; col < totalColumns; col++) {
         const columnStartX = PADDING + (col * (singleCardWidth + COLUMN_GAP));
-        const columnCards = screenshotCards.slice(col * CARDS_PER_COLUMN, (col + 1) * CARDS_PER_COLUMN);
+        const columnCards = screenshotCards.slice(col * cardsPerColumn, (col + 1) * cardsPerColumn);
 
         columnCards.forEach((card, rowIndex) => {
           const yOffset = HEADER_HEIGHT + PADDING + (rowIndex * CARD_HEIGHT);
