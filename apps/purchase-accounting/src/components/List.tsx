@@ -214,7 +214,9 @@ export function List({
 
   const handleScreenshot = async () => {
     try {
-      const screenshotCards = list.cards.filter(card => card.status !== 'excluded');
+      // Export the complete drawer snapshot. Filtering by status could remove an
+      // entire store when that store's cards happened to share the same status.
+      const screenshotCards = [...list.cards].sort((a, b) => a.order - b.order);
 
       // 創建canvas - iPhone 15 Pro寬度375px
       const canvas = document.createElement('canvas');
@@ -400,6 +402,8 @@ export function List({
         link.download = `${list.name}_記帳明細.png`;
         link.click();
       }
+
+      toast.success(`已輸出全部 ${screenshotCards.length} 張卡片`);
 
     } catch (error) {
       console.error('截圖失敗:', error);
