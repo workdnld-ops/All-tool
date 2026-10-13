@@ -202,6 +202,41 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .payment-ratio {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 9px;
+      font-size: 0.76rem;
+      font-weight: 750;
+    }
+
+    .payment-ratio-title {
+      margin-right: auto;
+      opacity: 0.82;
+    }
+
+    .ratio-field {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .ratio-input {
+      width: 54px;
+      height: 30px;
+      padding: 0 6px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 6px;
+      outline: none;
+      color: var(--ink);
+      background: #fff;
+      text-align: right;
+      font-size: 0.8rem;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+    }
+
     .store-totals {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -254,6 +289,17 @@
       overflow: hidden;
       font-size: 1rem;
       font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .store-payment-split {
+      margin-top: 3px;
+      overflow: hidden;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 0.65rem;
+      font-weight: 700;
       font-variant-numeric: tabular-nums;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -507,11 +553,15 @@
       .grand-total-value { margin-top: 0; font-size: 1.55rem; }
       .tax-breakdown { display: flex; gap: 12px; min-width: 0; text-align: right; font-size: 0.64rem; }
       .tax-breakdown strong { margin-top: 0; font-size: 0.78rem; }
+      .payment-ratio { gap: 5px; padding-top: 5px; font-size: 0.62rem; }
+      .ratio-field { gap: 2px; }
+      .ratio-input { width: 42px; height: 25px; padding: 0 4px; font-size: 0.7rem; }
       .store-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding-top: 6px; }
       .store-total { padding: 4px 5px; }
       .store-total-name { font-size: 0.62rem; }
       .store-total-name::after { display: none; }
       .store-total-value { margin-top: 0; font-size: 0.78rem; }
+      .store-payment-split { margin-top: 1px; font-size: 0.52rem; }
 
       .actions {
         display: grid;
@@ -587,6 +637,11 @@
           <div>5% 稅額<strong id="tax-total">$0</strong></div>
         </div>
       </div>
+      <div class="payment-ratio" id="payment-ratio">
+        <span class="payment-ratio-title">付款比例</span>
+        <label class="ratio-field">訂金 <input class="ratio-input" id="deposit-ratio" type="text" inputmode="decimal" aria-label="訂金比例" autocomplete="off">%</label>
+        <label class="ratio-field">尾款 <input class="ratio-input" id="balance-ratio" type="text" inputmode="decimal" aria-label="尾款比例" autocomplete="off">%</label>
+      </div>
       <div class="store-totals" id="store-totals"></div>
     </section>
 
@@ -626,6 +681,8 @@
     const grandTotal = document.getElementById("grand-total");
     const subtotal = document.getElementById("subtotal");
     const taxTotal = document.getElementById("tax-total");
+    const depositRatio = document.getElementById("deposit-ratio");
+    const balanceRatio = document.getElementById("balance-ratio");
     const saveStatus = document.getElementById("save-status");
     const toast = document.getElementById("toast");
     let toastTimer = 0;
@@ -644,6 +701,7 @@
         name: "",
         price: "",
         taxed: false,
+        depositPercent: 30,
         quantities: Array(STORE_COUNT).fill(""),
         shippingFees: Array(STORE_COUNT).fill(""),
       };
@@ -674,6 +732,14 @@
       return Math.round((value + Number.EPSILON) * 100) / 100;
     }
 
+    function normalizePercentage(value) {
+      return Math.min(100, Math.max(0, roundMoney(toNumber(value))));
+    }
+
+    function formatPercentage(value) {
+      return normalizePercentage(value).toLocaleString("zh-TW", { maximumFractionDigits: 2 });
+    }
+
     function normalizeState(stored, preferredActiveItemId = "") {
       if (!stored || !Array.isArray(stored.stores) || !Array.isArray(stored.items)) return defaultState();
       const stores = Array.from({ length: STORE_COUNT }, (_, index) => String(stored.stores[index] || DEFAULT_STORE_NAMES[index]));
@@ -682,6 +748,7 @@
         name: String(item.name || ""),
         price: normalizeDecimal(item.price),
         taxed: Boolean(item.taxed),
+        depositPercent: normalizePercentage(item.depositPercent ?? 30),
         quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
         shippingFees: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.shippingFees?.[index])),
       }));
@@ -717,6 +784,7 @@
         item.name.trim()
         || toNumber(item.price) > 0
         || item.taxed
+        || normalizePercentage(item.depositPercent) !== 30
         || item.quantities.some((quantity) => toNumber(quantity) > 0)
         || item.shippingFees.some((fee) => toNumber(fee) > 0)
       );
@@ -778,6 +846,12 @@
       return itemCost(item, storeIndex).total;
     }
 
+    function paymentAmounts(total, item = activeItem()) {
+      const depositPercent = normalizePercentage(item?.depositPercent ?? 30);
+      const deposit = roundMoney(total * depositPercent / 100);
+      return { deposit, balance: roundMoney(total - deposit) };
+    }
+
     function activeItem() {
       return state.items.find((item) => item.id === state.activeItemId) || null;
     }
@@ -818,6 +892,10 @@
 
     function renderSummary() {
       const totals = calculateTotals();
+      const item = activeItem();
+      const activeDepositPercent = normalizePercentage(item?.depositPercent ?? 30);
+      depositRatio.value = formatPercentage(activeDepositPercent);
+      balanceRatio.value = formatPercentage(100 - activeDepositPercent);
       grandTotal.textContent = moneyFormatter.format(totals.total);
       subtotal.textContent = moneyFormatter.format(totals.beforeTax);
       taxTotal.textContent = moneyFormatter.format(totals.tax);
@@ -836,7 +914,12 @@
         const amount = document.createElement("div");
         amount.className = "store-total-value";
         amount.textContent = moneyFormatter.format(value);
-        block.append(name, amount);
+        const payments = paymentAmounts(value, item);
+        const split = document.createElement("div");
+        split.className = "store-payment-split";
+        split.textContent = `訂 ${moneyFormatter.format(payments.deposit)} · 尾 ${moneyFormatter.format(payments.balance)}`;
+        split.title = `訂金 ${moneyFormatter.format(payments.deposit)}，尾款 ${moneyFormatter.format(payments.balance)}`;
+        block.append(name, amount, split);
         storeTotals.append(block);
       });
     }
@@ -1083,6 +1166,25 @@
       });
     });
 
+    document.getElementById("payment-ratio").addEventListener("change", (event) => {
+      const item = activeItem();
+      if (!item || !event.target.matches(".ratio-input")) return;
+      const changedPercent = normalizePercentage(normalizeDecimal(event.target.value));
+      item.depositPercent = event.target === depositRatio
+        ? changedPercent
+        : roundMoney(100 - changedPercent);
+      persistState();
+      renderSummary();
+    });
+
+    document.getElementById("payment-ratio").addEventListener("focusin", (event) => {
+      if (event.target.matches(".ratio-input")) event.target.select();
+    });
+
+    document.getElementById("payment-ratio").addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && event.target.matches(".ratio-input")) event.target.blur();
+    });
+
     itemList.addEventListener("click", (event) => {
       const button = event.target.closest("[data-action='delete']");
       if (!button) return;
@@ -1155,7 +1257,10 @@
       const text = totals.perStore
         .map((value, index) => ({ value, name: storeLabel(index) }))
         .filter(({ value }) => value > 0)
-        .map(({ value, name }) => `${name}   ${moneyFormatter.format(value)}`)
+        .map(({ value, name }) => {
+          const payments = paymentAmounts(value);
+          return `${name}   ${moneyFormatter.format(value)}（訂金 ${moneyFormatter.format(payments.deposit)}｜尾款 ${moneyFormatter.format(payments.balance)}）`;
+        })
         .join("\n");
 
       if (!text) {
