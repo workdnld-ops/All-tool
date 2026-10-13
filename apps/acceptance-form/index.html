@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#255f73">
+  <title>驗收單</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <style>
+    :root { color-scheme: light; --bg:#f3f6f7; --surface:#fff; --ink:#17242a; --muted:#66747b; --line:#d7e0e3; --primary:#255f73; --danger:#a1322b; --shadow:0 8px 24px rgba(27,48,57,.08); }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust:100%; touch-action:manipulation; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","Noto Sans TC",sans-serif; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+    button,a { font:inherit; touch-action:manipulation; }
+    input { -webkit-user-select:text; user-select:text; }
+    .shell { width:min(1040px,100%); margin:0 auto; padding:max(14px,env(safe-area-inset-top)) 12px max(22px,env(safe-area-inset-bottom)); }
+    .topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    h1 { margin:0; font-size:1.4rem; line-height:1.15; letter-spacing:0; }
+    .save-status { margin:3px 0 0; color:var(--muted); font-size:.78rem; }
+    .top-actions,.form-actions { display:flex; align-items:center; gap:7px; }
+    .button,.toolbox-link { min-height:38px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 12px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:var(--surface); text-decoration:none; font-weight:800; box-shadow:var(--shadow); }
+    .button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:2; }
+    .button.primary { border-color:var(--primary); color:#fff; background:var(--primary); }
+    .button.danger { color:var(--danger); }
+    .button:disabled { cursor:wait; opacity:.58; }
+    .editor-band { margin:0 -12px; padding:12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:var(--surface); }
+    .fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+    .field { display:grid; gap:4px; min-width:0; color:var(--muted); font-size:.72rem; font-weight:750; }
+    .field.span-2 { grid-column:span 2; }
+    .field input { width:100%; height:40px; padding:0 10px; border:1px solid #bdc9ce; border-radius:6px; outline:none; color:var(--ink); background:#fff; font:inherit; font-size:.92rem; font-weight:650; }
+    .field input:focus { border-color:var(--primary); box-shadow:0 0 0 2px rgba(37,95,115,.14); }
+    .form-actions { justify-content:flex-end; margin-top:10px; }
+    .preview-band { padding-top:14px; }
+    .preview-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; color:var(--muted); font-size:.76rem; font-weight:750; }
+    .canvas-wrap { overflow:hidden; border:1px solid #cfd8dc; border-radius:6px; background:#fff; box-shadow:var(--shadow); }
+    canvas { width:100%; height:auto; display:block; aspect-ratio:842/595; background:#fff; }
+    .toast { position:fixed; left:50%; bottom:max(20px,env(safe-area-inset-bottom)); z-index:20; max-width:calc(100vw - 32px); padding:10px 14px; border-radius:7px; color:#fff; background:rgba(23,36,42,.94); font-size:.84rem; font-weight:750; opacity:0; pointer-events:none; transform:translate(-50%,10px); transition:opacity 150ms ease,transform 150ms ease; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    @media (max-width:700px) {
+      .shell { padding-left:8px; padding-right:8px; }
+      .topbar { margin-bottom:8px; }
+      h1 { font-size:1.22rem; }
+      .save-status { font-size:.68rem; }
+      .toolbox-link { min-height:34px; padding:0 10px; font-size:.78rem; box-shadow:none; }
+      .editor-band { margin:0 -8px; padding:9px 8px; }
+      .fields { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+      .field { gap:2px; font-size:.64rem; }
+      .field.span-2 { grid-column:span 2; }
+      .field input { height:34px; padding:0 7px; font-size:.78rem; }
+      .form-actions { margin-top:7px; }
+      .button { min-height:35px; padding:0 10px; font-size:.76rem; }
+      .preview-band { padding-top:9px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><h1>驗收單</h1><p class="save-status" id="save-status">正在同步資料...</p></div>
+      <div class="top-actions"><a class="toolbox-link" href="../../index.html">工具箱</a></div>
+    </header>
+    <section class="editor-band" aria-label="驗收單內容">
+      <div class="fields" id="fields">
+        <label class="field span-2">公司名稱<input data-field="companyName" maxlength="40" autocomplete="organization"></label>
+        <label class="field">文件名稱<input data-field="documentTitle" maxlength="12"></label>
+        <label class="field">驗收單位<input data-field="acceptanceUnit" maxlength="30"></label>
+        <label class="field span-2">請購單號<input data-field="purchaseOrderNumber" maxlength="40"></label>
+        <label class="field span-2">請購人／採購人<input data-field="purchaser" maxlength="30" autocomplete="name"></label>
+        <label class="field">廠商<input data-field="vendor" maxlength="40"></label>
+        <label class="field">品名<input data-field="itemName" maxlength="40"></label>
+        <label class="field">採購數量<input data-field="orderedQuantity" maxlength="16" inputmode="decimal"></label>
+        <label class="field">實到數量<input data-field="receivedQuantity" maxlength="16" inputmode="decimal"></label>
+        <label class="field span-2">驗收日期<input data-field="acceptanceDate" type="date"></label>
+        <label class="field span-2">驗收人簽名<input data-field="acceptorSignature" maxlength="30" autocomplete="name"></label>
+      </div>
+      <div class="form-actions">
+        <button class="button danger" id="clear-form" type="button">清空</button>
+        <button class="button primary" id="export-pdf" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>匯出 PDF</button>
+      </div>
+    </section>
+    <section class="preview-band" aria-label="PDF 預覽">
+      <div class="preview-heading"><span>PDF 預覽</span><span>A4 橫式</span></div>
+      <div class="canvas-wrap"><canvas id="preview" width="1684" height="1190"></canvas></div>
+    </section>
+  </main>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="module">
+    import { saveAcceptanceState, subscribeAcceptanceState } from "./acceptance-data.js";
+
+    const STORAGE_KEY="acceptanceFormState", PAGE_WIDTH=842, PAGE_HEIGHT=595, SCALE=2;
+    const FONT_STACK='"Microsoft JhengHei","Noto Sans TC",sans-serif';
+    const DEFAULT_STATE={companyName:"愛滑雪股份有限公司",documentTitle:"驗收單",acceptanceUnit:"庶務部",purchaseOrderNumber:"",purchaser:"",vendor:"",itemName:"",orderedQuantity:"",receivedQuantity:"",acceptanceDate:"",acceptorSignature:""};
+    const fieldNames=Object.keys(DEFAULT_STATE), fields=document.getElementById("fields"), canvas=document.getElementById("preview"), ctx=canvas.getContext("2d",{alpha:false}), saveStatus=document.getElementById("save-status"), exportButton=document.getElementById("export-pdf"), toast=document.getElementById("toast");
+    let state=loadLocalState(), renderFrame=0, saveTimer=0, cloudSaveTimer=0, cloudReady=false, toastTimer=0;
+
+    function normalizeState(value){return Object.fromEntries(fieldNames.map((name)=>[name,String(value?.[name]??DEFAULT_STATE[name])]))}
+    function loadLocalState(){try{return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"))}catch{return{...DEFAULT_STATE}}}
+    function hasMeaningfulState(value){return fieldNames.some((name)=>value[name]!==DEFAULT_STATE[name])}
+    function stateSignature(value=state){return JSON.stringify(normalizeState(value))}
+    function showToast(message){clearTimeout(toastTimer);toast.textContent=message;toast.classList.add("show");toastTimer=setTimeout(()=>toast.classList.remove("show"),1800)}
+    function populateFields(){fields.querySelectorAll("[data-field]").forEach((input)=>{input.value=state[input.dataset.field]||""})}
+    function cacheAndQueueSave(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));saveStatus.textContent="資料已自動保存";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{if(!cloudReady)return;saveStatus.textContent="正在同步資料...";clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(async()=>{try{await saveAcceptanceState(state);saveStatus.textContent="資料已同步"}catch{saveStatus.textContent="同步失敗，資料已保存在本機"}},350)},450)}
+    const p=(value)=>value*SCALE;
+    function setFont(size,weight=400){ctx.font=`${weight} ${p(size)}px ${FONT_STACK}`}
+    function drawLine(x1,y1,x2,y2,width=1.5,color="#000"){ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=p(width);ctx.moveTo(p(x1),p(y1));ctx.lineTo(p(x2),p(y2));ctx.stroke()}
+    function fitText(text,maxWidth,preferredSize,minimumSize=7,weight=400){let size=preferredSize;setFont(size,weight);while(size>minimumSize&&ctx.measureText(text).width>p(maxWidth)){size-=.5;setFont(size,weight)}return size}
+    function drawText(text,x,y,{align="left",baseline="middle",maxWidth=0,size=12,minimumSize=7,weight=400}={}){const value=String(text||"");if(maxWidth)fitText(value,maxWidth,size,minimumSize,weight);else setFont(size,weight);ctx.fillStyle="#000";ctx.textAlign=align;ctx.textBaseline=baseline;ctx.fillText(value,p(x),p(y))}
+    function displayDate(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value||""))return value||"";const[year,month,day]=value.split("-");return`${year}/${month}/${day}`}
+
+    function drawPreview(){
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,canvas.width,canvas.height);
+      const left=50,right=792,top=53,headerBottom=145,unitBottom=193,orderBottom=252,tableHeaderBottom=288,tableBottom=343,footerBottom=381,columns=[50,160,267,372,476,581,792];
+      drawLine(left,top,right,top,1.8);drawLine(left,top,left,footerBottom,1.8);drawLine(right,top,right,footerBottom,1.8);
+      [headerBottom,unitBottom,orderBottom,tableHeaderBottom,tableBottom].forEach((y)=>drawLine(left,y,right,y,1.8));drawLine(left,footerBottom,right,footerBottom,.6,"#c7c7c7");columns.slice(1,-1).forEach((x)=>drawLine(x,orderBottom,x,tableBottom,1.8));
+      drawText(state.companyName,(left+right)/2,86,{align:"center",maxWidth:620,size:22,minimumSize:14,weight:700});drawText(state.documentTitle,(left+right)/2,118,{align:"center",maxWidth:300,size:22,minimumSize:14,weight:700});
+      drawText(`驗收單位：${state.acceptanceUnit}`,left+5,169,{maxWidth:700,size:13});drawText(`請購單號：${state.purchaseOrderNumber}`,left+5,215,{maxWidth:700,size:12.5});drawText(`請購人：${state.purchaser}`,left+5,236,{maxWidth:700,size:12.5});
+      const headers=["廠商","品名","採購數量","實到數量","驗收日期","驗收人簽名"];headers.forEach((header,index)=>drawText(header,(columns[index]+columns[index+1])/2,270,{align:"center",maxWidth:columns[index+1]-columns[index]-8,size:13,weight:500}));
+      const values=[state.vendor,state.itemName,state.orderedQuantity,state.receivedQuantity,displayDate(state.acceptanceDate),state.acceptorSignature];values.forEach((value,index)=>drawText(value,(columns[index]+columns[index+1])/2,316,{align:"center",maxWidth:columns[index+1]-columns[index]-10,size:12.5,minimumSize:7,weight:index===5?500:400}));
+      drawText(`採購人：${state.purchaser}`,left+3,363,{maxWidth:730,size:12.5});
+    }
+    function schedulePreview(){cancelAnimationFrame(renderFrame);renderFrame=requestAnimationFrame(drawPreview)}
+    const asciiBytes=(text)=>new TextEncoder().encode(text);
+    function concatBytes(parts){const output=new Uint8Array(parts.reduce((sum,part)=>sum+part.length,0));let offset=0;parts.forEach((part)=>{output.set(part,offset);offset+=part.length});return output}
+    async function canvasToPdfBlob(){
+      drawPreview();const imageBlob=await new Promise((resolve,reject)=>canvas.toBlob((blob)=>blob?resolve(blob):reject(new Error("無法建立預覽圖片")),"image/jpeg",.96));const imageBytes=new Uint8Array(await imageBlob.arrayBuffer());const content=asciiBytes(`q\n${PAGE_WIDTH} 0 0 ${PAGE_HEIGHT} 0 0 cm\n/Im0 Do\nQ\n`);
+      const objects=[asciiBytes("<< /Type /Catalog /Pages 2 0 R >>"),asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`),concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`),imageBytes,asciiBytes("\nendstream")]),concatBytes([asciiBytes(`<< /Length ${content.length} >>\nstream\n`),content,asciiBytes("endstream")])];
+      const parts=[asciiBytes("%PDF-1.4\n")],offsets=[0];let byteLength=parts[0].length;objects.forEach((object,index)=>{offsets.push(byteLength);const wrapped=concatBytes([asciiBytes(`${index+1} 0 obj\n`),object,asciiBytes("\nendobj\n")]);parts.push(wrapped);byteLength+=wrapped.length});const xrefOffset=byteLength;const xref=["xref",`0 ${objects.length+1}`,"0000000000 65535 f "];offsets.slice(1).forEach((offset)=>xref.push(`${String(offset).padStart(10,"0")} 00000 n `));xref.push("trailer",`<< /Size ${objects.length+1} /Root 1 0 R >>`,"startxref",String(xrefOffset),"%%EOF");parts.push(asciiBytes(`${xref.join("\n")}\n`));return new Blob(parts,{type:"application/pdf"})
+    }
+    async function exportPdf(){exportButton.disabled=true;try{const blob=await canvasToPdfBlob(),datePart=state.acceptanceDate||new Date().toISOString().slice(0,10),filename=`驗收單_${datePart.replace(/-/g,"")}.pdf`,file=new File([blob],filename,{type:"application/pdf"}),canShareFile=navigator.share&&navigator.canShare?.({files:[file]});if(canShareFile&&/iPad|iPhone|iPod/.test(navigator.userAgent)){await navigator.share({files:[file],title:state.documentTitle||"驗收單"})}else{const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}showToast("PDF 已匯出")}catch(error){if(error?.name!=="AbortError"){console.error("PDF export error:",error);showToast("PDF 匯出失敗，請再試一次")}}finally{exportButton.disabled=false}}
+    fields.addEventListener("input",(event)=>{const name=event.target.dataset.field;if(!name)return;state[name]=event.target.value;cacheAndQueueSave();schedulePreview()});fields.addEventListener("focusin",(event)=>{if(event.target.matches("input:not([type='date'])"))event.target.select()});
+    document.getElementById("clear-form").addEventListener("click",()=>{if(!confirm("確定清空這張驗收單？公司名稱、文件名稱與驗收單位會恢復預設值。"))return;state={...DEFAULT_STATE};populateFields();cacheAndQueueSave();schedulePreview();showToast("驗收單已清空")});exportButton.addEventListener("click",exportPdf);
+    document.addEventListener("dblclick",(event)=>event.preventDefault(),{passive:false});let lastTouchEnd=0;document.addEventListener("touchend",(event)=>{const now=Date.now();if(now-lastTouchEnd<=300)event.preventDefault();lastTouchEnd=now},{passive:false});
+    populateFields();drawPreview();subscribeAcceptanceState((remoteData)=>{cloudReady=true;if(remoteData){const remoteState=normalizeState(remoteData);if(stateSignature(remoteState)!==stateSignature()){state=remoteState;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));populateFields();schedulePreview()}saveStatus.textContent="資料已同步";return}if(hasMeaningfulState(state)){saveAcceptanceState(state).then(()=>{saveStatus.textContent="資料已同步"}).catch(()=>{saveStatus.textContent="資料已保存在本機"})}else saveStatus.textContent="尚無雲端資料"},()=>{cloudReady=false;saveStatus.textContent="雲端連線失敗，資料保存在本機"});
+  </script>
+</body>
+</html>
