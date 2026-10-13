@@ -68,13 +68,13 @@
         <label class="field">驗收單位<input data-field="acceptanceUnit" maxlength="30"></label>
         <label class="field span-2">請購單號<input data-field="purchaseOrderNumber" maxlength="40"></label>
         <label class="field span-2">請購人／採購人<input data-field="purchaser" maxlength="30" autocomplete="name"></label>
+        <label class="field">店別<input data-field="storeName" maxlength="30" placeholder="例如：桃園"></label>
         <label class="field">廠商<input data-field="vendor" maxlength="40"></label>
         <label class="field">品名<input data-field="itemName" maxlength="40"></label>
         <label class="field">採購數量<input data-field="orderedQuantity" maxlength="16" inputmode="decimal"></label>
         <label class="field">實到數量<input data-field="receivedQuantity" maxlength="16" inputmode="decimal"></label>
         <label class="field span-2">驗收日期<input data-field="acceptanceDate" type="date"></label>
         <label class="field span-2">驗收人簽名<input data-field="acceptorSignature" maxlength="30" autocomplete="name"></label>
-        <label class="field span-2">匯出檔名<input data-field="exportFileName" maxlength="80" placeholder="留白則使用 驗收單_日期"></label>
       </div>
       <div class="form-actions">
         <button class="button danger" id="clear-form" type="button">清空</button>
@@ -92,11 +92,11 @@
 
     const STORAGE_KEY="acceptanceFormState", PAGE_WIDTH=842, PAGE_HEIGHT=595, SCALE=2;
     const FONT_STACK='"Microsoft JhengHei","Noto Sans TC",sans-serif';
-    const DEFAULT_STATE={companyName:"愛滑雪股份有限公司",documentTitle:"驗收單",acceptanceUnit:"庶務部",purchaseOrderNumber:"",purchaser:"",vendor:"",itemName:"",orderedQuantity:"",receivedQuantity:"",acceptanceDate:"",acceptorSignature:"",exportFileName:""};
+    const DEFAULT_STATE={companyName:"愛滑雪股份有限公司",documentTitle:"驗收單",acceptanceUnit:"庶務部",purchaseOrderNumber:"",purchaser:"",storeName:"",vendor:"",itemName:"",orderedQuantity:"",receivedQuantity:"",acceptanceDate:"",acceptorSignature:""};
     const fieldNames=Object.keys(DEFAULT_STATE), fields=document.getElementById("fields"), canvas=document.getElementById("preview"), ctx=canvas.getContext("2d",{alpha:false}), saveStatus=document.getElementById("save-status"), exportButton=document.getElementById("export-pdf"), toast=document.getElementById("toast");
     let state=loadLocalState(), renderFrame=0, saveTimer=0, cloudSaveTimer=0, cloudReady=false, toastTimer=0;
 
-    function normalizeState(value){return Object.fromEntries(fieldNames.map((name)=>[name,String(value?.[name]??DEFAULT_STATE[name])]))}
+    function normalizeState(value){return Object.fromEntries(fieldNames.map((name)=>[name,String(name==="storeName"?(value?.storeName??value?.exportFileName??DEFAULT_STATE.storeName):(value?.[name]??DEFAULT_STATE[name]))]))}
     function loadLocalState(){try{return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"))}catch{return{...DEFAULT_STATE}}}
     function hasMeaningfulState(value){return fieldNames.some((name)=>value[name]!==DEFAULT_STATE[name])}
     function stateSignature(value=state){return JSON.stringify(normalizeState(value))}
@@ -129,7 +129,8 @@
       const objects=[asciiBytes("<< /Type /Catalog /Pages 2 0 R >>"),asciiBytes("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),asciiBytes(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_WIDTH} ${PAGE_HEIGHT}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`),concatBytes([asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`),imageBytes,asciiBytes("\nendstream")]),concatBytes([asciiBytes(`<< /Length ${content.length} >>\nstream\n`),content,asciiBytes("endstream")])];
       const parts=[asciiBytes("%PDF-1.4\n")],offsets=[0];let byteLength=parts[0].length;objects.forEach((object,index)=>{offsets.push(byteLength);const wrapped=concatBytes([asciiBytes(`${index+1} 0 obj\n`),object,asciiBytes("\nendobj\n")]);parts.push(wrapped);byteLength+=wrapped.length});const xrefOffset=byteLength;const xref=["xref",`0 ${objects.length+1}`,"0000000000 65535 f "];offsets.slice(1).forEach((offset)=>xref.push(`${String(offset).padStart(10,"0")} 00000 n `));xref.push("trailer",`<< /Size ${objects.length+1} /Root 1 0 R >>`,"startxref",String(xrefOffset),"%%EOF");parts.push(asciiBytes(`${xref.join("\n")}\n`));return new Blob(parts,{type:"application/pdf"})
     }
-    function getExportFilename(){const datePart=state.acceptanceDate||new Date().toISOString().slice(0,10),fallback=`驗收單_${datePart.replace(/-/g,"")}`,customName=state.exportFileName.trim().replace(/\.pdf$/i,"").replace(/[<>:"/\\|?*\u0000-\u001f]/g,"_").replace(/[. ]+$/g,"");return`${customName||fallback}.pdf`}
+    function sanitizeFilenamePart(value,fallback){return(value.trim()||fallback).replace(/[<>:"/\\|?*\u0000-\u001f]/g,"_").replace(/[. ]+$/g,"")||fallback}
+    function getExportFilename(){const storeName=sanitizeFilenamePart(state.storeName,"未填店別"),itemName=sanitizeFilenamePart(state.itemName,"未填品項");return`${storeName}_${itemName}_驗收單.pdf`}
     async function exportPdf(){exportButton.disabled=true;try{const blob=await canvasToPdfBlob(),filename=getExportFilename(),file=new File([blob],filename,{type:"application/pdf"}),canShareFile=navigator.share&&navigator.canShare?.({files:[file]});if(canShareFile&&/iPad|iPhone|iPod/.test(navigator.userAgent)){await navigator.share({files:[file],title:state.documentTitle||"驗收單"})}else{const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}showToast(`PDF 已匯出：${filename}`)}catch(error){if(error?.name!=="AbortError"){console.error("PDF export error:",error);showToast("PDF 匯出失敗，請再試一次")}}finally{exportButton.disabled=false}}
     fields.addEventListener("input",(event)=>{const name=event.target.dataset.field;if(!name)return;state[name]=event.target.value;cacheAndQueueSave();schedulePreview()});fields.addEventListener("focusin",(event)=>{if(event.target.matches("input:not([type='date'])"))event.target.select()});
     document.getElementById("clear-form").addEventListener("click",()=>{if(!confirm("確定清空這張驗收單？公司名稱、文件名稱與驗收單位會恢復預設值。"))return;state={...DEFAULT_STATE};populateFields();cacheAndQueueSave();schedulePreview();showToast("驗收單已清空")});exportButton.addEventListener("click",exportPdf);
