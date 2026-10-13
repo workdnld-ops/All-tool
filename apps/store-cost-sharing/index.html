@@ -222,6 +222,17 @@
       gap: 4px;
     }
 
+    .ratio-check {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .ratio-field.is-disabled .ratio-input {
+      opacity: 0.48;
+    }
+
     .ratio-input {
       width: 54px;
       height: 30px;
@@ -289,17 +300,6 @@
       overflow: hidden;
       font-size: 1rem;
       font-weight: 900;
-      font-variant-numeric: tabular-nums;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .store-payment-split {
-      margin-top: 3px;
-      overflow: hidden;
-      color: rgba(255, 255, 255, 0.76);
-      font-size: 0.65rem;
-      font-weight: 700;
       font-variant-numeric: tabular-nums;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -561,7 +561,6 @@
       .store-total-name { font-size: 0.62rem; }
       .store-total-name::after { display: none; }
       .store-total-value { margin-top: 0; font-size: 0.78rem; }
-      .store-payment-split { margin-top: 1px; font-size: 0.52rem; }
 
       .actions {
         display: grid;
@@ -639,8 +638,8 @@
       </div>
       <div class="payment-ratio" id="payment-ratio">
         <span class="payment-ratio-title">付款比例</span>
-        <label class="ratio-field">訂金 <input class="ratio-input" id="deposit-ratio" type="text" inputmode="decimal" aria-label="訂金比例" autocomplete="off">%</label>
-        <label class="ratio-field">尾款 <input class="ratio-input" id="balance-ratio" type="text" inputmode="decimal" aria-label="尾款比例" autocomplete="off">%</label>
+        <label class="ratio-field" id="deposit-ratio-field"><input class="ratio-check" id="deposit-enabled" type="checkbox">訂金 <input class="ratio-input" id="deposit-ratio" type="text" inputmode="decimal" aria-label="訂金比例" autocomplete="off">%</label>
+        <label class="ratio-field" id="balance-ratio-field"><input class="ratio-check" id="balance-enabled" type="checkbox">尾款 <input class="ratio-input" id="balance-ratio" type="text" inputmode="decimal" aria-label="尾款比例" autocomplete="off">%</label>
       </div>
       <div class="store-totals" id="store-totals"></div>
     </section>
@@ -681,6 +680,8 @@
     const grandTotal = document.getElementById("grand-total");
     const subtotal = document.getElementById("subtotal");
     const taxTotal = document.getElementById("tax-total");
+    const depositEnabled = document.getElementById("deposit-enabled");
+    const balanceEnabled = document.getElementById("balance-enabled");
     const depositRatio = document.getElementById("deposit-ratio");
     const balanceRatio = document.getElementById("balance-ratio");
     const saveStatus = document.getElementById("save-status");
@@ -702,6 +703,8 @@
         price: "",
         taxed: false,
         depositPercent: 30,
+        includeDeposit: true,
+        includeBalance: true,
         quantities: Array(STORE_COUNT).fill(""),
         shippingFees: Array(STORE_COUNT).fill(""),
       };
@@ -749,6 +752,8 @@
         price: normalizeDecimal(item.price),
         taxed: Boolean(item.taxed),
         depositPercent: normalizePercentage(item.depositPercent ?? 30),
+        includeDeposit: item.includeDeposit !== false,
+        includeBalance: item.includeBalance !== false,
         quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
         shippingFees: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.shippingFees?.[index])),
       }));
@@ -785,6 +790,8 @@
         || toNumber(item.price) > 0
         || item.taxed
         || normalizePercentage(item.depositPercent) !== 30
+        || item.includeDeposit === false
+        || item.includeBalance === false
         || item.quantities.some((quantity) => toNumber(quantity) > 0)
         || item.shippingFees.some((fee) => toNumber(fee) > 0)
       );
@@ -852,6 +859,22 @@
       return { deposit, balance: roundMoney(total - deposit) };
     }
 
+    function selectedPaymentAmount(total, item = activeItem()) {
+      const payments = paymentAmounts(total, item);
+      return roundMoney(
+        (item?.includeDeposit !== false ? payments.deposit : 0)
+        + (item?.includeBalance !== false ? payments.balance : 0)
+      );
+    }
+
+    function selectedPaymentPercent(item = activeItem()) {
+      const depositPercent = normalizePercentage(item?.depositPercent ?? 30);
+      return roundMoney(
+        (item?.includeDeposit !== false ? depositPercent : 0)
+        + (item?.includeBalance !== false ? 100 - depositPercent : 0)
+      );
+    }
+
     function activeItem() {
       return state.items.find((item) => item.id === state.activeItemId) || null;
     }
@@ -871,8 +894,12 @@
         });
       }
 
-      const total = roundMoney(perStore.reduce((sum, value) => sum + value, 0));
-      return { perStore, beforeTax, tax, total };
+      const itemPaymentPercent = selectedPaymentPercent(item);
+      const selectedPerStore = perStore.map((value) => selectedPaymentAmount(value, item));
+      const total = roundMoney(selectedPerStore.reduce((sum, value) => sum + value, 0));
+      const selectedBeforeTax = roundMoney(beforeTax * itemPaymentPercent / 100);
+      const selectedTax = roundMoney(total - selectedBeforeTax);
+      return { perStore: selectedPerStore, beforeTax: selectedBeforeTax, tax: selectedTax, total };
     }
 
     function renderTabs() {
@@ -894,8 +921,12 @@
       const totals = calculateTotals();
       const item = activeItem();
       const activeDepositPercent = normalizePercentage(item?.depositPercent ?? 30);
+      depositEnabled.checked = item?.includeDeposit !== false;
+      balanceEnabled.checked = item?.includeBalance !== false;
       depositRatio.value = formatPercentage(activeDepositPercent);
       balanceRatio.value = formatPercentage(100 - activeDepositPercent);
+      document.getElementById("deposit-ratio-field").classList.toggle("is-disabled", !depositEnabled.checked);
+      document.getElementById("balance-ratio-field").classList.toggle("is-disabled", !balanceEnabled.checked);
       grandTotal.textContent = moneyFormatter.format(totals.total);
       subtotal.textContent = moneyFormatter.format(totals.beforeTax);
       taxTotal.textContent = moneyFormatter.format(totals.tax);
@@ -914,12 +945,7 @@
         const amount = document.createElement("div");
         amount.className = "store-total-value";
         amount.textContent = moneyFormatter.format(value);
-        const payments = paymentAmounts(value, item);
-        const split = document.createElement("div");
-        split.className = "store-payment-split";
-        split.textContent = `訂 ${moneyFormatter.format(payments.deposit)} · 尾 ${moneyFormatter.format(payments.balance)}`;
-        split.title = `訂金 ${moneyFormatter.format(payments.deposit)}，尾款 ${moneyFormatter.format(payments.balance)}`;
-        block.append(name, amount, split);
+        block.append(name, amount);
         storeTotals.append(block);
       });
     }
@@ -1168,7 +1194,22 @@
 
     document.getElementById("payment-ratio").addEventListener("change", (event) => {
       const item = activeItem();
-      if (!item || !event.target.matches(".ratio-input")) return;
+      if (!item) return;
+      if (event.target.matches(".ratio-check")) {
+        const nextDeposit = event.target === depositEnabled ? event.target.checked : item.includeDeposit !== false;
+        const nextBalance = event.target === balanceEnabled ? event.target.checked : item.includeBalance !== false;
+        if (!nextDeposit && !nextBalance) {
+          showToast("訂金與尾款至少要勾選一項");
+          renderSummary();
+          return;
+        }
+        item.includeDeposit = nextDeposit;
+        item.includeBalance = nextBalance;
+        persistState();
+        renderSummary();
+        return;
+      }
+      if (!event.target.matches(".ratio-input")) return;
       const changedPercent = normalizePercentage(normalizeDecimal(event.target.value));
       item.depositPercent = event.target === depositRatio
         ? changedPercent
@@ -1257,10 +1298,7 @@
       const text = totals.perStore
         .map((value, index) => ({ value, name: storeLabel(index) }))
         .filter(({ value }) => value > 0)
-        .map(({ value, name }) => {
-          const payments = paymentAmounts(value);
-          return `${name}   ${moneyFormatter.format(value)}（訂金 ${moneyFormatter.format(payments.deposit)}｜尾款 ${moneyFormatter.format(payments.balance)}）`;
-        })
+        .map(({ value, name }) => `${name}   ${moneyFormatter.format(value)}`)
         .join("\n");
 
       if (!text) {
