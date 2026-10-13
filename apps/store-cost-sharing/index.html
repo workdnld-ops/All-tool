@@ -402,7 +402,20 @@
       gap: 5px;
     }
 
-    .quantity-wrap .number-input {
+    .store-inputs {
+      display: grid;
+      gap: 5px;
+    }
+
+    .shipping-wrap {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .quantity-wrap .number-input,
+    .shipping-wrap .number-input {
       height: 38px;
       text-align: center;
       font-weight: 850;
@@ -531,8 +544,9 @@
       .store-entry-head { gap: 2px; margin-bottom: 2px; }
       .store-entry-name { font-size: 0.64rem; }
       .store-entry-cost { font-size: 0.62rem; }
-      .quantity-wrap { gap: 2px; }
-      .quantity-wrap .number-input { height: 30px; font-size: 0.78rem; }
+      .store-inputs { gap: 2px; }
+      .quantity-wrap, .shipping-wrap { gap: 2px; }
+      .quantity-wrap .number-input, .shipping-wrap .number-input { height: 30px; font-size: 0.78rem; }
       .unit { font-size: 0.62rem; }
       .item-foot { padding: 5px 7px; font-size: 0.66rem; }
       .item-foot strong { font-size: 0.74rem; }
@@ -631,6 +645,7 @@
         price: "",
         taxed: false,
         quantities: Array(STORE_COUNT).fill(""),
+        shippingFees: Array(STORE_COUNT).fill(""),
       };
     }
 
@@ -668,6 +683,7 @@
         price: normalizeDecimal(item.price),
         taxed: Boolean(item.taxed),
         quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
+        shippingFees: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.shippingFees?.[index])),
       }));
       const normalizedItems = items.length ? items : [createBlankItem()];
       const requestedActiveId = preferredActiveItemId || stored.activeItemId;
@@ -698,7 +714,11 @@
     function hasMeaningfulState(value) {
       const customStores = value.stores.some((name, index) => name !== DEFAULT_STORE_NAMES[index]);
       const meaningfulItems = value.items.length > 1 || value.items.some((item) =>
-        item.name.trim() || toNumber(item.price) > 0 || item.taxed || item.quantities.some((quantity) => toNumber(quantity) > 0)
+        item.name.trim()
+        || toNumber(item.price) > 0
+        || item.taxed
+        || item.quantities.some((quantity) => toNumber(quantity) > 0)
+        || item.shippingFees.some((fee) => toNumber(fee) > 0)
       );
       return customStores || meaningfulItems;
     }
@@ -750,7 +770,8 @@
     function itemCost(item, storeIndex) {
       const base = roundMoney(toNumber(item.price) * toNumber(item.quantities[storeIndex]));
       const tax = item.taxed ? roundMoney(base * 0.05) : 0;
-      return { base, tax, total: roundMoney(base + tax) };
+      const shipping = roundMoney(toNumber(item.shippingFees[storeIndex]));
+      return { base, tax, shipping, total: roundMoney(base + tax + shipping) };
     }
 
     function itemAmount(item, storeIndex) {
@@ -770,7 +791,7 @@
       if (item) {
         item.quantities.forEach((_, storeIndex) => {
           const cost = itemCost(item, storeIndex);
-          beforeTax = roundMoney(beforeTax + cost.base);
+          beforeTax = roundMoney(beforeTax + cost.base + cost.shipping);
           tax = roundMoney(tax + cost.tax);
           perStore[storeIndex] = roundMoney(perStore[storeIndex] + cost.total);
         });
@@ -888,6 +909,9 @@
         cost.textContent = moneyFormatter.format(itemAmount(item, storeIndex));
         entryHead.append(entryName, cost);
 
+        const storeInputs = document.createElement("div");
+        storeInputs.className = "store-inputs";
+
         const quantityWrap = document.createElement("div");
         quantityWrap.className = "quantity-wrap";
         const quantityInput = document.createElement("input");
@@ -903,7 +927,25 @@
         unit.className = "unit";
         unit.textContent = "個";
         quantityWrap.append(quantityInput, unit);
-        entry.append(entryHead, quantityWrap);
+
+        const shippingWrap = document.createElement("div");
+        shippingWrap.className = "shipping-wrap";
+        const shippingInput = document.createElement("input");
+        shippingInput.className = "number-input";
+        shippingInput.type = "text";
+        shippingInput.inputMode = "decimal";
+        shippingInput.value = item.shippingFees[storeIndex];
+        shippingInput.dataset.shippingStore = String(storeIndex);
+        shippingInput.placeholder = "0";
+        shippingInput.setAttribute("aria-label", `${storeLabel(storeIndex)}運費`);
+        shippingInput.setAttribute("autocomplete", "off");
+        const shippingUnit = document.createElement("span");
+        shippingUnit.className = "unit";
+        shippingUnit.textContent = "運費";
+        shippingWrap.append(shippingInput, shippingUnit);
+
+        storeInputs.append(quantityWrap, shippingWrap);
+        entry.append(entryHead, storeInputs);
         grid.append(entry);
       });
 
@@ -1009,6 +1051,10 @@
         const next = normalizeDecimal(event.target.value);
         event.target.value = next;
         item.quantities[Number(event.target.dataset.quantityStore)] = next;
+      } else if (event.target.matches("[data-shipping-store]")) {
+        const next = normalizeDecimal(event.target.value);
+        event.target.value = next;
+        item.shippingFees[Number(event.target.dataset.shippingStore)] = next;
       }
       persistState();
       updateItemCard(article, item);
@@ -1066,17 +1112,22 @@
 
     document.getElementById("clear-numbers").addEventListener("click", () => {
       const item = activeItem();
-      const hasNumbers = item && (toNumber(item.price) > 0 || item.quantities.some((value) => toNumber(value) > 0));
+      const hasNumbers = item && (
+        toNumber(item.price) > 0
+        || item.quantities.some((value) => toNumber(value) > 0)
+        || item.shippingFees.some((value) => toNumber(value) > 0)
+      );
       if (!hasNumbers) {
         showToast("目前沒有數字需要清空");
         return;
       }
-      if (!window.confirm("清空目前品項的單價與六店數量？門市名稱、品項名稱和稅別會保留。")) return;
+      if (!window.confirm("清空目前品項的單價、六店數量與運費？門市名稱、品項名稱和稅別會保留。")) return;
       item.price = "";
       item.quantities = Array(STORE_COUNT).fill("");
+      item.shippingFees = Array(STORE_COUNT).fill("");
       persistState();
       renderAll();
-      showToast("單價與數量已清空");
+      showToast("單價、數量與運費已清空");
     });
 
     async function copyText(text, successMessage) {
