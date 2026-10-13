@@ -441,7 +441,9 @@
       white-space: nowrap;
     }
 
-    .quantity-wrap {
+    .quantity-wrap,
+    .shipping-price-wrap,
+    .shipping-quantity-wrap {
       display: grid;
       grid-template-columns: 1fr auto;
       align-items: center;
@@ -453,15 +455,9 @@
       gap: 5px;
     }
 
-    .shipping-wrap {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 5px;
-    }
-
     .quantity-wrap .number-input,
-    .shipping-wrap .number-input {
+    .shipping-price-wrap .number-input,
+    .shipping-quantity-wrap .number-input {
       height: 38px;
       text-align: center;
       font-weight: 850;
@@ -594,8 +590,8 @@
       .store-entry-name { font-size: 0.64rem; }
       .store-entry-cost { font-size: 0.62rem; }
       .store-inputs { gap: 2px; }
-      .quantity-wrap, .shipping-wrap { gap: 2px; }
-      .quantity-wrap .number-input, .shipping-wrap .number-input { height: 30px; font-size: 0.78rem; }
+      .quantity-wrap, .shipping-price-wrap, .shipping-quantity-wrap { gap: 2px; }
+      .quantity-wrap .number-input, .shipping-price-wrap .number-input, .shipping-quantity-wrap .number-input { height: 30px; font-size: 0.78rem; }
       .unit { font-size: 0.62rem; }
       .item-foot { padding: 5px 7px; font-size: 0.66rem; }
       .item-foot strong { font-size: 0.74rem; }
@@ -706,7 +702,8 @@
         includeDeposit: true,
         includeBalance: true,
         quantities: Array(STORE_COUNT).fill(""),
-        shippingFees: Array(STORE_COUNT).fill(""),
+        shippingPrices: Array(STORE_COUNT).fill(""),
+        shippingQuantities: Array(STORE_COUNT).fill(""),
       };
     }
 
@@ -746,17 +743,27 @@
     function normalizeState(stored, preferredActiveItemId = "") {
       if (!stored || !Array.isArray(stored.stores) || !Array.isArray(stored.items)) return defaultState();
       const stores = Array.from({ length: STORE_COUNT }, (_, index) => String(stored.stores[index] || DEFAULT_STORE_NAMES[index]));
-      const items = stored.items.map((item) => ({
-        id: String(item.id || createId()),
-        name: String(item.name || ""),
-        price: normalizeDecimal(item.price),
-        taxed: Boolean(item.taxed),
-        depositPercent: normalizePercentage(item.depositPercent ?? 30),
-        includeDeposit: item.includeDeposit !== false,
-        includeBalance: item.includeBalance !== false,
-        quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
-        shippingFees: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.shippingFees?.[index])),
-      }));
+      const items = stored.items.map((item) => {
+        const hasNewShippingFields = Array.isArray(item.shippingPrices) || Array.isArray(item.shippingQuantities);
+        return {
+          id: String(item.id || createId()),
+          name: String(item.name || ""),
+          price: normalizeDecimal(item.price),
+          taxed: Boolean(item.taxed),
+          depositPercent: normalizePercentage(item.depositPercent ?? 30),
+          includeDeposit: item.includeDeposit !== false,
+          includeBalance: item.includeBalance !== false,
+          quantities: Array.from({ length: STORE_COUNT }, (_, index) => normalizeDecimal(item.quantities?.[index])),
+          shippingPrices: Array.from(
+            { length: STORE_COUNT },
+            (_, index) => normalizeDecimal(hasNewShippingFields ? item.shippingPrices?.[index] : item.shippingFees?.[index]),
+          ),
+          shippingQuantities: Array.from({ length: STORE_COUNT }, (_, index) => {
+            if (hasNewShippingFields) return normalizeDecimal(item.shippingQuantities?.[index]);
+            return toNumber(item.shippingFees?.[index]) > 0 ? "1" : "";
+          }),
+        };
+      });
       const normalizedItems = items.length ? items : [createBlankItem()];
       const requestedActiveId = preferredActiveItemId || stored.activeItemId;
       const activeItemId = normalizedItems.some((item) => item.id === requestedActiveId)
@@ -793,7 +800,8 @@
         || item.includeDeposit === false
         || item.includeBalance === false
         || item.quantities.some((quantity) => toNumber(quantity) > 0)
-        || item.shippingFees.some((fee) => toNumber(fee) > 0)
+        || item.shippingPrices.some((price) => toNumber(price) > 0)
+        || item.shippingQuantities.some((quantity) => toNumber(quantity) > 0)
       );
       return customStores || meaningfulItems;
     }
@@ -845,7 +853,9 @@
     function itemCost(item, storeIndex) {
       const base = roundMoney(toNumber(item.price) * toNumber(item.quantities[storeIndex]));
       const tax = item.taxed ? roundMoney(base * 0.05) : 0;
-      const shipping = roundMoney(toNumber(item.shippingFees[storeIndex]));
+      const shipping = roundMoney(
+        toNumber(item.shippingPrices[storeIndex]) * toNumber(item.shippingQuantities[storeIndex])
+      );
       return { base, tax, shipping, total: roundMoney(base + tax + shipping) };
     }
 
@@ -1037,23 +1047,39 @@
         unit.textContent = "個";
         quantityWrap.append(quantityInput, unit);
 
-        const shippingWrap = document.createElement("div");
-        shippingWrap.className = "shipping-wrap";
-        const shippingInput = document.createElement("input");
-        shippingInput.className = "number-input";
-        shippingInput.type = "text";
-        shippingInput.inputMode = "decimal";
-        shippingInput.value = item.shippingFees[storeIndex];
-        shippingInput.dataset.shippingStore = String(storeIndex);
-        shippingInput.placeholder = "0";
-        shippingInput.setAttribute("aria-label", `${storeLabel(storeIndex)}運費`);
-        shippingInput.setAttribute("autocomplete", "off");
-        const shippingUnit = document.createElement("span");
-        shippingUnit.className = "unit";
-        shippingUnit.textContent = "運費";
-        shippingWrap.append(shippingInput, shippingUnit);
+        const shippingPriceWrap = document.createElement("div");
+        shippingPriceWrap.className = "shipping-price-wrap";
+        const shippingPriceInput = document.createElement("input");
+        shippingPriceInput.className = "number-input";
+        shippingPriceInput.type = "text";
+        shippingPriceInput.inputMode = "decimal";
+        shippingPriceInput.value = item.shippingPrices[storeIndex];
+        shippingPriceInput.dataset.shippingPriceStore = String(storeIndex);
+        shippingPriceInput.placeholder = "0";
+        shippingPriceInput.setAttribute("aria-label", `${storeLabel(storeIndex)}運費單價`);
+        shippingPriceInput.setAttribute("autocomplete", "off");
+        const shippingPriceUnit = document.createElement("span");
+        shippingPriceUnit.className = "unit";
+        shippingPriceUnit.textContent = "運費單價";
+        shippingPriceWrap.append(shippingPriceInput, shippingPriceUnit);
 
-        storeInputs.append(quantityWrap, shippingWrap);
+        const shippingQuantityWrap = document.createElement("div");
+        shippingQuantityWrap.className = "shipping-quantity-wrap";
+        const shippingQuantityInput = document.createElement("input");
+        shippingQuantityInput.className = "number-input";
+        shippingQuantityInput.type = "text";
+        shippingQuantityInput.inputMode = "decimal";
+        shippingQuantityInput.value = item.shippingQuantities[storeIndex];
+        shippingQuantityInput.dataset.shippingQuantityStore = String(storeIndex);
+        shippingQuantityInput.placeholder = "0";
+        shippingQuantityInput.setAttribute("aria-label", `${storeLabel(storeIndex)}運費數量`);
+        shippingQuantityInput.setAttribute("autocomplete", "off");
+        const shippingQuantityUnit = document.createElement("span");
+        shippingQuantityUnit.className = "unit";
+        shippingQuantityUnit.textContent = "運費數量";
+        shippingQuantityWrap.append(shippingQuantityInput, shippingQuantityUnit);
+
+        storeInputs.append(quantityWrap, shippingPriceWrap, shippingQuantityWrap);
         entry.append(entryHead, storeInputs);
         grid.append(entry);
       });
@@ -1160,10 +1186,14 @@
         const next = normalizeDecimal(event.target.value);
         event.target.value = next;
         item.quantities[Number(event.target.dataset.quantityStore)] = next;
-      } else if (event.target.matches("[data-shipping-store]")) {
+      } else if (event.target.matches("[data-shipping-price-store]")) {
         const next = normalizeDecimal(event.target.value);
         event.target.value = next;
-        item.shippingFees[Number(event.target.dataset.shippingStore)] = next;
+        item.shippingPrices[Number(event.target.dataset.shippingPriceStore)] = next;
+      } else if (event.target.matches("[data-shipping-quantity-store]")) {
+        const next = normalizeDecimal(event.target.value);
+        event.target.value = next;
+        item.shippingQuantities[Number(event.target.dataset.shippingQuantityStore)] = next;
       }
       persistState();
       updateItemCard(article, item);
@@ -1258,7 +1288,8 @@
       const hasNumbers = item && (
         toNumber(item.price) > 0
         || item.quantities.some((value) => toNumber(value) > 0)
-        || item.shippingFees.some((value) => toNumber(value) > 0)
+        || item.shippingPrices.some((value) => toNumber(value) > 0)
+        || item.shippingQuantities.some((value) => toNumber(value) > 0)
       );
       if (!hasNumbers) {
         showToast("目前沒有數字需要清空");
@@ -1267,7 +1298,8 @@
       if (!window.confirm("清空目前品項的單價、六店數量與運費？門市名稱、品項名稱和稅別會保留。")) return;
       item.price = "";
       item.quantities = Array(STORE_COUNT).fill("");
-      item.shippingFees = Array(STORE_COUNT).fill("");
+      item.shippingPrices = Array(STORE_COUNT).fill("");
+      item.shippingQuantities = Array(STORE_COUNT).fill("");
       persistState();
       renderAll();
       showToast("單價、數量與運費已清空");
