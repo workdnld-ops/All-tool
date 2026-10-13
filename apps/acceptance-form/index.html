@@ -31,6 +31,10 @@
     .field.span-2 { grid-column:span 2; }
     .field input { width:100%; height:40px; padding:0 10px; border:1px solid #bdc9ce; border-radius:6px; outline:none; color:var(--ink); background:#fff; font:inherit; font-size:.92rem; font-weight:650; }
     .field input:focus { border-color:var(--primary); box-shadow:0 0 0 2px rgba(37,95,115,.14); }
+    .filename-builder { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:11px; padding:10px; border:1px solid var(--line); border-radius:6px; background:#f8fafb; }
+    .filename-builder-title { grid-column:1/-1; color:var(--ink); font-size:.82rem; font-weight:850; }
+    .filename-preview { grid-column:1/-1; min-width:0; padding:8px 10px; border-radius:5px; color:var(--muted); background:#e9eff1; font-size:.76rem; overflow-wrap:anywhere; }
+    .filename-preview strong { color:var(--primary); }
     .form-actions { justify-content:flex-end; margin-top:10px; }
     .preview-band { padding-top:14px; }
     .preview-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; color:var(--muted); font-size:.76rem; font-weight:750; }
@@ -49,6 +53,9 @@
       .field { gap:2px; font-size:.64rem; }
       .field.span-2 { grid-column:span 2; }
       .field input { height:34px; padding:0 7px; font-size:.78rem; }
+      .filename-builder { gap:6px; margin-top:8px; padding:8px; }
+      .filename-builder-title { font-size:.74rem; }
+      .filename-preview { padding:7px 8px; font-size:.68rem; }
       .form-actions { margin-top:7px; }
       .button { min-height:35px; padding:0 10px; font-size:.76rem; }
       .preview-band { padding-top:9px; }
@@ -68,13 +75,18 @@
         <label class="field">驗收單位<input data-field="acceptanceUnit" maxlength="30"></label>
         <label class="field span-2">請購單號<input data-field="purchaseOrderNumber" maxlength="40"></label>
         <label class="field span-2">請購人／採購人<input data-field="purchaser" maxlength="30" autocomplete="name"></label>
-        <label class="field">店別<input data-field="storeName" maxlength="30" placeholder="例如：桃園"></label>
         <label class="field">廠商<input data-field="vendor" maxlength="40"></label>
         <label class="field">品名<input data-field="itemName" maxlength="40"></label>
         <label class="field">採購數量<input data-field="orderedQuantity" maxlength="16" inputmode="decimal"></label>
         <label class="field">實到數量<input data-field="receivedQuantity" maxlength="16" inputmode="decimal"></label>
         <label class="field span-2">驗收日期<input data-field="acceptanceDate" type="date"></label>
         <label class="field span-2">驗收人簽名<input data-field="acceptorSignature" maxlength="30" autocomplete="name"></label>
+      </div>
+      <div class="filename-builder">
+        <div class="filename-builder-title">檔案匯出名稱</div>
+        <label class="field">店別<input data-field="exportStoreName" maxlength="30" placeholder="例如：桃園"></label>
+        <label class="field">品項<input data-field="exportItemName" maxlength="40" placeholder="例如：新頭襯"></label>
+        <div class="filename-preview">預覽：<strong id="filename-preview"></strong></div>
       </div>
       <div class="form-actions">
         <button class="button danger" id="clear-form" type="button">清空</button>
@@ -92,16 +104,16 @@
 
     const STORAGE_KEY="acceptanceFormState", PAGE_WIDTH=842, PAGE_HEIGHT=595, SCALE=2;
     const FONT_STACK='"Microsoft JhengHei","Noto Sans TC",sans-serif';
-    const DEFAULT_STATE={companyName:"愛滑雪股份有限公司",documentTitle:"驗收單",acceptanceUnit:"庶務部",purchaseOrderNumber:"",purchaser:"",storeName:"",vendor:"",itemName:"",orderedQuantity:"",receivedQuantity:"",acceptanceDate:"",acceptorSignature:""};
-    const fieldNames=Object.keys(DEFAULT_STATE), fields=document.getElementById("fields"), canvas=document.getElementById("preview"), ctx=canvas.getContext("2d",{alpha:false}), saveStatus=document.getElementById("save-status"), exportButton=document.getElementById("export-pdf"), toast=document.getElementById("toast");
+    const DEFAULT_STATE={companyName:"愛滑雪股份有限公司",documentTitle:"驗收單",acceptanceUnit:"庶務部",purchaseOrderNumber:"",purchaser:"",vendor:"",itemName:"",orderedQuantity:"",receivedQuantity:"",acceptanceDate:"",acceptorSignature:"",exportStoreName:"",exportItemName:""};
+    const fieldNames=Object.keys(DEFAULT_STATE), fields=document.getElementById("fields"), filenameBuilder=document.querySelector(".filename-builder"), filenamePreview=document.getElementById("filename-preview"), canvas=document.getElementById("preview"), ctx=canvas.getContext("2d",{alpha:false}), saveStatus=document.getElementById("save-status"), exportButton=document.getElementById("export-pdf"), toast=document.getElementById("toast");
     let state=loadLocalState(), renderFrame=0, saveTimer=0, cloudSaveTimer=0, cloudReady=false, toastTimer=0;
 
-    function normalizeState(value){return Object.fromEntries(fieldNames.map((name)=>[name,String(name==="storeName"?(value?.storeName??value?.exportFileName??DEFAULT_STATE.storeName):(value?.[name]??DEFAULT_STATE[name]))]))}
+    function normalizeState(value){return Object.fromEntries(fieldNames.map((name)=>{let sourceValue=value?.[name];if(name==="exportStoreName"&&sourceValue==null)sourceValue=value?.storeName??value?.exportFileName;if(name==="exportItemName"&&sourceValue==null)sourceValue=value?.itemName;return[name,String(sourceValue??DEFAULT_STATE[name])]}))}
     function loadLocalState(){try{return normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"))}catch{return{...DEFAULT_STATE}}}
     function hasMeaningfulState(value){return fieldNames.some((name)=>value[name]!==DEFAULT_STATE[name])}
     function stateSignature(value=state){return JSON.stringify(normalizeState(value))}
     function showToast(message){clearTimeout(toastTimer);toast.textContent=message;toast.classList.add("show");toastTimer=setTimeout(()=>toast.classList.remove("show"),1800)}
-    function populateFields(){fields.querySelectorAll("[data-field]").forEach((input)=>{input.value=state[input.dataset.field]||""})}
+    function populateFields(){document.querySelectorAll("[data-field]").forEach((input)=>{input.value=state[input.dataset.field]||""});updateFilenamePreview()}
     function cacheAndQueueSave(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));saveStatus.textContent="資料已自動保存";clearTimeout(saveTimer);saveTimer=setTimeout(()=>{if(!cloudReady)return;saveStatus.textContent="正在同步資料...";clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(async()=>{try{await saveAcceptanceState(state);saveStatus.textContent="資料已同步"}catch{saveStatus.textContent="同步失敗，資料已保存在本機"}},350)},450)}
     const p=(value)=>value*SCALE;
     function setFont(size,weight=400){ctx.font=`${weight} ${p(size)}px ${FONT_STACK}`}
@@ -130,9 +142,10 @@
       const parts=[asciiBytes("%PDF-1.4\n")],offsets=[0];let byteLength=parts[0].length;objects.forEach((object,index)=>{offsets.push(byteLength);const wrapped=concatBytes([asciiBytes(`${index+1} 0 obj\n`),object,asciiBytes("\nendobj\n")]);parts.push(wrapped);byteLength+=wrapped.length});const xrefOffset=byteLength;const xref=["xref",`0 ${objects.length+1}`,"0000000000 65535 f "];offsets.slice(1).forEach((offset)=>xref.push(`${String(offset).padStart(10,"0")} 00000 n `));xref.push("trailer",`<< /Size ${objects.length+1} /Root 1 0 R >>`,"startxref",String(xrefOffset),"%%EOF");parts.push(asciiBytes(`${xref.join("\n")}\n`));return new Blob(parts,{type:"application/pdf"})
     }
     function sanitizeFilenamePart(value,fallback){return(value.trim()||fallback).replace(/[<>:"/\\|?*\u0000-\u001f]/g,"_").replace(/[. ]+$/g,"")||fallback}
-    function getExportFilename(){const storeName=sanitizeFilenamePart(state.storeName,"未填店別"),itemName=sanitizeFilenamePart(state.itemName,"未填品項");return`${storeName}_${itemName}_驗收單.pdf`}
+    function getExportFilename(){const storeName=sanitizeFilenamePart(state.exportStoreName,"未填店別"),itemName=sanitizeFilenamePart(state.exportItemName,"未填品項");return`${storeName}_${itemName}_驗收單.pdf`}
+    function updateFilenamePreview(){filenamePreview.textContent=getExportFilename()}
     async function exportPdf(){exportButton.disabled=true;try{const blob=await canvasToPdfBlob(),filename=getExportFilename(),file=new File([blob],filename,{type:"application/pdf"}),canShareFile=navigator.share&&navigator.canShare?.({files:[file]});if(canShareFile&&/iPad|iPhone|iPod/.test(navigator.userAgent)){await navigator.share({files:[file],title:state.documentTitle||"驗收單"})}else{const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=filename;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}showToast(`PDF 已匯出：${filename}`)}catch(error){if(error?.name!=="AbortError"){console.error("PDF export error:",error);showToast("PDF 匯出失敗，請再試一次")}}finally{exportButton.disabled=false}}
-    fields.addEventListener("input",(event)=>{const name=event.target.dataset.field;if(!name)return;state[name]=event.target.value;cacheAndQueueSave();schedulePreview()});fields.addEventListener("focusin",(event)=>{if(event.target.matches("input:not([type='date'])"))event.target.select()});
+    document.querySelector(".editor-band").addEventListener("input",(event)=>{const name=event.target.dataset.field;if(!name)return;state[name]=event.target.value;cacheAndQueueSave();updateFilenamePreview();schedulePreview()});document.querySelector(".editor-band").addEventListener("focusin",(event)=>{if(event.target.matches("input:not([type='date'])"))event.target.select()});
     document.getElementById("clear-form").addEventListener("click",()=>{if(!confirm("確定清空這張驗收單？公司名稱、文件名稱與驗收單位會恢復預設值。"))return;state={...DEFAULT_STATE};populateFields();cacheAndQueueSave();schedulePreview();showToast("驗收單已清空")});exportButton.addEventListener("click",exportPdf);
     document.addEventListener("dblclick",(event)=>event.preventDefault(),{passive:false});let lastTouchEnd=0;document.addEventListener("touchend",(event)=>{const now=Date.now();if(now-lastTouchEnd<=300)event.preventDefault();lastTouchEnd=now},{passive:false});
     populateFields();drawPreview();subscribeAcceptanceState((remoteData)=>{cloudReady=true;if(remoteData){const remoteState=normalizeState(remoteData);if(stateSignature(remoteState)!==stateSignature()){state=remoteState;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));populateFields();schedulePreview()}saveStatus.textContent="資料已同步";return}if(hasMeaningfulState(state)){saveAcceptanceState(state).then(()=>{saveStatus.textContent="資料已同步"}).catch(()=>{saveStatus.textContent="資料已保存在本機"})}else saveStatus.textContent="尚無雲端資料"},()=>{cloudReady=false;saveStatus.textContent="雲端連線失敗，資料保存在本機"});
