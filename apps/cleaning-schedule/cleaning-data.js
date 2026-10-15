@@ -185,6 +185,12 @@ export function subscribeStaff(onChange, onError) {
   return subscribeList("staff", DEFAULT_STAFF, onChange, onError);
 }
 
+export function subscribeStaffReadonly(onChange, onError) {
+  return onValue(ref(database, `${rootPath}/staff`), (snapshot) => {
+    onChange(normalizeList(snapshot.val(), DEFAULT_STAFF));
+  }, onError);
+}
+
 export function subscribeTasks(onChange, onError) {
   return subscribeList("tasks", DEFAULT_TASKS, onChange, onError);
 }

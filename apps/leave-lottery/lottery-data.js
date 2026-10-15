@@ -1,9 +1,11 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getDatabase, onValue, push, ref, remove, set } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js";
-import { DEFAULT_STAFF, subscribeStaff } from "../cleaning-schedule/cleaning-data.js";
+import { DEFAULT_STAFF, subscribeStaff, subscribeStaffReadonly } from "../cleaning-schedule/cleaning-data.js";
 
 const rootPath = "users/single-user/leaveLottery";
 const isLocalPreview = ["localhost", "127.0.0.1"].includes(location.hostname);
+const isStandalone = document.querySelector('meta[name="leave-lottery-mode"]')?.content === "standalone";
+export const usesLocalRecords = isLocalPreview || isStandalone;
 const database = isLocalPreview ? null : getDatabase(getApp());
 
 export function watchStaff(onChange, onError) {
@@ -11,11 +13,11 @@ export function watchStaff(onChange, onError) {
     queueMicrotask(() => onChange(DEFAULT_STAFF));
     return () => {};
   }
-  return subscribeStaff(onChange, onError);
+  return isStandalone ? subscribeStaffReadonly(onChange, onError) : subscribeStaff(onChange, onError);
 }
 
 export function watchDraft(onChange, onError) {
-  if (isLocalPreview) {
+  if (usesLocalRecords) {
     queueMicrotask(() => onChange(null));
     return () => {};
   }
@@ -23,12 +25,12 @@ export function watchDraft(onChange, onError) {
 }
 
 export function saveDraft(draft) {
-  if (isLocalPreview) return Promise.resolve();
+  if (usesLocalRecords) return Promise.resolve();
   return set(ref(database, `${rootPath}/draft`), draft);
 }
 
 export function watchRecords(onChange, onError) {
-  if (isLocalPreview) {
+  if (usesLocalRecords) {
     queueMicrotask(() => onChange(JSON.parse(localStorage.getItem("leaveLotteryLocalRecords") || "[]")));
     return () => {};
   }
@@ -40,7 +42,7 @@ export function watchRecords(onChange, onError) {
 }
 
 export async function saveRecord(record) {
-  if (isLocalPreview) {
+  if (usesLocalRecords) {
     const current = JSON.parse(localStorage.getItem("leaveLotteryLocalRecords") || "[]");
     const saved = { ...record, id: crypto.randomUUID() };
     localStorage.setItem("leaveLotteryLocalRecords", JSON.stringify([saved, ...current]));
@@ -52,7 +54,7 @@ export async function saveRecord(record) {
 }
 
 export async function deleteRecord(id) {
-  if (isLocalPreview) {
+  if (usesLocalRecords) {
     const current = JSON.parse(localStorage.getItem("leaveLotteryLocalRecords") || "[]");
     localStorage.setItem("leaveLotteryLocalRecords", JSON.stringify(current.filter((record) => record.id !== id)));
     return;
