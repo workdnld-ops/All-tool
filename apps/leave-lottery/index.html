@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#22675c">
+  <title>休假抽籤</title>
+  <link rel="manifest" href="../../manifest.json">
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <style>
+    :root { color-scheme:light; --bg:#f3f6f6; --surface:#fff; --ink:#1c282c; --muted:#607078; --line:#d9e2e3; --green:#22675c; --green-light:#e5f1ed; --blue:#315f99; --blue-light:#e9f0f9; --red:#a53835; }
+    * { box-sizing:border-box; }
+    html { -webkit-text-size-adjust:100%; touch-action:manipulation; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent; }
+    button,input,a,summary { font:inherit; touch-action:manipulation; }
+    input { -webkit-user-select:text; user-select:text; }
+    button { cursor:pointer; }
+    .shell { width:min(920px,100%); margin:0 auto; padding:16px 14px max(28px,env(safe-area-inset-bottom)); }
+    header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
+    h1 { margin:0; font-size:1.45rem; line-height:1.2; letter-spacing:0; }
+    .status { margin:3px 0 0; color:var(--muted); font-size:.76rem; min-height:1.3em; }
+    .status.error { color:var(--red); }
+    a.toolbox { display:inline-flex; align-items:center; min-height:38px; padding:0 12px; border:1px solid var(--line); border-radius:6px; color:var(--ink); background:var(--surface); text-decoration:none; font-weight:750; white-space:nowrap; }
+    .section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:0 0 9px; }
+    h2 { margin:0; font-size:1.05rem; letter-spacing:0; }
+    .section-meta { color:var(--muted); font-size:.76rem; }
+    .settings-link { margin-left:9px; color:var(--green); font-size:.76rem; font-weight:750; }
+    .button { min-height:38px; display:inline-flex; justify-content:center; align-items:center; gap:6px; padding:0 12px; border:1px solid var(--line); border-radius:6px; color:var(--ink); background:#fff; font-weight:800; }
+    .button.primary { border-color:var(--green); background:var(--green); color:#fff; }
+    .button:disabled { opacity:.55; cursor:default; }
+    .icon-button { display:grid; place-items:center; width:36px; height:36px; padding:0; border:1px solid var(--line); border-radius:6px; color:var(--red); background:#fff; }
+    .icon-button svg,.button svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .rows { display:grid; gap:10px; }
+    .date-card { border:1px solid var(--line); border-radius:7px; background:var(--surface); padding:12px; }
+    .date-top { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:end; }
+    .field { display:grid; gap:4px; color:var(--muted); font-size:.72rem; font-weight:750; min-width:0; }
+    .field input { width:100%; height:38px; padding:0 9px; border:1px solid #bac9cb; border-radius:5px; color:var(--ink); background:#fff; font-size:.92rem; font-weight:650; outline:none; }
+    .field input:focus { border-color:var(--green); box-shadow:0 0 0 2px rgba(34,103,92,.13); }
+    .row-controls { display:grid; grid-template-columns:minmax(0,1fr) 130px; gap:10px; align-items:end; margin-top:12px; }
+    .segmented { display:grid; grid-template-columns:1fr 1fr; gap:3px; padding:3px; border:1px solid var(--line); border-radius:6px; background:#eef2f2; }
+    .segmented button { min-height:32px; border:0; border-radius:4px; background:transparent; color:var(--muted); font-size:.82rem; font-weight:800; }
+    .segmented button.active { color:#fff; background:var(--green); }
+    .candidates { margin-top:10px; border-top:1px solid var(--line); }
+    .candidates summary { padding:10px 1px 3px; cursor:pointer; color:var(--green); font-size:.83rem; font-weight:800; }
+    .selected-names { margin:5px 0 0; color:var(--muted); font-size:.76rem; line-height:1.5; overflow-wrap:anywhere; }
+    .staff-grid { display:flex; flex-wrap:wrap; gap:6px; padding:10px 0 3px; }
+    .staff-actions { display:flex; gap:12px; padding-top:9px; }
+    .staff-actions button { padding:0; border:0; background:none; color:var(--green); font-size:.76rem; font-weight:800; }
+    .staff-chip { min-height:34px; padding:3px 10px; border:1px solid #cbd8d9; border-radius:5px; background:#fff; color:var(--ink); font-size:.79rem; font-weight:700; }
+    .staff-chip.selected { border-color:var(--green); background:var(--green-light); color:#195349; }
+    .actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin:12px 0 18px; }
+    .feedback { flex:1; min-width:0; color:var(--red); font-size:.78rem; font-weight:750; }
+    .empty { padding:18px 12px; border:1px dashed #becacc; border-radius:6px; color:var(--muted); background:#fff; font-size:.86rem; }
+    .result-section,.history-section { margin-top:16px; border-top:1px solid var(--line); padding-top:16px; }
+    .result-list { display:grid; gap:0; border-top:1px solid var(--line); }
+    .result-row { display:grid; grid-template-columns:140px minmax(0,1fr) minmax(0,1fr); gap:12px; padding:12px 2px; border-bottom:1px solid var(--line); font-size:.84rem; }
+    .result-date { font-weight:850; }
+    .result-date small { display:block; margin-top:3px; color:var(--muted); font-weight:500; font-size:.72rem; }
+    .result-group { min-width:0; line-height:1.5; overflow-wrap:anywhere; }
+    .result-group b { display:block; color:var(--muted); font-size:.7rem; }
+    .result-group.leave b { color:var(--green); }
+    .result-group.work b { color:var(--blue); }
+    .record-list { border-top:1px solid var(--line); }
+    .record-row { display:grid; grid-template-columns:minmax(0,1fr) 36px; gap:8px; align-items:center; border-bottom:1px solid var(--line); padding:8px 0; }
+    .record-open { width:100%; padding:3px 0; border:0; background:none; text-align:left; color:var(--ink); }
+    .record-open strong { display:block; font-size:.83rem; }
+    .record-open span { display:block; margin-top:2px; color:var(--muted); font-size:.72rem; }
+    .record-row.current .record-open strong { color:var(--green); }
+    [hidden] { display:none !important; }
+    @media(max-width:600px) {
+      .shell { padding:12px 9px max(20px,env(safe-area-inset-bottom)); }
+      h1 { font-size:1.27rem; }
+      a.toolbox { min-height:34px; padding:0 9px; font-size:.8rem; }
+      .date-card { padding:10px; }
+      .row-controls { grid-template-columns:minmax(0,1fr) 98px; gap:7px; }
+      .segmented button { font-size:.75rem; }
+      .result-row { grid-template-columns:1fr 1fr; gap:6px 10px; }
+      .result-date { grid-column:1/-1; }
+      .result-date small { display:inline; margin-left:8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><h1>休假抽籤</h1><p class="status" id="status" role="status" aria-live="polite">讀取資料中...</p></div>
+      <a class="toolbox" href="../../index.html">工具箱</a>
+    </header>
+    <section aria-label="抽籤設定">
+      <div class="section-head"><div><h2>日期與人員</h2><span class="section-meta" id="draft-summary"></span><a class="settings-link" href="../cleaning-schedule/settings.html">同仁設定</a></div><button class="button" id="add-date" type="button">＋ 新增日期</button></div>
+      <div class="rows" id="rows"></div>
+      <div class="actions"><span class="feedback" id="feedback" role="alert"></span><button class="button primary" id="draw-all" type="button">全部抽籤</button></div>
+    </section>
+    <section class="result-section" id="result-section" hidden>
+      <div class="section-head"><div><h2>抽籤結果</h2><span class="section-meta" id="result-meta"></span></div></div>
+      <div class="result-list" id="result-list"></div>
+    </section>
+    <section class="history-section" aria-label="抽籤紀錄">
+      <div class="section-head"><h2>歷史紀錄</h2><span class="section-meta" id="history-count"></span></div>
+      <div class="record-list" id="record-list"></div>
+    </section>
+  </main>
+  <script type="module">
+    import { drawRows } from "./lottery-core.mjs";
+    import { deleteRecord, saveDraft, saveRecord, watchDraft, watchRecords, watchStaff } from "./lottery-data.js";
+
+    const STORAGE_KEY="leaveLotteryDraftV1";
+    const rowsElement=document.getElementById("rows"),feedback=document.getElementById("feedback"),status=document.getElementById("status");
+    let staff=[],records=[],draft=loadLocalDraft(),staffReady=false,cloudReady=false,saveTimer=0,busy=false,currentRecordId="",currentResult=null;
+    const expandedRows=new Set();
+
+    function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[character])}
+    function normalizeDraft(value){return{updatedAt:Number(value?.updatedAt)||0,rows:(Array.isArray(value?.rows)?value.rows:[]).map((row)=>({id:String(row?.id||crypto.randomUUID()),date:String(row?.date||""),target:row?.target==="work"?"work":"leave",count:row?.count==null?1:Number(row.count),staffIds:Array.isArray(row?.staffIds)?[...new Set(row.staffIds.map(String))]:[]}))}}
+    function loadLocalDraft(){try{return normalizeDraft(JSON.parse(localStorage.getItem(STORAGE_KEY)||"null"))}catch{return normalizeDraft(null)}}
+    function persistDraft(){draft.updatedAt=Math.max(Date.now(),draft.updatedAt+1);localStorage.setItem(STORAGE_KEY,JSON.stringify(draft));status.classList.remove("error");status.textContent="設定已保存於本機";clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{if(!cloudReady)return;try{await saveDraft(draft);status.textContent="設定已同步"}catch{status.classList.add("error");status.textContent="同步失敗，設定已保存在本機"}},650)}
+    function activeStaff(){return staff.filter((member)=>member.active)}
+    function setError(message){feedback.textContent=message}
+    function dateLabel(value){if(!value)return"未設定日期";const [year,month,day]=value.split("-");return`${year}/${month}/${day}`}
+    function renderSummary(){document.getElementById("draft-summary").textContent=`${draft.rows.length} 個日期`}
+    function renderRows(){
+      renderSummary();
+      if(!draft.rows.length){rowsElement.innerHTML='<div class="empty">尚未設定日期。</div>';return}
+      const names=new Map(staff.map((member)=>[member.id,member.name]));
+      rowsElement.innerHTML=draft.rows.map((row)=>{
+        const selected=row.staffIds.map((id)=>names.get(id)||"已移除同仁");
+        const chips=activeStaff().map((member)=>`<button class="staff-chip ${row.staffIds.includes(member.id)?"selected":""}" type="button" data-person="${escapeHtml(member.id)}" aria-pressed="${row.staffIds.includes(member.id)}">${escapeHtml(member.name)}</button>`).join("");
+        return `<article class="date-card" data-row="${escapeHtml(row.id)}">
+          <div class="date-top"><label class="field">日期<input type="date" data-date value="${escapeHtml(row.date)}"></label><button class="icon-button" type="button" data-remove title="移除日期" aria-label="移除日期"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg></button></div>
+          <div class="row-controls"><div class="field">抽選對象<div class="segmented"><button type="button" data-target="work" class="${row.target==="work"?"active":""}" aria-pressed="${row.target==="work"}">要上班</button><button type="button" data-target="leave" class="${row.target==="leave"?"active":""}" aria-pressed="${row.target==="leave"}">可休假</button></div></div><label class="field">抽選人數<input type="number" data-count min="1" max="${Math.max(1,row.staffIds.length)}" step="1" inputmode="numeric" value="${escapeHtml(row.count)}"></label></div>
+          <details class="candidates" ${expandedRows.has(row.id)?"open":""}><summary>候選同仁 (${row.staffIds.length})</summary><p class="selected-names">${selected.length?escapeHtml(selected.join("、")):"尚未選擇"}</p><div class="staff-actions"><button type="button" data-select-all>全選</button><button type="button" data-clear-people>清空</button></div><div class="staff-grid">${chips||'<span class="section-meta">沒有啟用中的同仁，請到打掃安排設定新增。</span>'}</div></details>
+        </article>`
+      }).join("");
+    }
+    function renderResult(){
+      const section=document.getElementById("result-section");section.hidden=!currentResult;
+      if(!currentResult)return;
+      const date=new Date(currentResult.createdAt);document.getElementById("result-meta").textContent=`${date.toLocaleString("zh-TW")} · ${currentResult.results.length} 個日期`;
+      document.getElementById("result-list").innerHTML=currentResult.results.map((result)=>`<div class="result-row"><div class="result-date">${escapeHtml(dateLabel(result.date))}<small>抽出 ${result.count} 人${result.target==="work"?"上班":"休假"}</small></div><div class="result-group work"><b>要上班</b>${escapeHtml(result.work.map((person)=>person.name).join("、")||"無")}</div><div class="result-group leave"><b>可休假</b>${escapeHtml(result.leave.map((person)=>person.name).join("、")||"無")}</div></div>`).join("");
+    }
+    function renderRecords(){
+      document.getElementById("history-count").textContent=`${records.length} 筆`;
+      document.getElementById("record-list").innerHTML=records.map((record)=>`<div class="record-row ${record.id===currentRecordId?"current":""}"><button class="record-open" type="button" data-open-record="${escapeHtml(record.id)}"><strong>${escapeHtml((record.results||[]).map((result)=>dateLabel(result.date)).join("、"))}</strong><span>${escapeHtml(new Date(record.createdAt).toLocaleString("zh-TW"))} · ${(record.results||[]).length} 個日期</span></button><button class="icon-button" type="button" data-delete-record="${escapeHtml(record.id)}" title="刪除紀錄" aria-label="刪除紀錄"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6"/></svg></button></div>`).join("")||'<div class="empty">尚無抽籤紀錄。</div>';
+    }
+    document.getElementById("add-date").addEventListener("click",()=>{const id=crypto.randomUUID();draft.rows.push({id,date:"",target:"leave",count:1,staffIds:[]});expandedRows.add(id);persistDraft();setError("");renderRows();rowsElement.querySelector(`[data-row="${id}"] [data-date]`).focus()});
+    rowsElement.addEventListener("click",(event)=>{
+      const card=event.target.closest("[data-row]");if(!card)return;const row=draft.rows.find((item)=>item.id===card.dataset.row);if(!row)return;
+      if(event.target.closest("[data-remove]")){draft.rows=draft.rows.filter((item)=>item.id!==row.id);expandedRows.delete(row.id);persistDraft();setError("");renderRows();return}
+      if(event.target.closest("[data-select-all]")){row.staffIds=activeStaff().map((member)=>member.id);persistDraft();setError("");renderRows();return}
+      if(event.target.closest("[data-clear-people]")){row.staffIds=[];persistDraft();setError("");renderRows();return}
+      const targetButton=event.target.closest("[data-target]");if(targetButton){row.target=targetButton.dataset.target;persistDraft();renderRows();return}
+      const personButton=event.target.closest("[data-person]");if(personButton){const id=personButton.dataset.person;row.staffIds=row.staffIds.includes(id)?row.staffIds.filter((value)=>value!==id):[...row.staffIds,id];persistDraft();setError("");renderRows()}
+    });
+    rowsElement.addEventListener("toggle",(event)=>{if(!event.target.matches("details"))return;const id=event.target.closest("[data-row]")?.dataset.row;if(id){if(event.target.open)expandedRows.add(id);else expandedRows.delete(id)}},true);
+    rowsElement.addEventListener("change",(event)=>{const card=event.target.closest("[data-row]");if(!card)return;const row=draft.rows.find((item)=>item.id===card.dataset.row);if(!row)return;if(event.target.matches("[data-date]"))row.date=event.target.value;if(event.target.matches("[data-count]"))row.count=Number(event.target.value);persistDraft();setError("")});
+    document.getElementById("draw-all").addEventListener("click",async()=>{
+      if(busy||!staffReady)return;
+      let results;try{results=drawRows(draft.rows,staff)}catch(error){setError(error.message);return}
+      setError("");busy=true;document.getElementById("draw-all").disabled=true;
+      try{const record=await saveRecord({createdAt:new Date().toISOString(),results});currentResult=record;currentRecordId=record.id;if(location.hostname==="localhost"||location.hostname==="127.0.0.1"){records=[record,...records]}renderResult();renderRecords();document.getElementById("result-section").scrollIntoView({behavior:"smooth",block:"start"});status.textContent="抽籤結果已保存"}catch(error){console.error("Leave lottery save error:",error);setError("抽籤結果未能儲存，請確認網路後重試。")}finally{busy=false;document.getElementById("draw-all").disabled=false}
+    });
+    document.getElementById("record-list").addEventListener("click",async(event)=>{
+      const open=event.target.closest("[data-open-record]");if(open){const record=records.find((item)=>item.id===open.dataset.openRecord);if(record){currentResult=record;currentRecordId=record.id;renderResult();renderRecords();document.getElementById("result-section").scrollIntoView({behavior:"smooth",block:"start"})}return}
+      const del=event.target.closest("[data-delete-record]");if(!del||!confirm("確定刪除這筆抽籤紀錄？"))return;
+      try{await deleteRecord(del.dataset.deleteRecord);records=records.filter((record)=>record.id!==del.dataset.deleteRecord);if(currentRecordId===del.dataset.deleteRecord){currentResult=null;currentRecordId="";renderResult()}renderRecords()}catch(error){console.error("Leave lottery delete error:",error);setError("刪除紀錄失敗，請再試一次。")}
+    });
+    watchStaff((loaded)=>{staff=loaded;staffReady=true;status.textContent=cloudReady?"設定已同步":"同仁名單已載入";document.getElementById("draw-all").disabled=false;renderRows()},()=>{status.classList.add("error");status.textContent="同仁名單讀取失敗，請確認網路。"});
+    watchDraft((remote)=>{cloudReady=true;const incoming=normalizeDraft(remote);if(remote&&incoming.updatedAt>draft.updatedAt){draft=incoming;localStorage.setItem(STORAGE_KEY,JSON.stringify(draft));renderRows()}else if(draft.updatedAt>incoming.updatedAt){saveDraft(draft).then(()=>{status.textContent="設定已同步"}).catch(()=>{status.classList.add("error");status.textContent="同步失敗，設定已保存在本機"});return}status.textContent="設定已同步"},()=>{cloudReady=false;status.classList.add("error");status.textContent="雲端連線失敗，設定已保存在本機"});
+    watchRecords((loaded)=>{records=loaded;renderRecords()},()=>{document.getElementById("history-count").textContent="讀取失敗"});
+    document.getElementById("draw-all").disabled=true;renderRows();renderRecords();
+  </script>
+</body>
+</html>

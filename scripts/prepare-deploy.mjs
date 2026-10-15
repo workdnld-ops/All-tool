@@ -19,6 +19,7 @@ const copyItems = [
   ["apps/cash-change-planner", "apps/cash-change-planner"],
   ["apps/store-cost-sharing", "apps/store-cost-sharing"],
   ["apps/acceptance-form", "apps/acceptance-form"],
+  ["apps/leave-lottery", "apps/leave-lottery"],
   ["workers", "workers"],
 ];
 

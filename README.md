@@ -9,6 +9,7 @@
 - `apps/drink-calculator`：飲料計算器，包含計算頁、品項設定頁與 Firebase 歷史訂單。
 - `apps/schedule-record`：排班紀錄，貼上 Google Sheet 週班表與排休資料後輸出 Line 可用文字；`apps/schedule-record/view/` 是只讀行事曆隱藏網址。
 - `apps/acceptance-form`：驗收單編輯、即時預覽與 A4 橫式 PDF 匯出。
+- `apps/leave-lottery`：多日期休假抽籤，共用打掃安排同仁名單並保存抽籤紀錄。
 
 ## 設計準則
 
