@@ -2,42 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+.expense-card { background: hsl(210 30% 97%); }
+.expense-card-row { display: flex; align-items: center; gap: 3px; padding: 6px; min-width: 0; }
+.status-red { color: hsl(0 82% 46%); --status-tint: 0 85% 97%; }
+.status-amber { color: hsl(39 96% 43%); --status-tint: 43 95% 96%; }
+.status-green { color: hsl(156 82% 34%); --status-tint: 150 70% 96%; }
+.status-gray { color: hsl(220 9% 40%); --status-tint: 215 25% 95%; }
+.status-composite { position: relative; width: 30px; height: 30px; display: block; }
+.status-trigger .status-composite > svg { width: 26px; height: 26px; position: absolute; top: 1px; left: 0; stroke-width: 2.5; }
+.status-trigger .status-composite > .status-badge { width: 17px; height: 19px; top: 13px; left: 15px; background: hsl(210 30% 97%); border-radius: 3px; }
+.status-option { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 64px; border: 1px solid transparent; border-radius: 8px; background: hsl(var(--status-tint)); touch-action: manipulation; }
+.status-option span { font-size: 12px; font-weight: 600; }
+.status-option[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.status-option:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.status-option.status-gray { min-height: 42px; flex-direction: row; }
+.status-picker { box-shadow: 0 12px 36px hsl(220 20% 20% / 0.18); }
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Warm dark theme - cozy and inviting */
-    --background: 25 15% 12%;
-    --foreground: 30 15% 92%;
+    --background: 210 30% 97%;
+    --foreground: 225 20% 14%;
 
-    --card: 25 18% 16%;
-    --card-foreground: 30 15% 92%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 20% 14%;
 
-    --popover: 25 20% 14%;
-    --popover-foreground: 30 15% 92%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 20% 14%;
 
-    --primary: 30 85% 58%;
-    --primary-foreground: 25 15% 12%;
+    --primary: 164 72% 30%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 28 35% 25%;
-    --secondary-foreground: 30 15% 92%;
+    --secondary: 210 24% 95%;
+    --secondary-foreground: 225 20% 14%;
 
-    --muted: 25 20% 20%;
-    --muted-foreground: 30 10% 65%;
+    --muted: 210 24% 95%;
+    --muted-foreground: 220 10% 43%;
 
-    --accent: 28 75% 52%;
-    --accent-foreground: 25 15% 12%;
+    --accent: 210 25% 93%;
+    --accent-foreground: 225 20% 14%;
 
     --destructive: 0 70% 55%;
     --destructive-foreground: 30 15% 98%;
 
-    --border: 25 20% 24%;
-    --input: 25 20% 24%;
-    --ring: 30 85% 58%;
+    --border: 215 22% 89%;
+    --input: 215 18% 80%;
+    --ring: 164 72% 30%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Tag colors */
     --tag-sky: 199 89% 48%;

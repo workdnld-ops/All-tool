@@ -1,4 +1,4 @@
-export type DeliveryStatus = 'none' | 'invoice' | 'package' | 'complete' | 'check' | 'excluded';
+export type DeliveryStatus = 'none' | 'invoice' | 'package' | 'complete' | 'accepted' | 'noInvoice' | 'reimbursed' | 'collectedInvoice' | 'collectedReimbursed' | 'acceptedInvoice' | 'check' | 'excluded';
 
 export interface SnackBudgetSettings {
   neihu: number;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { statusRank } from '@/lib/delivery-status';
 import { Plus, Trash2, MoreVertical, Undo, Archive as ArchiveIcon, ArrowUpDown, Camera, ClipboardPaste } from 'lucide-react';
 import { List as ListType, ExpenseCard as ExpenseCardType, Tag } from '@/types';
 import { ExpenseCard } from './ExpenseCard';
@@ -186,18 +187,10 @@ export function List({
   };
 
   const handleSortCards = () => {
-    const statusOrder: Record<ExpenseCardType['status'], number> = {
-      none: 0,
-      invoice: 1,
-      package: 2,
-      complete: 3,
-      check: 4,
-      excluded: 5,
-    };
     const sortedCards = list.cards
       .map((card, originalIndex) => ({ card, originalIndex }))
       .sort((a, b) => {
-        const rankDiff = statusOrder[a.card.status] - statusOrder[b.card.status];
+        const rankDiff = statusRank(a.card.status) - statusRank(b.card.status);
         return rankDiff || a.originalIndex - b.originalIndex;
       })
       .map(({ card }, index) => ({ ...card, order: index }));
@@ -295,21 +288,21 @@ export function List({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
-      // 設置背景色 (深色主題)
-      ctx.fillStyle = '#1a1a1a';
+      // 與清單使用相同的淺色配色。
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, finalImageWidth, imageHeight);
 
       // 繪製標題區域
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#1d2230';
       ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillText(list.name, PADDING, 35);
 
-      ctx.fillStyle = '#eb9834';
+      ctx.fillStyle = '#158367';
       ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, sans-serif';
       ctx.fillText(`總金額: $${totalAmount.toLocaleString('zh-TW')}`, PADDING, 65);
 
       // 繪製分隔線
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.strokeStyle = '#dde3eb';
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(PADDING, HEADER_HEIGHT);
@@ -326,7 +319,7 @@ export function List({
           const cardCenterY = yOffset + CARD_HEIGHT / 2;
 
           // 卡片背景 (極淺色)
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+          ctx.fillStyle = '#f5f7fa';
           ctx.fillRect(columnStartX, yOffset, singleCardWidth, CARD_HEIGHT - 2);
 
           // 準備文字內容
@@ -344,12 +337,12 @@ export function List({
 
           // 繪製日期 (藍色, 靠左)
           ctx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
-          ctx.fillStyle = '#60a5fa'; // 藍色
+          ctx.fillStyle = '#52647b';
           ctx.textAlign = 'left';
           ctx.fillText(dateText, columnStartX + CARD_PADDING, cardCenterY);
 
-          // 繪製內容 (白色, 靠左對齊，緊接在日期後面)
-          ctx.fillStyle = '#ffffff';
+          // 繪製內容，緊接在日期後面。
+          ctx.fillStyle = '#1d2230';
           ctx.textAlign = 'left';
           
           // 限制內容文字最多顯示9個中文字元
@@ -364,8 +357,8 @@ export function List({
             ctx.fillText(displayContent, contentX, cardCenterY);
           }
 
-          // 繪製金額 (橘色, 靠右)
-          ctx.fillStyle = '#eb9834'; // 橘色
+          // 繪製金額，靠右。
+          ctx.fillStyle = '#1d2230';
           ctx.textAlign = 'right';
           ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, sans-serif';
           ctx.fillText(amountText, columnStartX + singleCardWidth - CARD_PADDING, cardCenterY);
@@ -412,7 +405,7 @@ export function List({
   };
 
   return (
-    <div data-list-id={list.id} className="flex-shrink-0 w-full h-full min-h-0 bg-card rounded-2xl shadow-lg border border-border flex flex-col">
+    <div data-list-id={list.id} className="flex-shrink-0 w-full h-full min-h-0 bg-card rounded-lg shadow-sm border border-border flex flex-col">
       <div className="p-4 border-b border-border flex-shrink-0">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
@@ -611,7 +604,7 @@ export function List({
       <div
         ref={setNodeRef}
         data-card-scroll="true"
-        className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2 touch-pan-y"
+        className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-3 sm:p-4 space-y-2 touch-pan-y"
       >
         <SortableContext items={list.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
           {list.cards.map((card) => (

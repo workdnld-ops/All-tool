@@ -25,10 +25,10 @@ export function Header({ onAddList, onDeleteList, onRestoreList, canRestoreList,
   const navigate = useNavigate();
 
   return (
-    <header className="h-12 flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border px-4 flex items-center justify-between sticky top-0 z-50">
+    <header className="h-12 flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-border px-2 sm:px-4 flex items-center justify-between sticky top-0 z-50">
       <h1 className="font-semibold text-xs text-muted-foreground">v{APP_VERSION}</h1>
       
-      <div className="flex gap-2">
+      <div className="flex gap-0 sm:gap-2">
         <Button
           variant="ghost"
           onClick={() => { window.location.href = '/'; }}
