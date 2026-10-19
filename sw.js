@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v20";
+const CACHE_NAME = "ops-toolbox-v21";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
@@ -28,7 +28,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(keys.filter((key) => key.startsWith("ops-toolbox-") && key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
@@ -77,6 +77,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (requestUrl.pathname.startsWith("/apps/leave-lottery/")) {
+    return;
+  }
+
+  if (requestUrl.pathname.startsWith("/apps/work-assignment/")) {
     return;
   }
 

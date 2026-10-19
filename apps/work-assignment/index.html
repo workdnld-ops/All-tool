@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1f6f64">
+  <title>庶務工作</title>
+  <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
+  <link rel="stylesheet" href="styles.css?v=1.0.0">
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div class="brand"><img src="../../assets/toolbox-icon.svg" alt="" width="34" height="34"><div><h1>庶務工作</h1><p id="sync-status" role="status">連線中…</p></div></div>
+      <div class="actions"><span class="version">v1.0.0</span><a class="button" href="../../index.html">工具箱</a></div>
+    </header>
+    <p id="connection-warning" class="warning" role="alert" hidden></p>
+    <section class="summary" aria-label="工作總覽">
+      <div><span>工作總數</span><strong id="total">—</strong></div>
+      <div><span>已分配</span><strong id="assigned">—</strong></div>
+      <div><span>未分配</span><strong id="unassigned">—</strong></div>
+      <div><span>同仁總人數</span><strong id="people">—</strong></div>
+    </section>
+    <nav class="tabs" aria-label="功能頁籤">
+      <button type="button" data-tab="work" aria-pressed="true">工作分配</button>
+      <button type="button" data-tab="people" aria-pressed="false">同仁管理</button>
+      <button type="button" data-tab="categories" aria-pressed="false">分類管理</button>
+      <button type="button" data-tab="backup" aria-pressed="false">備份</button>
+    </nav>
+    <section id="view-work">
+      <div class="section-heading"><h2>工作清單 <small id="result-count"></small></h2><button id="add-task" class="primary" data-write type="button" disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增工作</button></div>
+      <div class="filters">
+        <label class="search">搜尋<input id="search" type="search" placeholder="工作名稱" autocomplete="off"></label>
+        <label>分類<select id="filter-category"><option value="">全部分類</option></select></label>
+        <label>負責人<select id="filter-person"><option value="">全部同仁</option></select></label>
+        <label>難易度<select id="filter-difficulty"><option value="">全部難度</option><option value="unrated">未評估</option><option value="1">1 星・非常簡單</option><option value="2">2 星・簡單</option><option value="3">3 星・普通</option><option value="4">4 星・困難</option><option value="5">5 星・非常困難</option></select></label>
+        <label>排序<select id="sort"><option value="manual">手動排序</option><option value="difficulty-desc">難度由高到低</option><option value="difficulty-asc">難度由低到高</option><option value="category">依分類</option><option value="person">依同仁</option></select></label>
+        <label class="check"><input id="only-unassigned" type="checkbox">僅未分配</label>
+        <button id="reset-filters" class="icon-button" type="button" title="重置篩選" aria-label="重置篩選"><svg class="icon"><use href="icons.svg#rotate-ccw"/></svg></button>
+      </div>
+      <div class="table-head" aria-hidden="true"><span>工作名稱</span><span>分類</span><span>難易度</span><span>負責人</span><span>操作</span></div>
+      <div id="tasks" aria-label="工作清單"></div>
+      <details class="workload" open>
+        <summary>同仁工作負擔</summary>
+        <p class="muted">星數僅輔助分工，不代表實際工時；平均值不含未評估工作。</p>
+        <div class="workload-scroll"><table><thead><tr><th>同仁</th><th>工作數</th><th>已評估</th><th>星數總和</th><th>平均星數</th><th>未評估</th></tr></thead><tbody id="workloads"></tbody></table></div>
+      </details>
+    </section>
+    <section id="view-people" hidden>
+      <div class="section-heading"><h2>同仁管理</h2><button id="add-person" class="primary" data-write disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增同仁</button></div>
+      <div id="staff-list" class="management-list"></div>
+    </section>
+    <section id="view-categories" hidden>
+      <div class="section-heading"><h2>工作分類</h2><button id="add-category" class="primary" data-write disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增分類</button></div>
+      <div id="categories-list" class="management-list"></div>
+    </section>
+    <section id="view-backup" hidden>
+      <div class="section-heading"><h2>資料備份</h2></div>
+      <div class="backup-actions"><button id="export" disabled><svg class="icon"><use href="icons.svg#download"/></svg>匯出 JSON</button><button id="import" data-write disabled><svg class="icon"><use href="icons.svg#upload"/></svg>匯入 JSON</button><input type="file" id="import-file" accept=".json,application/json" hidden></div>
+      <p class="muted">匯入會取代此工具的完整資料。確認前會檢查內容，並下載一份匯入前備份。其他工具不受影響。</p>
+      <p id="backup-status" class="muted"></p>
+    </section>
+  </main>
+  <dialog id="editor" aria-labelledby="dialog-title"><form id="editor-form"><div class="dialog-heading"><h2 id="dialog-title"></h2><button type="button" id="close-dialog" class="icon-button" aria-label="關閉" title="關閉"><svg class="icon"><use href="icons.svg#x"/></svg></button></div><div id="dialog-fields"></div><p id="dialog-error" role="alert" class="error"></p><footer><button type="button" id="cancel-dialog">取消</button><button id="save-dialog" type="submit" class="primary" data-write>儲存</button></footer></form></dialog>
+  <div id="toast" role="status" hidden></div>
+  <script type="module" src="app.mjs?v=1.0.0"></script>
+</body>
+</html>

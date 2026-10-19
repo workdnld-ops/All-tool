@@ -1,0 +1,246 @@
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup } from './model.mjs';
+import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs';
+
+const $ = selector => document.querySelector(selector);
+const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+const icon = name => `<svg class="icon" aria-hidden="true"><use href="icons.svg#${name}"/></svg>`;
+const iconButton = (action, id, name, label, disabled = false) => `<button type="button" class="icon-button" data-action="${action}" data-id="${escape(id)}" title="${escape(label)}" aria-label="${escape(label)}" ${disabled ? 'disabled' : ''}>${icon(name)}</button>`;
+const option = (value, name, selected, disabled = false) => `<option value="${escape(value)}" ${value === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${escape(name)}</option>`;
+const personLabel = person => `${person.name}${person.deleted ? '（已刪除）' : !person.active ? '（已停用）' : ''}`;
+let state = null, repository, ready = false, busy = false, toastTimer, dialogAction;
+let filters = { search:'', category:'', person:'', difficulty:'', sort:'manual', unassigned:false };
+const localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+const writable = () => ready && !busy;
+
+function notify(message) {
+  $('#toast').textContent = message;
+  $('#toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 3500);
+}
+function warning(message) {
+  $('#connection-warning').textContent = message;
+  $('#connection-warning').hidden = !message;
+}
+function controls() {
+  document.querySelectorAll('[data-write]').forEach(button => { button.disabled = !writable(); });
+  document.querySelectorAll('#editor input, #editor select, #editor textarea').forEach(field => { field.disabled = busy; });
+  $('#export').disabled = !state;
+}
+function connection(connected, label) {
+  ready = connected;
+  $('#sync-status').textContent = busy ? '儲存中…' : label;
+  controls();
+  renderLists();
+}
+async function commit(command) {
+  if (!writable()) { notify('目前無法儲存，請等待連線恢復'); return false; }
+  busy = true;
+  controls();
+  $('#sync-status').textContent = '儲存中…';
+  renderLists();
+  try {
+    const saved = await repository.commit(command);
+    if (!state || saved.revision >= state.revision) state = saved;
+    render();
+    notify('已儲存');
+    return true;
+  } catch (error) {
+    $('#dialog-error').textContent = error.message;
+    notify(error.message);
+    return false;
+  } finally {
+    busy = false;
+    $('#sync-status').textContent = ready ? (localPreview ? '本機測試資料已儲存' : '資料已同步') : '連線中斷，僅供查看';
+    controls();
+    renderLists();
+  }
+}
+
+function categoriesOptions(selected, excluded = '') {
+  return [...state.categories].sort((a,b) => a.order - b.order).filter(c => c.id !== excluded).map(c => option(c.id, c.name, selected)).join('');
+}
+function peopleOptions(selected, excluded = '') {
+  return option('', '未分配', selected ?? '') + state.staff.filter(p => p.id !== excluded && ((p.active && !p.deleted) || p.id === selected)).map(p => option(p.id, personLabel(p), selected, !p.active || p.deleted)).join('');
+}
+function render() {
+  if (!state) return;
+  const stats = statistics(state);
+  for (const key of ['total','assigned','unassigned','people']) $(`#${key}`).textContent = stats[key];
+  $('#filter-category').innerHTML = option('', '全部分類', filters.category) + categoriesOptions(filters.category);
+  $('#filter-person').innerHTML = option('', '全部同仁', filters.person) + option('unassigned', '未分配', filters.person) + state.staff.filter(p => !p.deleted || state.tasks.some(t => t.assigneeId === p.id)).map(p => option(p.id, personLabel(p), filters.person)).join('');
+  if (!state.categories.some(c => c.id === filters.category)) filters.category = '';
+  if (filters.person && filters.person !== 'unassigned' && !state.staff.some(p => p.id === filters.person)) filters.person = '';
+  $('#workloads').innerHTML = stats.workloads.length ? stats.workloads.map(p => `<tr><td>${escape(personLabel(p))}</td><td>${p.count}</td><td>${p.rated}</td><td>${p.stars}</td><td>${p.average === null ? '—' : p.average.toFixed(1)}</td><td>${p.unrated}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">尚無同仁</td></tr>';
+  $('#backup-status').textContent = `資料版本 ${state.schemaVersion}・修訂 ${state.revision}・${state.tasks.length} 項工作`;
+  controls();
+  renderLists();
+}
+function renderLists() {
+  if (!state) return;
+  const disabled = !writable();
+  const tasks = selectTasks(state, filters);
+  $('#result-count').textContent = `${tasks.length} / ${state.tasks.length}`;
+  const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned;
+  $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task" data-task-id="${escape(task.id)}">
+    <div class="task-title"><button class="task-name" data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${escape(task.name)}</button>${task.notes ? `<p class="task-notes">${escape(task.notes)}</p>` : ''}</div>
+    <label><span>分類</span><select aria-label="${escape(task.name)}的分類" data-field="categoryId" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${categoriesOptions(task.categoryId)}</select></label>
+    <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>清除評估</button>` : ''}</div></div>
+    <label><span>負責人</span><select aria-label="${escape(task.name)}的負責人" data-field="assigneeId" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${peopleOptions(task.assigneeId)}</select></label>
+    <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
+      <button data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('pencil')}編輯與備註</button>
+      <button data-action="move-task-up" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === 0 ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
+      <button data-action="move-task-down" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === tasks.length - 1 ? 'disabled' : ''}>${icon('arrow-down')}下移</button>
+      <button class="danger" data-action="delete-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('trash-2')}刪除工作</button>
+    </div></details>
+  </article>`).join('') : '<p class="empty">沒有符合條件的工作</p>';
+  const people = state.staff.filter(p => !p.deleted);
+  $('#staff-list').innerHTML = people.length ? people.map(person => `<div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>${state.tasks.filter(t => t.assigneeId === person.id).length} 項工作</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}</div></div>`).join('') : '<p class="empty">尚無同仁，請新增同仁姓名</p>';
+  const categories = [...state.categories].sort((a,b) => a.order - b.order);
+  $('#categories-list').innerHTML = categories.map((category,index) => `<div class="management-row"><div class="label"><strong>${escape(category.name)}</strong><small>${state.tasks.filter(t => t.categoryId === category.id).length} 項工作</small></div><div class="management-actions">${iconButton('move-category-up',category.id,'arrow-up','分類上移',disabled || index===0)}${iconButton('move-category-down',category.id,'arrow-down','分類下移',disabled || index===categories.length-1)}${iconButton('rename-category',category.id,'pencil','修改分類',disabled)}${iconButton('delete-category',category.id,'trash-2','刪除分類',disabled || categories.length===1)}</div></div>`).join('');
+}
+
+function openDialog(title, fields, submit, label = '儲存') {
+  if (!writable()) return;
+  $('#dialog-title').textContent = title;
+  $('#dialog-fields').innerHTML = fields;
+  $('#dialog-error').textContent = '';
+  $('#save-dialog').textContent = label;
+  dialogAction = submit;
+  $('#editor').showModal();
+  const first = $('#dialog-fields input, #dialog-fields select, #dialog-fields textarea');
+  first?.focus();
+}
+function editTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  openDialog(task ? '編輯工作' : '新增工作', `
+    <label>工作名稱<input name="name" maxlength="160" required value="${escape(task?.name || '')}" autocomplete="off"></label>
+    <label>工作分類<select name="categoryId" aria-label="工作分類">${categoriesOptions(task?.categoryId || state.categories[0].id)}</select></label>
+    <label>備註<textarea name="notes" maxlength="5000">${escape(task?.notes || '')}</textarea></label>
+    <div id="duplicate-warning" class="warning" hidden></div>`, async form => {
+      const name = form.get('name').trim();
+      if (!name) { $('#dialog-error').textContent = '請填寫工作名稱'; return false; }
+      const matches = duplicates(state.tasks, name, task?.id);
+      const allowed = $('#confirm-duplicate')?.checked === true;
+      if (matches.length && !allowed) {
+        $('#duplicate-warning').hidden = false;
+        $('#duplicate-warning').innerHTML = `<p>發現相同或相似工作：${matches.map(t => escape(t.name)).join('、')}</p><label class="check"><input type="checkbox" id="confirm-duplicate">確認仍要保留此工作</label>`;
+        return false;
+      }
+      const values = { name, notes:form.get('notes').trim(), categoryId:form.get('categoryId') };
+      return commit(task ? { type:'editTask', id:task.id, changes:values, allowDuplicate:allowed } : { type:'addTask', task:{ id:crypto.randomUUID(), ...values }, allowDuplicate:allowed });
+    });
+  $('#editor-form [name="name"]').addEventListener('input', () => { $('#duplicate-warning').hidden = true; $('#duplicate-warning').innerHTML = ''; });
+}
+function editName(kind, id) {
+  const collection = kind === 'Person' ? 'staff' : 'categories';
+  const record = state[collection].find(entry => entry.id === id);
+  const label = kind === 'Person' ? '同仁姓名' : '分類名稱';
+  openDialog(`${record ? '修改' : '新增'}${label}`, `<label>${label}<input name="name" value="${escape(record?.name || '')}" required maxlength="160" autocomplete="off"></label>`, form => commit({ type:`${record ? 'rename' : 'add'}${kind}`, id:record?.id || crypto.randomUUID(), name:form.get('name').trim() }));
+}
+function personStatus(id, deleted) {
+  const person = state.staff.find(p => p.id === id);
+  if (!person.active && !deleted) { commit({ type:'personStatus', id, active:true, deleted:false }); return; }
+  const count = state.tasks.filter(t => t.assigneeId === id).length;
+  openDialog(`${deleted ? '刪除' : '停用'} ${person.name}`, `<p>${count ? `此同仁目前負責 ${count} 項工作，請選擇如何處理。` : '此同仁目前沒有負責的工作。'}同仁 ID 與既有關聯會保留，不刪除工作。</p>${count ? `<label>重新分配<select name="reassign"><option value="keep">保留原負責人（標記為${deleted ? '已刪除' : '已停用'}）</option><option value="">改為未分配</option>${state.staff.filter(p => p.id !== id && p.active && !p.deleted).map(p => option(p.id,p.name,'keep')).join('')}</select></label>` : ''}`, form => {
+    const target = form.get('reassign');
+    return commit({ type:'personStatus', id, active:false, deleted, ...(target !== null && target !== 'keep' ? { reassignTo:target || null } : {}) });
+  }, deleted ? '確認刪除' : '確認停用');
+}
+
+document.addEventListener('click', async event => {
+  const trigger = event.target.closest('[data-action]');
+  if (!trigger || !writable()) return;
+  const { action, id, value } = trigger.dataset;
+  if (action === 'edit-task') editTask(id);
+  else if (action === 'rate' || action === 'clear-rating') {
+    await commit({ type:'editTask', id, changes:{difficulty: action === 'rate' ? Number(value) : null} });
+    const row = Array.from(document.querySelectorAll('[data-task-id]')).find(row => row.dataset.taskId === id);
+    row?.querySelector(`.star[data-value="${value || 1}"]`)?.focus({preventScroll:true});
+  }
+  else if (action === 'delete-task') {
+    const task = state.tasks.find(t => t.id === id);
+    openDialog('刪除工作', `<p>確定刪除「${escape(task.name)}」？此操作無法復原。</p>`, () => commit({type:'deleteTask',id}), '確認刪除');
+  }
+  else if (action === 'rename-person') editName('Person',id);
+  else if (action === 'rename-category') editName('Category',id);
+  else if (action === 'person-status') personStatus(id,false);
+  else if (action === 'delete-person') personStatus(id,true);
+  else if (action === 'delete-category') {
+    const category = state.categories.find(c => c.id === id);
+    const count = state.tasks.filter(t => t.categoryId === id).length;
+    openDialog('刪除分類', `<p>刪除「${escape(category.name)}」${count ? `並轉移其中 ${count} 項工作` : ''}？</p>${count ? `<label>轉移至<select name="targetId" required><option value="">選擇轉移分類</option>${categoriesOptions('',id)}</select></label>` : ''}`, form => commit({type:'deleteCategory',id,targetId:form.get('targetId')}), '確認刪除');
+  }
+  else if (action.startsWith('move-')) await commit({type:'move',collection:action.includes('category') ? 'categories' : 'tasks',id,direction:action.endsWith('up') ? -1 : 1});
+});
+$('#tasks').addEventListener('change', async event => {
+  if (!event.target.matches('select[data-field]')) return;
+  const {field,id} = event.target.dataset;
+  await commit({type:'editTask',id,changes:{[field]:event.target.value || null}});
+  const row = Array.from(document.querySelectorAll('[data-task-id]')).find(row => row.dataset.taskId === id);
+  row?.querySelector(`[data-field="${field}"]`)?.focus({preventScroll:true});
+});
+$('#editor-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (!writable()) return;
+  $('#dialog-error').textContent = '';
+  try { if (await dialogAction(new FormData(event.currentTarget))) $('#editor').close(); }
+  catch(error) { $('#dialog-error').textContent = error.message; }
+});
+for (const selector of ['#close-dialog','#cancel-dialog']) $(selector).onclick = () => { if (!busy) $('#editor').close(); };
+$('#editor').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+$('#add-task').onclick = () => editTask();
+$('#add-person').onclick = () => editName('Person');
+$('#add-category').onclick = () => editName('Category');
+document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-tab]').forEach(tab => { const selected = tab === button; tab.setAttribute('aria-pressed', String(selected)); $(`#view-${tab.dataset.tab}`).hidden = !selected; });
+}));
+for (const [id,key] of [['search','search'],['filter-category','category'],['filter-person','person'],['filter-difficulty','difficulty'],['sort','sort'],['only-unassigned','unassigned']]) {
+  $(`#${id}`).addEventListener(id === 'search' ? 'input' : 'change', event => { filters[key] = id === 'only-unassigned' ? event.target.checked : event.target.value; renderLists(); });
+}
+$('#reset-filters').onclick = () => {
+  filters = {search:'',category:'',person:'',difficulty:'',sort:'manual',unassigned:false};
+  for (const id of ['search','filter-category','filter-person','filter-difficulty']) $(`#${id}`).value = '';
+  $('#sort').value = 'manual'; $('#only-unassigned').checked = false; renderLists();
+};
+document.addEventListener('click', event => document.querySelectorAll('.task-menu[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; }));
+function download(state, suffix = '') {
+  const url = URL.createObjectURL(new Blob([backup(state)], {type:'application/json'}));
+  const link = document.createElement('a'); link.href = url; link.download = `庶務工作${suffix}_${new Date().toISOString().slice(0,10)}.json`; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+$('#export').onclick = () => { download(state); notify('備份已匯出'); };
+$('#import').onclick = () => $('#import-file').click();
+$('#import-file').addEventListener('change', async event => {
+  const file = event.target.files[0]; event.target.value = '';
+  if (!file) return;
+  try {
+    if (file.size > 5_000_000) throw new Error('備份檔不得超過 5 MB');
+    const data = parseBackup(await file.text());
+    const expectedRevision = state.revision;
+    openDialog('確認還原備份', `<p>目前 ${state.tasks.length} 項工作將被取代為備份中的 ${data.tasks.length} 項工作、${data.categories.length} 個分類、${data.staff.length} 位同仁（含停用與保留紀錄）。</p><p class="warning">確認後會先下載目前資料備份，再還原。其他工具不受影響。</p>`, async () => {
+      download(state, '_還原前');
+      return commit({type:'import',data,expectedRevision});
+    }, '確認還原');
+  } catch(error) { notify(error.message); }
+});
+
+try {
+  if (!localPreview) {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) { state = validateState(JSON.parse(cached)); render(); $('#sync-status').textContent = '本機快照，正在連線…'; }
+    } catch { warning('無法讀取本機快照，正在確認雲端資料；不會清除原有快照。'); }
+  }
+  repository = localPreview ? createLocalRepository(localStorage) : await createCloudRepository(warning);
+  await repository.start(incoming => { state = incoming; render(); }, connection, error => warning(error.message));
+  if (localPreview) window.addEventListener('storage', event => {
+    if (event.key === LOCAL_KEY && event.newValue && !busy) {
+      try { state = validateState(JSON.parse(event.newValue)); render(); } catch(error) { warning(error.message); }
+    }
+  });
+} catch(error) {
+  ready = false; controls(); renderLists();
+  $('#sync-status').textContent = '連線或資料載入失敗';
+  warning(`${error.message}。可重新整理重試；不會用預設資料覆蓋既有紀錄。`);
+}

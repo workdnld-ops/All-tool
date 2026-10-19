@@ -1,0 +1,10 @@
+import { createRequire } from 'node:module';
+import { writeFile, copyFile } from 'node:fs/promises';
+const require = createRequire(new URL('../apps/purchase-accounting/package.json', import.meta.url));
+const React = require('react');
+const { renderToStaticMarkup } = require('react-dom/server');
+const icons = require('lucide-react');
+const names = { 'plus':'Plus', 'x':'X', 'rotate-ccw':'RotateCcw', 'download':'Download', 'upload':'Upload', 'star':'Star', 'ellipsis':'Ellipsis', 'pencil':'Pencil', 'trash-2':'Trash2', 'arrow-up':'ArrowUp', 'arrow-down':'ArrowDown', 'clipboard-list':'ClipboardList' };
+const symbols = Object.entries(names).map(([id,name]) => `<symbol id="${id}" viewBox="0 0 24 24">${renderToStaticMarkup(React.createElement(icons[name], {size:24, fill:'inherit', stroke:'inherit'}))}</symbol>`).join('');
+await writeFile(new URL('../apps/work-assignment/icons.svg', import.meta.url), `<svg xmlns="http://www.w3.org/2000/svg"><defs>${symbols}</defs></svg>\n`);
+await copyFile(new URL('../apps/purchase-accounting/node_modules/lucide-react/LICENSE', import.meta.url), new URL('../apps/work-assignment/icons-LICENSE.txt', import.meta.url));

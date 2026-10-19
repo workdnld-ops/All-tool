@@ -4,6 +4,7 @@
 
 ## 工具清單
 
+- `apps/work-assignment`：庶務工作，工作分類、同仁指派、難易度與負擔統計、JSON 備份還原。
 - `apps/credit-card-slip-stats`：信用卡簽單紙消耗統計。
 - `apps/purchase-accounting`：採購記帳，Cloudflare 會使用 build 後的 `apps/purchase-accounting/dist/`。
 - `apps/drink-calculator`：飲料計算器，包含計算頁、品項設定頁與 Firebase 歷史訂單。
