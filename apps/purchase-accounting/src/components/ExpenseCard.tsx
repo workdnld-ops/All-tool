@@ -129,6 +129,7 @@ export function ExpenseCard({
   };
 
   const currentTag = tags.find(t => t.id === card.tagId);
+  const isSnack = card.content.includes('零食');
   const { goods, receipt } = statusParts(card.status);
   const label = statusLabel(card.status);
   const ReceiptIcon = receipt === 2 ? FileCheck2 : FileText;
@@ -139,6 +140,8 @@ export function ExpenseCard({
       style={style}
       className={cn(
         "expense-card rounded-lg border border-border transition-colors",
+        isSnack && currentTag?.name === '瑞光' && 'expense-card-snack-ruiguang',
+        isSnack && currentTag?.name === '內湖' && 'expense-card-snack-neihu',
         isDeleteMode && "cursor-pointer hover:bg-destructive/20",
         isSelected && "ring-2 ring-destructive",
         isDragging && "opacity-50"
