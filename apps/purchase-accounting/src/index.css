@@ -8,9 +8,9 @@
 .status-amber { color: hsl(39 96% 43%); --status-tint: 43 95% 96%; }
 .status-green { color: hsl(156 82% 34%); --status-tint: 150 70% 96%; }
 .status-gray { color: hsl(220 9% 40%); --status-tint: 215 25% 95%; }
-.status-composite { position: relative; width: 30px; height: 30px; display: block; }
-.status-trigger .status-composite > svg { width: 26px; height: 26px; position: absolute; top: 1px; left: 0; stroke-width: 2.5; }
-.status-trigger .status-composite > .status-badge { width: 17px; height: 19px; top: 13px; left: 15px; background: hsl(210 30% 97%); border-radius: 3px; }
+.status-composite { position: relative; width: 24px; height: 24px; display: block; }
+.status-trigger .status-composite > svg { width: 20px; height: 20px; position: absolute; top: 1px; left: 0; stroke-width: 2.25; }
+.status-trigger .status-composite > .status-badge { width: 13px; height: 15px; top: 10px; left: 11px; background: hsl(210 30% 97%); border-radius: 3px; }
 .status-option { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 64px; border: 1px solid transparent; border-radius: 8px; background: hsl(var(--status-tint)); touch-action: manipulation; }
 .status-option span { font-size: 12px; font-weight: 600; }
 .status-option[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
