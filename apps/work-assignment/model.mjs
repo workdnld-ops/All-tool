@@ -68,6 +68,7 @@ export function validateState(input) {
         allIds.add(log.id);
         if (!date(log.at) || !date(log.createdAt)) fail('紀錄日期不正確');
         text(log.text, 5000, '執行內容');
+        if (log.executorIds !== undefined && (!Array.isArray(log.executorIds) || new Set(log.executorIds).size !== log.executorIds.length || log.executorIds.some(id => !staff.has(id)))) fail('實際執行同仁資料不正確');
       }
     }
   }
@@ -149,6 +150,15 @@ export function statistics(state) {
   };
 }
 
+export function executionHistory(state, personId) {
+  return state.tasks.map(task => ({
+    taskId: task.id, name: task.name,
+    logs: (task.logs ?? []).filter(log => (log.executorIds ?? []).includes(personId))
+      .sort((a,b) => Date.parse(b.at) - Date.parse(a.at)),
+  })).filter(group => group.logs.length)
+    .sort((a,b) => Date.parse(b.logs[0].at) - Date.parse(a.logs[0].at));
+}
+
 export function applyCommand(original, command, now = new Date().toISOString()) {
   const state = validateState(original);
   const find = (key, id) => state[key].find(entry => entry.id === id) ?? fail('項目已被其他裝置刪除，請重新確認');
@@ -191,7 +201,7 @@ export function applyCommand(original, command, now = new Date().toISOString()) 
     }
     case 'addLog': {
       const task = find('tasks', command.id);
-      task.logs = [...(task.logs ?? []), {id:command.log.id, at:command.log.at, text:command.log.text, createdAt:now}];
+      task.logs = [...(task.logs ?? []), {id:command.log.id, at:command.log.at, text:command.log.text, executorIds:command.log.executorIds ?? [], createdAt:now}];
       task.updatedAt = now;
       break;
     }

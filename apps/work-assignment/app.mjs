@@ -1,5 +1,5 @@
-import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees } from './model.mjs?v=1.2.0';
-import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.2.0';
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory } from './model.mjs?v=1.3.0';
+import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.3.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -97,11 +97,14 @@ function renderLists() {
       <button class="danger" data-action="delete-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('trash-2')}刪除工作</button>
     </div></details>
   </article>`).join('') : '<p class="empty">沒有符合條件的工作</p>';
-  const people = state.staff.filter(p => !p.deleted || state.tasks.some(task => assignees(task).includes(p.id)));
+  const people = state.staff.filter(p => !p.deleted || state.tasks.some(task => assignees(task).includes(p.id)) || executionHistory(state,p.id).length);
   const workLinks = tasks => tasks.length ? `<ul class="person-work">${tasks.map(task => `<li><button data-action="task-log" data-id="${escape(task.id)}">${escape(task.name)}<small>${task.logs?.length ?? 0} 次紀錄</small></button></li>`).join('')}</ul>` : '<p class="muted">尚無負責工作</p>';
   $('#staff-list').innerHTML = (people.length ? people.map(person => {
     const tasks = state.tasks.filter(task => assignees(task).includes(person.id));
-    return `<div class="person-section"><div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>${tasks.length} 項工作</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}${!person.deleted ? `<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}` : ''}</div></div>${workLinks(tasks)}</div>`;
+    const history = executionHistory(state, person.id);
+    const count = history.reduce((sum,group) => sum + group.logs.length,0);
+    const historyHtml = history.length ? history.map(group => `<details class="person-history-group"><summary>${escape(group.name)}<small>${group.logs.length} 次 · 最近 ${escape(new Date(group.logs[0].at).toLocaleDateString('zh-TW'))}</small></summary><div class="execution-history">${group.logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW',{hour12:false}))}</time><p>${escape(log.text)}</p></article>`).join('')}</div></details>`).join('') : '<p class="muted">尚無指定此同仁的執行紀錄</p>';
+    return `<div class="person-section"><div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>負責 ${tasks.length} 項 · 執行 ${history.length} 種工作／${count} 次</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}${!person.deleted ? `<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}` : ''}</div></div><h4>目前負責</h4>${workLinks(tasks)}<h4>實際執行紀錄</h4>${historyHtml}</div>`;
   }).join('') : '<p class="empty">尚無同仁，請新增同仁姓名</p>') + `<div class="person-section"><h3>共通分擔</h3>${workLinks(state.tasks.filter(task => task.shared))}</div>`;
   const categories = [...state.categories].sort((a,b) => a.order - b.order);
   $('#categories-list').innerHTML = categories.map((category,index) => `<div class="management-row"><div class="label"><strong>${escape(category.name)}</strong><small>${state.tasks.filter(t => t.categoryId === category.id).length} 項工作</small></div><div class="management-actions">${iconButton('move-category-up',category.id,'arrow-up','分類上移',disabled || index===0)}${iconButton('move-category-down',category.id,'arrow-down','分類下移',disabled || index===categories.length-1)}${iconButton('rename-category',category.id,'pencil','修改分類',disabled)}${iconButton('delete-category',category.id,'trash-2','刪除分類',disabled || categories.length===1)}</div></div>`).join('');
@@ -133,10 +136,10 @@ function showLogs(id) {
   const now = new Date();
   const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
   const logs = [...(task.logs ?? [])].sort((a,b) => Date.parse(b.at) - Date.parse(a.at));
-  openDialog('工作執行紀錄', `<p>${escape(task.name)} · ${logs.length} 次</p><label>執行時間<input name="at" type="datetime-local" required value="${localTime}"></label><label>執行內容<textarea name="text" maxlength="5000" required placeholder="記錄這次做了甚麼"></textarea></label><div class="execution-history">${logs.length ? logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW', {hour12:false}))}</time><p>${escape(log.text)}</p></article>`).join('') : '<p class="muted">尚無執行紀錄</p>'}</div>`, form => {
+  openDialog('工作執行紀錄', `<p>${escape(task.name)} · ${logs.length} 次</p><label>執行時間<input name="at" type="datetime-local" required value="${localTime}"></label><fieldset class="executor-field"><legend>實際執行同仁（可多選）</legend><div class="assignee-options">${state.staff.filter(person => !person.deleted).map(person => `<label class="check"><input name="executors" type="checkbox" value="${escape(person.id)}">${escape(personLabel(person))}</label>`).join('')}</div><p class="muted">未勾選為未指定，不計入個人執行次數。</p></fieldset><label>執行內容<textarea name="text" maxlength="5000" required placeholder="記錄這次做了甚麼"></textarea></label><div class="execution-history">${logs.length ? logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW', {hour12:false}))}</time><div class="log-executors">${escape((log.executorIds ?? []).map(id => personLabel(state.staff.find(person => person.id === id))).join('、') || '未指定執行同仁')}</div><p>${escape(log.text)}</p></article>`).join('') : '<p class="muted">尚無執行紀錄</p>'}</div>`, form => {
     const at = new Date(form.get('at'));
     if (!Number.isFinite(at.getTime())) { $('#dialog-error').textContent = '請填寫有效的日期時間'; return false; }
-    return commit({type:'addLog', id, log:{id:crypto.randomUUID(), at:at.toISOString(), text:form.get('text').trim()}});
+    return commit({type:'addLog', id, log:{id:crypto.randomUUID(), at:at.toISOString(), text:form.get('text').trim(), executorIds:form.getAll('executors')}});
   }, '新增紀錄', true);
   controls();
 }

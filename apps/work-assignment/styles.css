@@ -182,3 +182,10 @@ header { padding-bottom:4px; }
 .execution-history time { font-size:12px; color:var(--muted); }
 .execution-history p { white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0; }
 @media(max-width:760px) { .task-owner { grid-column:2; grid-row:3; } }
+.executor-field { border:0; padding:0; margin:0; min-width:0; }
+.executor-field legend,.person-section h4 { color:var(--muted); font-size:12px; font-weight:500; margin:12px 0 7px; }
+.log-executors { color:var(--primary); font-size:12px; margin-top:5px; overflow-wrap:anywhere; }
+.person-history-group { border-bottom:1px solid var(--line); padding:10px 0; }
+.person-history-group summary { cursor:pointer; overflow-wrap:anywhere; }
+.person-history-group summary small { display:block; margin:5px 0 0 18px; }
+.person-history-group .execution-history { margin-top:10px; }

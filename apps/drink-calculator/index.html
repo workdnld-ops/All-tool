@@ -22,6 +22,9 @@
     }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    .history-heading { display:flex; justify-content:space-between; padding:10px; font-weight:700; }
+    .order-actions { display:flex; gap:6px; align-items:center; }
 
     html,
     body {
@@ -104,7 +107,7 @@
     }
 
     .store-tabs {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .actions {
@@ -321,7 +324,7 @@
     }
 
     .history-list {
-      max-height: 170px;
+      max-height: none;
       overflow-y: auto;
       padding: 0 10px 10px;
       display: grid;
@@ -419,7 +422,7 @@
 
     <section class="store-tabs" id="store-tabs" aria-label="選擇分店"></section>
 
-    <section class="summary" aria-label="統計">
+    <section class="summary calculator-content" aria-label="統計">
       <div class="metric">
         <span>總箱數</span>
         <strong><span id="total-boxes">0</span> 箱</strong>
@@ -430,21 +433,21 @@
       </div>
     </section>
 
-    <section class="item-list" id="item-list" aria-label="飲料品項"></section>
+    <section class="item-list calculator-content" id="item-list" aria-label="飲料品項"></section>
 
-    <div class="actions">
+    <div class="actions calculator-content">
       <button class="button" id="reset-button" type="button">重置</button>
       <button class="button" id="line-button" type="button" disabled>Line訊息</button>
       <button class="button primary" id="save-button" type="button" disabled>儲存訂單</button>
     </div>
 
-    <details class="history-panel">
-      <summary>
+    <section class="history-panel" id="history-panel" hidden>
+      <div class="history-heading">
         <span>最近訂單</span>
         <span id="history-count">0 筆</span>
-      </summary>
+      </div>
       <section class="history-list" id="history-list" aria-label="最近訂單"></section>
-    </details>
+    </section>
   </main>
 
   <script>
@@ -467,6 +470,7 @@
   </script>
 
   <script type="module">
+    import { createOrderDraft } from "./reorder.mjs?v=1";
     import {
       STORE_OPTIONS,
       deleteOrder,
@@ -495,6 +499,8 @@
 
     let items = [];
     let orders = [];
+    let historyVisible = false;
+    let itemsReady = false;
     let selectedStoreId = localStorage.getItem("drinkCalculatorStore") || STORE_OPTIONS[0].id;
     let quantitiesByStore = Object.fromEntries(STORE_OPTIONS.map((store) => [store.id, {}]));
     let inventoryByStore = Object.fromEntries(STORE_OPTIONS.map((store) => [store.id, {}]));
@@ -602,13 +608,16 @@
     function renderStores() {
       storeTabs.innerHTML = STORE_OPTIONS.map((store) => `
         <button
-          class="store-tab ${store.id === selectedStoreId ? "active" : ""}"
+          class="store-tab ${!historyVisible && store.id === selectedStoreId ? "active" : ""}"
+          aria-pressed="${!historyVisible && store.id === selectedStoreId}"
           type="button"
           data-store="${store.id}"
         >
           ${escapeHtml(store.shortName)}
         </button>
-      `).join("");
+      `).join("") + `<button class="store-tab ${historyVisible ? 'active' : ''}" type="button" data-history aria-pressed="${historyVisible}">最近訂單</button>`;
+      document.querySelectorAll(".calculator-content").forEach(element => { element.hidden = historyVisible; });
+      document.getElementById("history-panel").hidden = !historyVisible;
     }
 
     function renderItems() {
@@ -960,7 +969,7 @@
                 <h2>${escapeHtml(order.storeName || "")} · ${order.date || "未記錄日期"} · ${formatCurrency(order.totalPrice)}</h2>
                 <div class="order-meta">${formatQuantity(order.totalBoxes)} 箱 · ${lines || "沒有明細"}</div>
               </div>
-              <button class="delete" data-delete-order="${order.id}" type="button">刪除</button>
+              <div class="order-actions"><button class="button" data-reorder="${escapeHtml(order.id)}" type="button" ${itemsReady ? '' : 'disabled'}>訂購</button><button class="delete" data-delete-order="${escapeHtml(order.id)}" type="button">刪除</button></div>
             </div>
           </article>
         `;
@@ -968,9 +977,15 @@
     }
 
     storeTabs.addEventListener("click", (event) => {
+      if (event.target.closest("[data-history]")) {
+        historyVisible = true;
+        renderStores();
+        return;
+      }
       const button = event.target.closest("[data-store]");
       if (!button) return;
       selectedStoreId = button.dataset.store;
+      historyVisible = false;
       localStorage.setItem("drinkCalculatorStore", selectedStoreId);
       setStatus(`已切換到${getStore(selectedStoreId).shortName}`);
       renderStores();
@@ -1023,6 +1038,29 @@
     });
 
     historyList.addEventListener("click", async (event) => {
+      const reorder = event.target.closest("[data-reorder]");
+      if (reorder) {
+        if (!itemsReady) return;
+        const order = orders.find(order => order.id === reorder.dataset.reorder);
+        if (!order) { setStatus("訂單已不存在，請重新確認", true); return; }
+        try {
+          const draft = createOrderDraft(order, activeItems(), STORE_OPTIONS, getStoreLimit);
+          if (Object.keys(quantitiesByStore[draft.storeId] || {}).length && !confirm("這家店已有填寫中的數量，要用此訂單取代嗎？")) return;
+          selectedStoreId = draft.storeId;
+          localStorage.setItem("drinkCalculatorStore", selectedStoreId);
+          quantitiesByStore[selectedStoreId] = draft.quantities;
+          inventoryByStore[selectedStoreId] = draft.inventory;
+          historyVisible = false;
+          renderStores();
+          renderItems();
+          const notices = [
+            draft.skipped.length ? `略過未啟用、已刪除或無效品項：${draft.skipped.join('、')}` : '',
+            draft.clamped.length ? `已依目前上限調整：${draft.clamped.join('、')}` : '',
+          ].filter(Boolean);
+          setStatus(`已套用${getStore(selectedStoreId).shortName}訂單數量${notices.length ? '；' + notices.join('；') : ''}`, notices.length > 0);
+        } catch (error) { setStatus(error.message, true); }
+        return;
+      }
       const button = event.target.closest("[data-delete-order]");
       if (!button) return;
       if (!confirm("確定刪除這筆飲料訂單？")) return;
@@ -1043,8 +1081,10 @@
     subscribeItems(
       (loadedItems) => {
         items = loadedItems;
+        itemsReady = true;
         setStatus("資料已同步");
         renderItems();
+        renderOrders();
       },
       () => setStatus("飲料資料讀取失敗，請確認網路或 Firebase 權限。", true),
     );

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createInitialState, initializeIfMissing, validateState, fromFirebase, applyCommand, selectTasks, statistics, duplicates, backup, parseBackup, SUPPLIES_NOTE } from '../apps/work-assignment/model.mjs';
+import { createInitialState, initializeIfMissing, validateState, fromFirebase, applyCommand, selectTasks, statistics, duplicates, backup, parseBackup, SUPPLIES_NOTE, executionHistory } from '../apps/work-assignment/model.mjs';
 import { createLocalRepository, createFirebaseRepository, CLOUD_PATH, CACHE_KEY } from '../apps/work-assignment/storage.mjs';
 const initial = () => createInitialState('2026-10-19T00:00:00.000Z');
 const addPerson = (state, id = 'person-a', name = '同仁 A') => applyCommand(state, {type:'addPerson',id,name});
@@ -9,6 +9,27 @@ const fakeStorage = () => {
   const map = new Map();
   return { getItem:key => map.has(key) ? map.get(key) : null, setItem:(key,value) => map.set(key,value) };
 };
+
+test('actual executors have independent dated counts unaffected by assignment, rename or retirement', () => {
+  let state = addPerson(addPerson(initial()), 'person-b', 'B');
+  const id = state.tasks[0].id;
+  state = edit(state,id,{assigneeId:'person-a'});
+  const log = (entryId, at, executorIds) => { state = applyCommand(state,{type:'addLog',id,log:{id:entryId,at,text:'完成',executorIds}}); };
+  log('run-old','2026-10-19T10:00:00Z',undefined);
+  log('run-both','2026-10-20T10:00:00Z',['person-a','person-b']);
+  log('run-b','2026-10-21T10:00:00Z',['person-b']);
+  assert.equal(executionHistory(state,'person-a')[0].logs.length,1);
+  assert.deepEqual(executionHistory(state,'person-b')[0].logs.map(x=>x.id),['run-b','run-both']);
+  state = applyCommand(state,{type:'renamePerson',id:'person-b',name:'新名字'});
+  state = applyCommand(state,{type:'personStatus',id:'person-b',active:false,deleted:true,reassignTo:null});
+  state = applyCommand(state,{type:'assignTask',id,ids:[],shared:true});
+  assert.equal(executionHistory(state,'person-b')[0].logs.length,2);
+  assert.deepEqual(executionHistory(parseBackup(backup(state)),'person-b'),executionHistory(state,'person-b'));
+  assert.throws(()=>applyCommand(state,{type:'addLog',id,log:{id:'bad-1',at:'2026-10-21',text:'完成',executorIds:['missing']}}));
+  assert.throws(()=>applyCommand(state,{type:'addLog',id,log:{id:'bad-2',at:'2026-10-21',text:'完成',executorIds:['person-a','person-a']}}));
+  delete state.tasks[0].logs[0].executorIds;
+  assert.equal(executionHistory(fromFirebase(state),'person-a')[0].logs.length,1);
+});
 
 test('multiple owners, shared assignments and reassignment preserve legacy IDs and records', () => {
   let state = addPerson(addPerson(initial()), 'person-b', 'B');
