@@ -40,7 +40,7 @@ textarea { min-height:92px; resize:vertical; }
 .table-head { padding:10px 12px; color:var(--muted); font-size:12px; border-bottom:1px solid var(--line); }
 .task { padding:12px; border-bottom:1px solid var(--line); background:white; }
 .task-name { display:block; text-align:left; background:none; border:0; padding:0; justify-content:flex-start; font-weight:600; width:100%; min-height:32px; overflow-wrap:anywhere; }
-.task-notes { color:var(--muted); font-size:12px; line-height:1.5; margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.task-notes { color:var(--muted); font-size:12px; line-height:1.5; margin:3px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .task label > span { display:none; }
 .rating { min-width:0; }
 .stars { display:flex; gap:0; }
@@ -106,3 +106,61 @@ dialog footer { display:flex; gap:8px; justify-content:flex-end; padding-top:12p
   .management-actions { max-width:180px; }
 }
 @media(prefers-reduced-motion:no-preference) { button { transition:background .12s ease; } }
+
+/* Keep navigation visible; reserve the expanded panel for secondary filters. */
+:root { --bg:#f4f6f8; --line:#e4e8ed; --ink:#202a35; }
+header { padding-bottom:4px; }
+.summary { border-top:0; margin-top:14px; padding:12px 0 18px; }
+.summary strong { font-size:28px; }
+.tabs { margin-bottom:22px; }
+.category-navigation { display:flex; flex-wrap:wrap; gap:6px; padding-bottom:16px; }
+.category-navigation button { border-color:transparent; background:#e9edf1; min-height:36px; padding:6px 10px; font-size:13px; gap:8px; }
+.category-navigation small { font-size:11px; font-variant-numeric:tabular-nums; }
+.category-navigation button { max-width:100%; }
+.category-navigation button span { min-width:0; overflow-wrap:anywhere; text-align:left; }
+.category-navigation button[aria-pressed="true"] { background:#dcefe9; border-color:#80b8a8; color:#175c50; font-weight:600; }
+.category-navigation button[aria-pressed="true"] small { color:#175c50; }
+.search-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.search-row .search { min-width:0; }
+#toggle-filters[aria-expanded="true"] { border-color:var(--primary); color:var(--primary); }
+#filter-count:not(:empty) { background:#e3eee9; padding:1px 5px; border-radius:4px; font-size:12px; }
+.filters { padding:12px 0; border-block:1px solid var(--line); }
+.task-title { min-width:0; }
+.task { padding:9px 12px; }
+.task:hover { background:#fafcfc; }
+.task-name { font-size:14px; min-height:30px; }
+.category-badge { justify-self:start; text-align:left; justify-content:flex-start; min-height:30px; padding:4px 7px; border:0; background:#edf1f7; color:#53657c; font-size:11px; max-width:100%; overflow-wrap:anywhere; }
+.task select { border-color:transparent; background:#f4f6f8; }
+.task-menu summary { border-color:transparent; color:var(--muted); }
+.rating-caption { font-size:10px; min-height:14px; }
+.clear-rating { font-size:10px; min-height:18px; }
+@media(max-width:760px) {
+  .shell { padding-inline:14px; }
+  .brand img { width:28px; height:28px; }
+  .summary { padding-block:10px 14px; }
+  .summary strong { font-size:24px; }
+  .summary div { padding-inline:8px; }
+  .summary span { font-size:11px; }
+  .tabs { margin-bottom:16px; }
+  .category-navigation { gap:5px; padding-bottom:12px; }
+  .category-navigation button { font-size:12px; min-height:36px; padding:5px 8px; gap:5px; }
+  #tasks { gap:8px; }
+  .task { grid-template-columns:minmax(0,1fr) 108px; gap:3px 8px; padding:10px 12px; border-color:#e2e7eb; box-shadow:0 1px 2px #182b3b04; }
+  .task .task-title { grid-column:1/-1; padding-right:30px; }
+  .task-name { font-size:14px; line-height:1.5; }
+  .task-notes { margin:0 0 3px; font-size:11px; }
+  .category-badge { grid-column:1/-1; min-height:24px; padding:2px 6px; font-size:10px; }
+  .rating { grid-column:1; grid-row:3; }
+  .star { width:32px; height:38px; min-height:38px; padding:4px; }
+  .star .icon { width:21px; height:21px; }
+  .task label { grid-column:2; grid-row:3; align-self:center; }
+  .task label > span { display:none; }
+  .task select { font-size:16px; padding:6px; }
+  .task-menu { top:6px; right:4px; }
+  .task-menu summary { width:34px; height:34px; }
+}
+@media(max-width:360px) {
+  .shell { padding-inline:10px; }
+  .task { padding-inline:9px; grid-template-columns:minmax(0,1fr) 100px; gap:3px 4px; }
+  .star { width:30px; }
+}

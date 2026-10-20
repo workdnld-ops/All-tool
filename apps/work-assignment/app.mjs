@@ -67,7 +67,6 @@ function render() {
   if (!state) return;
   const stats = statistics(state);
   for (const key of ['total','assigned','unassigned','people']) $(`#${key}`).textContent = stats[key];
-  $('#filter-category').innerHTML = option('', '全部分類', filters.category) + categoriesOptions(filters.category);
   $('#filter-person').innerHTML = option('', '全部同仁', filters.person) + option('unassigned', '未分配', filters.person) + state.staff.filter(p => !p.deleted || state.tasks.some(t => t.assigneeId === p.id)).map(p => option(p.id, personLabel(p), filters.person)).join('');
   if (!state.categories.some(c => c.id === filters.category)) filters.category = '';
   if (filters.person && filters.person !== 'unassigned' && !state.staff.some(p => p.id === filters.person)) filters.person = '';
@@ -78,13 +77,17 @@ function render() {
 }
 function renderLists() {
   if (!state) return;
+  const categoriesSorted = [...state.categories].sort((a,b) => a.order - b.order);
+  $('#category-navigation').innerHTML = [{id:'',name:'全部工作'}, ...categoriesSorted].map(category => `<button type="button" data-category="${escape(category.id)}" aria-pressed="${filters.category === category.id}"><span>${escape(category.name)}</span><small>${category.id ? state.tasks.filter(task => task.categoryId === category.id).length : state.tasks.length}</small></button>`).join('');
+  const filterCount = [filters.person, filters.difficulty, filters.unassigned, filters.sort !== 'manual'].filter(Boolean).length;
+  $('#filter-count').textContent = filterCount ? String(filterCount) : '';
   const disabled = !writable();
   const tasks = selectTasks(state, filters);
   $('#result-count').textContent = `${tasks.length} / ${state.tasks.length}`;
   const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned;
   $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task" data-task-id="${escape(task.id)}">
     <div class="task-title"><button class="task-name" data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${escape(task.name)}</button>${task.notes ? `<p class="task-notes">${escape(task.notes)}</p>` : ''}</div>
-    <label><span>分類</span><select aria-label="${escape(task.name)}的分類" data-field="categoryId" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${categoriesOptions(task.categoryId)}</select></label>
+    <button class="category-badge" data-action="edit-task" data-id="${escape(task.id)}" title="修改工作分類" ${disabled ? 'disabled' : ''}>${escape(state.categories.find(category => category.id === task.categoryId)?.name)}</button>
     <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>清除評估</button>` : ''}</div></div>
     <label><span>負責人</span><select aria-label="${escape(task.name)}的負責人" data-field="assigneeId" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${peopleOptions(task.assigneeId)}</select></label>
     <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
@@ -115,7 +118,7 @@ function editTask(id) {
   const task = state.tasks.find(t => t.id === id);
   openDialog(task ? '編輯工作' : '新增工作', `
     <label>工作名稱<input name="name" maxlength="160" required value="${escape(task?.name || '')}" autocomplete="off"></label>
-    <label>工作分類<select name="categoryId" aria-label="工作分類">${categoriesOptions(task?.categoryId || state.categories[0].id)}</select></label>
+    <label>工作分類<select name="categoryId" aria-label="工作分類">${categoriesOptions(task?.categoryId || filters.category || state.categories[0].id)}</select></label>
     <label>備註<textarea name="notes" maxlength="5000">${escape(task?.notes || '')}</textarea></label>
     <div id="duplicate-warning" class="warning" hidden></div>`, async form => {
       const name = form.get('name').trim();
@@ -195,12 +198,24 @@ $('#add-category').onclick = () => editName('Category');
 document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
   document.querySelectorAll('[data-tab]').forEach(tab => { const selected = tab === button; tab.setAttribute('aria-pressed', String(selected)); $(`#view-${tab.dataset.tab}`).hidden = !selected; });
 }));
-for (const [id,key] of [['search','search'],['filter-category','category'],['filter-person','person'],['filter-difficulty','difficulty'],['sort','sort'],['only-unassigned','unassigned']]) {
+$('#category-navigation').addEventListener('click', event => {
+  const button = event.target.closest('[data-category]');
+  if (!button) return;
+  filters.category = button.dataset.category;
+  renderLists();
+  Array.from($('#category-navigation').querySelectorAll('button')).find(item => item.dataset.category === filters.category)?.focus({preventScroll:true});
+});
+$('#toggle-filters').onclick = () => {
+  const expanded = $('#toggle-filters').getAttribute('aria-expanded') !== 'true';
+  $('#toggle-filters').setAttribute('aria-expanded', String(expanded));
+  $('#advanced-filters').hidden = !expanded;
+};
+for (const [id,key] of [['search','search'],['filter-person','person'],['filter-difficulty','difficulty'],['sort','sort'],['only-unassigned','unassigned']]) {
   $(`#${id}`).addEventListener(id === 'search' ? 'input' : 'change', event => { filters[key] = id === 'only-unassigned' ? event.target.checked : event.target.value; renderLists(); });
 }
 $('#reset-filters').onclick = () => {
   filters = {search:'',category:'',person:'',difficulty:'',sort:'manual',unassigned:false};
-  for (const id of ['search','filter-category','filter-person','filter-difficulty']) $(`#${id}`).value = '';
+  for (const id of ['search','filter-person','filter-difficulty']) $(`#${id}`).value = '';
   $('#sort').value = 'manual'; $('#only-unassigned').checked = false; renderLists();
 };
 document.addEventListener('click', event => document.querySelectorAll('.task-menu[open]').forEach(menu => { if (!menu.contains(event.target)) menu.open = false; }));
