@@ -13,7 +13,7 @@
   <main class="shell">
     <header>
       <div class="brand"><img src="../../assets/toolbox-icon.svg" alt="" width="34" height="34"><div><h1>庶務工作</h1><p id="sync-status" role="status">連線中…</p></div></div>
-      <div class="actions"><span class="version">v1.1.0</span><a class="button" href="../../index.html">工具箱</a></div>
+      <div class="actions"><span class="version">v1.1.1</span><a class="button" href="../../index.html">工具箱</a></div>
     </header>
     <p id="connection-warning" class="warning" role="alert" hidden></p>
     <section class="summary" aria-label="工作總覽">
@@ -41,15 +41,15 @@
       </div>
       <div class="table-head" aria-hidden="true"><span>工作名稱</span><span>分類</span><span>難易度</span><span>負責人</span><span>操作</span></div>
       <div id="tasks" aria-label="工作清單"></div>
+    </section>
+    <section id="view-people" hidden>
+      <div class="section-heading"><h2>同仁管理</h2><button id="add-person" class="primary" data-write disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增同仁</button></div>
+      <div id="staff-list" class="management-list"></div>
       <details class="workload" open>
         <summary>同仁工作負擔</summary>
         <p class="muted">星數僅輔助分工，不代表實際工時；平均值不含未評估工作。</p>
         <div class="workload-scroll"><table><thead><tr><th>同仁</th><th>工作數</th><th>已評估</th><th>星數總和</th><th>平均星數</th><th>未評估</th></tr></thead><tbody id="workloads"></tbody></table></div>
       </details>
-    </section>
-    <section id="view-people" hidden>
-      <div class="section-heading"><h2>同仁管理</h2><button id="add-person" class="primary" data-write disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增同仁</button></div>
-      <div id="staff-list" class="management-list"></div>
     </section>
     <section id="view-categories" hidden>
       <div class="section-heading"><h2>工作分類</h2><button id="add-category" class="primary" data-write disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增分類</button></div>

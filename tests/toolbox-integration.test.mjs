@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, access } from 'node:fs/promises';
 
+test('staff workload appears only in the people management view', async () => {
+  const html = await readFile(new URL('../apps/work-assignment/index.html', import.meta.url), 'utf8');
+  const work = html.match(/<section id="view-work">([\s\S]*?)<\/section>/)[1];
+  const people = html.match(/<section id="view-people" hidden>([\s\S]*?)<\/section>/)[1];
+  assert.doesNotMatch(work, /id="workloads"/);
+  assert.match(people, /id="staff-list"/);
+  assert.match(people, /id="workloads"/);
+  assert.equal([...html.matchAll(/id="workloads"/g)].length, 1);
+});
+
 test('all toolbox destinations remain present and new tool is registered once', async () => {
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const destinations=[...html.matchAll(/data-tool-url="([^"]+)"/g)].map(match=>match[1]);
