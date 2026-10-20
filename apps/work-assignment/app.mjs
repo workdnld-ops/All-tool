@@ -1,5 +1,5 @@
-import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup } from './model.mjs';
-import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs';
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees } from './model.mjs?v=1.2.0';
+import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.2.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -67,10 +67,10 @@ function render() {
   if (!state) return;
   const stats = statistics(state);
   for (const key of ['total','assigned','unassigned','people']) $(`#${key}`).textContent = stats[key];
-  $('#filter-person').innerHTML = option('', '全部同仁', filters.person) + option('unassigned', '未分配', filters.person) + state.staff.filter(p => !p.deleted || state.tasks.some(t => t.assigneeId === p.id)).map(p => option(p.id, personLabel(p), filters.person)).join('');
+  $('#filter-person').innerHTML = option('', '全部同仁', filters.person) + option('unassigned', '未分配', filters.person) + option('shared', '共通分擔', filters.person) + state.staff.filter(p => !p.deleted || state.tasks.some(t => assignees(t).includes(p.id))).map(p => option(p.id, personLabel(p), filters.person)).join('');
   if (!state.categories.some(c => c.id === filters.category)) filters.category = '';
-  if (filters.person && filters.person !== 'unassigned' && !state.staff.some(p => p.id === filters.person)) filters.person = '';
-  $('#workloads').innerHTML = stats.workloads.length ? stats.workloads.map(p => `<tr><td>${escape(personLabel(p))}</td><td>${p.count}</td><td>${p.rated}</td><td>${p.stars}</td><td>${p.average === null ? '—' : p.average.toFixed(1)}</td><td>${p.unrated}</td></tr>`).join('') : '<tr><td colspan="6" class="empty">尚無同仁</td></tr>';
+  if (filters.person && !['unassigned','shared'].includes(filters.person) && !state.staff.some(p => p.id === filters.person)) filters.person = '';
+  $('#workloads').innerHTML = stats.workloads.length ? stats.workloads.map(p => `<tr><td>${escape(personLabel(p))}</td><td>${p.count}</td><td>${p.rated}</td><td>${p.stars}</td><td>${p.unrated}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">尚無同仁</td></tr>';
   $('#backup-status').textContent = `資料版本 ${state.schemaVersion}・修訂 ${state.revision}・${state.tasks.length} 項工作`;
   controls();
   renderLists();
@@ -89,7 +89,7 @@ function renderLists() {
     <div class="task-title"><button class="task-name" data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${escape(task.name)}</button>${task.notes ? `<p class="task-notes">${escape(task.notes)}</p>` : ''}</div>
     <button class="category-badge" data-action="edit-task" data-id="${escape(task.id)}" title="修改工作分類" ${disabled ? 'disabled' : ''}>${escape(state.categories.find(category => category.id === task.categoryId)?.name)}</button>
     <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>清除評估</button>` : ''}</div></div>
-    <label><span>負責人</span><select aria-label="${escape(task.name)}的負責人" data-field="assigneeId" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${peopleOptions(task.assigneeId)}</select></label>
+    <div class="task-owner"><button class="owner-button" data-action="assign-task" data-id="${escape(task.id)}" aria-label="${escape(task.name)}的負責人" ${disabled ? 'disabled' : ''}>${task.shared ? '共通分擔' : escape(assignees(task).map(id => personLabel(state.staff.find(p => p.id === id))).join('、') || '未分配')}</button><button class="log-button" data-action="task-log" data-id="${escape(task.id)}">${icon('clipboard-list')}紀錄 ${task.logs?.length ?? 0}</button></div>
     <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
       <button data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('pencil')}編輯與備註</button>
       <button data-action="move-task-up" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === 0 ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
@@ -97,22 +97,48 @@ function renderLists() {
       <button class="danger" data-action="delete-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('trash-2')}刪除工作</button>
     </div></details>
   </article>`).join('') : '<p class="empty">沒有符合條件的工作</p>';
-  const people = state.staff.filter(p => !p.deleted);
-  $('#staff-list').innerHTML = people.length ? people.map(person => `<div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>${state.tasks.filter(t => t.assigneeId === person.id).length} 項工作</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}</div></div>`).join('') : '<p class="empty">尚無同仁，請新增同仁姓名</p>';
+  const people = state.staff.filter(p => !p.deleted || state.tasks.some(task => assignees(task).includes(p.id)));
+  const workLinks = tasks => tasks.length ? `<ul class="person-work">${tasks.map(task => `<li><button data-action="task-log" data-id="${escape(task.id)}">${escape(task.name)}<small>${task.logs?.length ?? 0} 次紀錄</small></button></li>`).join('')}</ul>` : '<p class="muted">尚無負責工作</p>';
+  $('#staff-list').innerHTML = (people.length ? people.map(person => {
+    const tasks = state.tasks.filter(task => assignees(task).includes(person.id));
+    return `<div class="person-section"><div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>${tasks.length} 項工作</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}${!person.deleted ? `<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}` : ''}</div></div>${workLinks(tasks)}</div>`;
+  }).join('') : '<p class="empty">尚無同仁，請新增同仁姓名</p>') + `<div class="person-section"><h3>共通分擔</h3>${workLinks(state.tasks.filter(task => task.shared))}</div>`;
   const categories = [...state.categories].sort((a,b) => a.order - b.order);
   $('#categories-list').innerHTML = categories.map((category,index) => `<div class="management-row"><div class="label"><strong>${escape(category.name)}</strong><small>${state.tasks.filter(t => t.categoryId === category.id).length} 項工作</small></div><div class="management-actions">${iconButton('move-category-up',category.id,'arrow-up','分類上移',disabled || index===0)}${iconButton('move-category-down',category.id,'arrow-down','分類下移',disabled || index===categories.length-1)}${iconButton('rename-category',category.id,'pencil','修改分類',disabled)}${iconButton('delete-category',category.id,'trash-2','刪除分類',disabled || categories.length===1)}</div></div>`).join('');
 }
 
-function openDialog(title, fields, submit, label = '儲存') {
-  if (!writable()) return;
+function openDialog(title, fields, submit, label = '儲存', allowRead = false) {
+  if (!writable() && !allowRead) return;
   $('#dialog-title').textContent = title;
   $('#dialog-fields').innerHTML = fields;
+  $('#dialog-fields').onchange = null;
   $('#dialog-error').textContent = '';
   $('#save-dialog').textContent = label;
   dialogAction = submit;
   $('#editor').showModal();
   const first = $('#dialog-fields input, #dialog-fields select, #dialog-fields textarea');
   first?.focus();
+}
+function editAssignees(id) {
+  const task = state.tasks.find(task => task.id === id);
+  const selected = assignees(task);
+  openDialog('設定負責人', `<p>${escape(task.name)}</p><label class="check"><input type="checkbox" name="shared" ${task.shared ? 'checked' : ''}>共通分擔</label><div class="assignee-options">${state.staff.filter(person => (!person.deleted && person.active) || selected.includes(person.id)).map(person => `<label class="check"><input type="checkbox" name="owners" value="${escape(person.id)}" ${selected.includes(person.id) ? 'checked' : ''}>${escape(personLabel(person))}</label>`).join('')}</div><p class="muted">未勾選任何人即為未分配。</p>`, form => commit({type:'assignTask', id, shared:form.has('shared'), ids:form.getAll('owners')}));
+  $('#dialog-fields').onchange = event => {
+    if (event.target.name === 'shared' && event.target.checked) document.querySelectorAll('[name="owners"]').forEach(input => { input.checked = false; });
+    if (event.target.name === 'owners' && event.target.checked) $('#dialog-fields [name="shared"]').checked = false;
+  };
+}
+function showLogs(id) {
+  const task = state.tasks.find(task => task.id === id);
+  const now = new Date();
+  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+  const logs = [...(task.logs ?? [])].sort((a,b) => Date.parse(b.at) - Date.parse(a.at));
+  openDialog('工作執行紀錄', `<p>${escape(task.name)} · ${logs.length} 次</p><label>執行時間<input name="at" type="datetime-local" required value="${localTime}"></label><label>執行內容<textarea name="text" maxlength="5000" required placeholder="記錄這次做了甚麼"></textarea></label><div class="execution-history">${logs.length ? logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW', {hour12:false}))}</time><p>${escape(log.text)}</p></article>`).join('') : '<p class="muted">尚無執行紀錄</p>'}</div>`, form => {
+    const at = new Date(form.get('at'));
+    if (!Number.isFinite(at.getTime())) { $('#dialog-error').textContent = '請填寫有效的日期時間'; return false; }
+    return commit({type:'addLog', id, log:{id:crypto.randomUUID(), at:at.toISOString(), text:form.get('text').trim()}});
+  }, '新增紀錄', true);
+  controls();
 }
 function editTask(id) {
   const task = state.tasks.find(t => t.id === id);
@@ -144,7 +170,7 @@ function editName(kind, id) {
 function personStatus(id, deleted) {
   const person = state.staff.find(p => p.id === id);
   if (!person.active && !deleted) { commit({ type:'personStatus', id, active:true, deleted:false }); return; }
-  const count = state.tasks.filter(t => t.assigneeId === id).length;
+  const count = state.tasks.filter(t => assignees(t).includes(id)).length;
   openDialog(`${deleted ? '刪除' : '停用'} ${person.name}`, `<p>${count ? `此同仁目前負責 ${count} 項工作，請選擇如何處理。` : '此同仁目前沒有負責的工作。'}同仁 ID 與既有關聯會保留，不刪除工作。</p>${count ? `<label>重新分配<select name="reassign"><option value="keep">保留原負責人（標記為${deleted ? '已刪除' : '已停用'}）</option><option value="">改為未分配</option>${state.staff.filter(p => p.id !== id && p.active && !p.deleted).map(p => option(p.id,p.name,'keep')).join('')}</select></label>` : ''}`, form => {
     const target = form.get('reassign');
     return commit({ type:'personStatus', id, active:false, deleted, ...(target !== null && target !== 'keep' ? { reassignTo:target || null } : {}) });
@@ -153,9 +179,11 @@ function personStatus(id, deleted) {
 
 document.addEventListener('click', async event => {
   const trigger = event.target.closest('[data-action]');
-  if (!trigger || !writable()) return;
+  if (!trigger || (!writable() && trigger.dataset.action !== 'task-log')) return;
   const { action, id, value } = trigger.dataset;
   if (action === 'edit-task') editTask(id);
+  else if (action === 'assign-task') editAssignees(id);
+  else if (action === 'task-log') showLogs(id);
   else if (action === 'rate' || action === 'clear-rating') {
     await commit({ type:'editTask', id, changes:{difficulty: action === 'rate' ? Number(value) : null} });
     const row = Array.from(document.querySelectorAll('[data-task-id]')).find(row => row.dataset.taskId === id);

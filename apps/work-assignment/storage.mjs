@@ -1,4 +1,4 @@
-import { applyCommand, createInitialState, fromFirebase, validateState } from './model.mjs';
+import { applyCommand, createInitialState, fromFirebase, validateState } from './model.mjs?v=1.2.0';
 
 export const CACHE_KEY = 'ops-work-assignment-snapshot-v1';
 export const LOCAL_KEY = 'ops-work-assignment-preview-v1';

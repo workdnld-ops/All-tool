@@ -164,3 +164,21 @@ header { padding-bottom:4px; }
   .task { padding-inline:9px; grid-template-columns:minmax(0,1fr) 100px; gap:3px 4px; }
   .star { width:30px; }
 }
+.task-owner { min-width:0; display:grid; gap:2px; }
+.owner-button { width:100%; border:0; background:#f0f4f5; padding:5px 7px; overflow-wrap:anywhere; }
+.log-button { min-height:30px; border:0; background:none; color:var(--muted); font-size:12px; padding:3px; }
+.log-button .icon { width:14px; height:14px; }
+.person-section { padding:8px 0 16px; border-bottom:1px solid var(--line); }
+.person-section .management-row { border:0; background:none; padding-inline:0; }
+.person-section h3 { margin:8px 0; font-size:15px; }
+.person-work { margin:0; padding:0; list-style:none; display:grid; gap:4px; }
+.person-work button { width:100%; justify-content:space-between; text-align:left; background:white; border:0; padding:9px 12px; overflow-wrap:anywhere; }
+.person-work small { flex-shrink:0; font-size:11px; }
+.assignee-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.assignee-options .check { padding:8px; border:1px solid var(--line); border-radius:6px; overflow-wrap:anywhere; }
+.assignee-options input { flex-shrink:0; }
+.execution-history { display:grid; gap:10px; border-top:1px solid var(--line); padding-top:12px; }
+.execution-history article { border-left:3px solid #96c6ba; padding-left:10px; }
+.execution-history time { font-size:12px; color:var(--muted); }
+.execution-history p { white-space:pre-wrap; overflow-wrap:anywhere; margin:5px 0; }
+@media(max-width:760px) { .task-owner { grid-column:2; grid-row:3; } }

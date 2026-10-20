@@ -10,6 +10,43 @@ const fakeStorage = () => {
   return { getItem:key => map.has(key) ? map.get(key) : null, setItem:(key,value) => map.set(key,value) };
 };
 
+test('multiple owners, shared assignments and reassignment preserve legacy IDs and records', () => {
+  let state = addPerson(addPerson(initial()), 'person-b', 'B');
+  const id = state.tasks[0].id;
+  state = applyCommand(state, {type:'assignTask', id, ids:['person-a','person-b'], shared:false});
+  assert.equal(selectTasks(state, {person:'person-b'}).length, 1);
+  assert.equal(statistics(state).assigned, 1);
+  assert.deepEqual(statistics(state).workloads.map(p=>p.count), [1,1]);
+  state = applyCommand(state, {type:'addLog', id, log:{id:'log-1',at:'2026-10-20T10:00:00Z',text:'完成盤點'}});
+  state = applyCommand(state, {type:'personStatus',id:'person-b',active:false,deleted:true,reassignTo:'person-a'});
+  assert.deepEqual(state.tasks[0].collaboratorIds, []);
+  assert.equal(state.tasks[0].assigneeId, 'person-a');
+  assert.equal(state.tasks[0].logs.length, 1);
+  state = applyCommand(state, {type:'assignTask',id,ids:[],shared:true});
+  assert.equal(selectTasks(state, {person:'shared'}).length, 1);
+  assert.equal(selectTasks(state, {unassigned:true}).length, 43);
+  assert.equal(statistics(state).workloads[0].count, 0);
+  assert.equal(statistics(state).assigned, 1);
+  assert.deepEqual(parseBackup(backup(state)),state);
+  assert.deepEqual(fromFirebase(JSON.parse(JSON.stringify(state))),state);
+  assert.throws(()=>applyCommand(state,{type:'assignTask',id,ids:['person-b'],shared:false}));
+  assert.throws(()=>applyCommand(state,{type:'assignTask',id,ids:['person-a'],shared:true}));
+});
+
+test('execution logs append independently, survive later edits, and reject invalid entries', () => {
+  let state = initial();
+  const id = state.tasks[0].id;
+  state = applyCommand(state,{type:'addLog',id,log:{id:'entry-1',at:'2026-10-20T02:30:00Z',text:'第一次處理'}});
+  state = applyCommand(state,{type:'addLog',id,log:{id:'entry-2',at:'2026-10-21T02:30:00Z',text:'第二次處理'}});
+  state = edit(state,id,{name:'更名工作',categoryId:state.categories[1].id});
+  assert.equal(state.tasks[0].logs.length,2);
+  assert.equal(state.tasks[1].logs,undefined);
+  assert.throws(()=>applyCommand(state,{type:'addLog',id,log:{id:'entry-1',at:'2026-10-20',text:'重複 ID'}}));
+  assert.throws(()=>applyCommand(state,{type:'addLog',id,log:{id:'entry-3',at:'invalid',text:'不合法日期'}}));
+  assert.throws(()=>applyCommand(state,{type:'addLog',id,log:{id:'entry-3',at:'2026-10-20',text:' '}}));
+  assert.equal(state.tasks[0].logs.length,2);
+});
+
 test('first initialization contains exactly 44 unique unrated and unassigned tasks in seven categories', () => {
   const state = initial();
   assert.equal(state.tasks.length,44); assert.equal(state.categories.length,7);

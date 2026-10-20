@@ -28,6 +28,8 @@ const text = (value, max, label, empty = false) => {
 };
 const date = value => typeof value === 'string' && Number.isFinite(Date.parse(value));
 const idValid = id => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(id);
+export const assignees = task => [...new Set([task.assigneeId, ...task.collaboratorIds].filter(Boolean))];
+export const isAssigned = task => Boolean(task.shared || assignees(task).length);
 
 export function validateState(input) {
   if (!object(input) || input.schemaVersion !== SCHEMA_VERSION) fail('不支援的資料版本');
@@ -57,6 +59,17 @@ export function validateState(input) {
     text(task.notes, 5000, '備註', true);
     if (!date(task.createdAt) || !date(task.updatedAt)) fail('工作日期不正確');
     if (!Array.isArray(task.collaboratorIds) || new Set(task.collaboratorIds).size !== task.collaboratorIds.length || task.collaboratorIds.some(id => !staff.has(id))) fail('協作人員資料不正確');
+    if (task.shared !== undefined && typeof task.shared !== 'boolean') fail('共通分擔設定不正確');
+    if (task.shared && assignees(task).length) fail('共通分擔不可同時指定個人');
+    if (task.logs !== undefined) {
+      if (!Array.isArray(task.logs) || task.logs.length > 10000) fail('工作紀錄格式不正確');
+      for (const log of task.logs) {
+        if (!object(log) || !idValid(log.id) || allIds.has(log.id)) fail('紀錄 ID 無效或重複');
+        allIds.add(log.id);
+        if (!date(log.at) || !date(log.createdAt)) fail('紀錄日期不正確');
+        text(log.text, 5000, '執行內容');
+      }
+    }
   }
   // Return a detached copy: filtering or commands must never mutate a saved snapshot.
   return structuredClone(input);
@@ -101,12 +114,13 @@ export function duplicates(tasks, name, excludeId) {
 
 export function selectTasks(state, filters = {}) {
   const names = new Map(state.staff.map(person => [person.id, person.name]));
+  const ownerName = task => task.shared ? '共通分擔' : assignees(task).map(id => names.get(id)).sort().join('、');
   const categoryOrder = new Map(state.categories.map(c => [c.id, c.order]));
   const tasks = state.tasks.filter(task =>
     (!filters.search || task.name.toLocaleLowerCase().includes(filters.search.trim().toLocaleLowerCase())) &&
     (!filters.category || task.categoryId === filters.category) &&
-    (!filters.person || (filters.person === 'unassigned' ? task.assigneeId === null : task.assigneeId === filters.person)) &&
-    (!filters.unassigned || task.assigneeId === null) &&
+    (!filters.person || (filters.person === 'unassigned' ? !isAssigned(task) : filters.person === 'shared' ? task.shared : assignees(task).includes(filters.person))) &&
+    (!filters.unassigned || !isAssigned(task)) &&
     (!filters.difficulty || (filters.difficulty === 'unrated' ? task.difficulty === null : task.difficulty === Number(filters.difficulty)))
   );
   return tasks.sort((a, b) => {
@@ -115,7 +129,7 @@ export function selectTasks(state, filters = {}) {
       if (a.difficulty === null || b.difficulty === null) comparison = Number(a.difficulty === null) - Number(b.difficulty === null);
       else comparison = (a.difficulty - b.difficulty) * (filters.sort === 'difficulty-desc' ? -1 : 1);
     } else if (filters.sort === 'category') comparison = categoryOrder.get(a.categoryId) - categoryOrder.get(b.categoryId);
-    else if (filters.sort === 'person') comparison = Number(a.assigneeId === null) - Number(b.assigneeId === null) || (names.get(a.assigneeId) ?? '').localeCompare(names.get(b.assigneeId) ?? '', 'zh-Hant');
+    else if (filters.sort === 'person') comparison = Number(!isAssigned(a)) - Number(!isAssigned(b)) || ownerName(a).localeCompare(ownerName(b), 'zh-Hant');
     return comparison || a.order - b.order || a.id.localeCompare(b.id);
   });
 }
@@ -123,11 +137,11 @@ export function selectTasks(state, filters = {}) {
 export function statistics(state) {
   return {
     total: state.tasks.length,
-    assigned: state.tasks.filter(task => task.assigneeId !== null).length,
-    unassigned: state.tasks.filter(task => task.assigneeId === null).length,
+    assigned: state.tasks.filter(isAssigned).length,
+    unassigned: state.tasks.filter(task => !isAssigned(task)).length,
     people: state.staff.filter(p => !p.deleted).length,
     workloads: state.staff.map(person => {
-      const tasks = state.tasks.filter(task => task.assigneeId === person.id);
+      const tasks = state.tasks.filter(task => assignees(task).includes(person.id));
       const rated = tasks.filter(task => task.difficulty !== null);
       const stars = rated.reduce((sum, task) => sum + task.difficulty, 0);
       return { ...person, count: tasks.length, rated: rated.length, stars, average: rated.length ? stars / rated.length : null, unrated: tasks.length - rated.length };
@@ -161,6 +175,26 @@ export function applyCommand(original, command, now = new Date().toISOString()) 
       find('tasks', command.id);
       state.tasks = state.tasks.filter(task => task.id !== command.id);
       break;
+    case 'assignTask': {
+      const task = find('tasks', command.id);
+      if (!Array.isArray(command.ids) || new Set(command.ids).size !== command.ids.length || typeof command.shared !== 'boolean') fail('負責人設定不正確');
+      if (command.shared && command.ids.length) fail('共通分擔不可同時指定個人');
+      for (const id of command.ids) {
+        const person = find('staff', id);
+        if ((!person.active || person.deleted) && !assignees(task).includes(id)) fail('不能指派給停用或已刪除的同仁');
+      }
+      task.assigneeId = command.ids[0] ?? null;
+      task.collaboratorIds = command.ids.slice(1);
+      task.shared = command.shared;
+      task.updatedAt = now;
+      break;
+    }
+    case 'addLog': {
+      const task = find('tasks', command.id);
+      task.logs = [...(task.logs ?? []), {id:command.log.id, at:command.log.at, text:command.log.text, createdAt:now}];
+      task.updatedAt = now;
+      break;
+    }
     case 'addPerson':
       state.staff.push({ id: command.id, name: command.name, active: true, deleted: false });
       break;
@@ -177,7 +211,12 @@ export function applyCommand(original, command, now = new Date().toISOString()) 
           const target = find('staff', command.reassignTo);
           if (!target.active || target.deleted) fail('請選擇在職同仁');
         }
-        state.tasks.filter(t => t.assigneeId === person.id).forEach(t => { t.assigneeId = command.reassignTo; t.updatedAt = now; });
+        state.tasks.filter(t => assignees(t).includes(person.id)).forEach(t => {
+          const ids = [...new Set(assignees(t).map(id => id === person.id ? command.reassignTo : id).filter(Boolean))];
+          t.assigneeId = ids[0] ?? null;
+          t.collaboratorIds = ids.slice(1);
+          t.updatedAt = now;
+        });
       }
       break;
     }

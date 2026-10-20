@@ -7,13 +7,13 @@
   <title>庶務工作</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
-  <link rel="stylesheet" href="styles.css?v=1.1.0">
+  <link rel="stylesheet" href="styles.css?v=1.2.0">
 </head>
 <body>
   <main class="shell">
     <header>
       <div class="brand"><img src="../../assets/toolbox-icon.svg" alt="" width="34" height="34"><div><h1>庶務工作</h1><p id="sync-status" role="status">連線中…</p></div></div>
-      <div class="actions"><span class="version">v1.1.1</span><a class="button" href="../../index.html">工具箱</a></div>
+      <div class="actions"><span class="version">v1.2.0</span><a class="button" href="../../index.html">工具箱</a></div>
     </header>
     <p id="connection-warning" class="warning" role="alert" hidden></p>
     <section class="summary" aria-label="工作總覽">
@@ -47,8 +47,8 @@
       <div id="staff-list" class="management-list"></div>
       <details class="workload" open>
         <summary>同仁工作負擔</summary>
-        <p class="muted">星數僅輔助分工，不代表實際工時；平均值不含未評估工作。</p>
-        <div class="workload-scroll"><table><thead><tr><th>同仁</th><th>工作數</th><th>已評估</th><th>星數總和</th><th>平均星數</th><th>未評估</th></tr></thead><tbody id="workloads"></tbody></table></div>
+        <p class="muted">多人負責的工作列入各負責人統計；共通分擔另列。星數不代表實際工時。</p>
+        <div class="workload-scroll"><table><thead><tr><th>同仁</th><th>工作數</th><th>已評估</th><th>星數總和</th><th>未評估</th></tr></thead><tbody id="workloads"></tbody></table></div>
       </details>
     </section>
     <section id="view-categories" hidden>
@@ -64,6 +64,6 @@
   </main>
   <dialog id="editor" aria-labelledby="dialog-title"><form id="editor-form"><div class="dialog-heading"><h2 id="dialog-title"></h2><button type="button" id="close-dialog" class="icon-button" aria-label="關閉" title="關閉"><svg class="icon"><use href="icons.svg#x"/></svg></button></div><div id="dialog-fields"></div><p id="dialog-error" role="alert" class="error"></p><footer><button type="button" id="cancel-dialog">取消</button><button id="save-dialog" type="submit" class="primary" data-write>儲存</button></footer></form></dialog>
   <div id="toast" role="status" hidden></div>
-  <script type="module" src="app.mjs?v=1.1.0"></script>
+  <script type="module" src="app.mjs?v=1.2.0"></script>
 </body>
 </html>
