@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createInitialState, initializeIfMissing, validateState, fromFirebase, applyCommand, selectTasks, statistics, duplicates, backup, parseBackup, SUPPLIES_NOTE, executionHistory } from '../apps/work-assignment/model.mjs';
+import { createInitialState, initializeIfMissing, validateState, fromFirebase, applyCommand, selectTasks, statistics, duplicates, backup, parseBackup, SUPPLIES_NOTE, executionHistory, listLogs, localDateKey, logFingerprint } from '../apps/work-assignment/model.mjs';
 import { createLocalRepository, createFirebaseRepository, CLOUD_PATH, CACHE_KEY } from '../apps/work-assignment/storage.mjs';
 const initial = () => createInitialState('2026-10-19T00:00:00.000Z');
 const addPerson = (state, id = 'person-a', name = '同仁 A') => applyCommand(state, {type:'addPerson',id,name});
@@ -9,6 +9,46 @@ const fakeStorage = () => {
   const map = new Map();
   return { getItem:key => map.has(key) ? map.get(key) : null, setItem:(key,value) => map.set(key,value) };
 };
+
+test('legacy logs can be corrected, reassigned and deleted with statistics recomputed', () => {
+  let state = addPerson(addPerson(initial()), 'person-b', 'B');
+  const id = state.tasks[0].id;
+  state = applyCommand(state,{type:'addLog',id,log:{id:'old-run',at:'2026-10-19T00:30:00Z',text:'舊紀錄'}});
+  delete state.tasks[0].logs[0].executorIds;
+  const old = structuredClone(state.tasks[0].logs[0]);
+  state = applyCommand(state,{type:'editLog',id,logId:old.id,expected:logFingerprint(old),changes:{at:'2026-10-21T01:30:00Z',text:'補正',executorIds:['person-a','person-b']}});
+  assert.equal(executionHistory(state,'person-a')[0].logs.length,1);
+  assert.equal(executionHistory(state,'person-b')[0].logs.length,1);
+  assert.equal(state.tasks[0].logs[0].createdAt,old.createdAt);
+  assert.equal(state.tasks[0].logs[0].id,old.id);
+  assert.equal(listLogs(state,{date:localDateKey('2026-10-21T01:30:00Z')}).length,1);
+  assert.equal(listLogs(state,{person:'unspecified'}).length,0);
+  assert.equal(listLogs(state,{person:'person-b',search:'補正'}).length,1);
+  assert.equal(listLogs(state,{date:localDateKey(old.at)}).length,0);
+  assert.throws(()=>applyCommand(state,{type:'deleteLog',id,logId:old.id,expected:logFingerprint(old)}),/其他裝置/);
+  const current = state.tasks[0].logs[0];
+  assert.throws(()=>applyCommand(state,{type:'editLog',id,logId:old.id,expected:logFingerprint(current),changes:{id:'new-id'}}));
+  assert.throws(()=>applyCommand(state,{type:'editLog',id,logId:old.id,expected:logFingerprint(current),changes:{at:'bad date'}}));
+  state = applyCommand(state,{type:'editLog',id,logId:old.id,expected:logFingerprint(current),changes:{executorIds:['person-b']}});
+  assert.equal(executionHistory(state,'person-a').length,0);
+  assert.equal(executionHistory(state,'person-b').length,1);
+  state = applyCommand(state,{type:'deleteLog',id,logId:old.id,expected:logFingerprint(state.tasks[0].logs[0])});
+  assert.equal(executionHistory(state,'person-b').length,0);
+  assert.equal(listLogs(state).length,0);
+  assert.deepEqual(parseBackup(backup(state)),state);
+});
+
+test('quick logs use explicit executors and current time and coexist with older entries', () => {
+  const base = addPerson(initial());
+  const id = base.tasks[0].id;
+  const state = applyCommand(base,{type:'addLog',id,log:{id:'quick-run',at:'2026-10-21T04:00:00Z',text:'完成工作',executorIds:['person-a']}});
+  const rows = listLogs(state);
+  assert.equal(rows[0].taskName,base.tasks[0].name);
+  assert.equal(rows[0].log.text,'完成工作');
+  assert.equal(executionHistory(state,'person-a')[0].logs.length,1);
+  assert.equal(base.tasks[0].logs,undefined);
+  assert.equal(logFingerprint({...rows[0].log,executorIds:undefined}),logFingerprint({...rows[0].log,executorIds:[]}));
+});
 
 test('actual executors have independent dated counts unaffected by assignment, rename or retirement', () => {
   let state = addPerson(addPerson(initial()), 'person-b', 'B');

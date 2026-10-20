@@ -67,6 +67,7 @@ export function validateState(input) {
         if (!object(log) || !idValid(log.id) || allIds.has(log.id)) fail('紀錄 ID 無效或重複');
         allIds.add(log.id);
         if (!date(log.at) || !date(log.createdAt)) fail('紀錄日期不正確');
+        if (log.updatedAt !== undefined && !date(log.updatedAt)) fail('紀錄修改日期不正確');
         text(log.text, 5000, '執行內容');
         if (log.executorIds !== undefined && (!Array.isArray(log.executorIds) || new Set(log.executorIds).size !== log.executorIds.length || log.executorIds.some(id => !staff.has(id)))) fail('實際執行同仁資料不正確');
       }
@@ -159,6 +160,21 @@ export function executionHistory(state, personId) {
     .sort((a,b) => Date.parse(b.logs[0].at) - Date.parse(a.logs[0].at));
 }
 
+export function localDateKey(value) {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+export function listLogs(state, filters = {}) {
+  return state.tasks.flatMap(task => (task.logs ?? []).map(log => ({taskId:task.id, taskName:task.name, categoryId:task.categoryId, log})))
+    .filter(row => (!filters.date || localDateKey(row.log.at) === filters.date) &&
+      (!filters.person || (filters.person === 'unspecified' ? !row.log.executorIds?.length : row.log.executorIds?.includes(filters.person))) &&
+      (!filters.search || `${row.taskName} ${row.log.text}`.toLocaleLowerCase().includes(filters.search.trim().toLocaleLowerCase())))
+    .sort((a,b) => Date.parse(b.log.at) - Date.parse(a.log.at) || b.log.id.localeCompare(a.log.id));
+}
+export function logFingerprint(log) {
+  return JSON.stringify([log.id, log.at, log.text, [...(log.executorIds ?? [])].sort(), log.createdAt, log.updatedAt ?? null]);
+}
+
 export function applyCommand(original, command, now = new Date().toISOString()) {
   const state = validateState(original);
   const find = (key, id) => state[key].find(entry => entry.id === id) ?? fail('項目已被其他裝置刪除，請重新確認');
@@ -202,6 +218,19 @@ export function applyCommand(original, command, now = new Date().toISOString()) 
     case 'addLog': {
       const task = find('tasks', command.id);
       task.logs = [...(task.logs ?? []), {id:command.log.id, at:command.log.at, text:command.log.text, executorIds:command.log.executorIds ?? [], createdAt:now}];
+      task.updatedAt = now;
+      break;
+    }
+    case 'editLog':
+    case 'deleteLog': {
+      const task = find('tasks', command.id);
+      const log = task.logs?.find(log => log.id === command.logId) ?? fail('紀錄已被刪除，請重新開啟');
+      if (command.expected !== logFingerprint(log)) fail('紀錄已被其他裝置修改，請重新開啟後再操作');
+      if (command.type === 'deleteLog') task.logs = task.logs.filter(log => log.id !== command.logId);
+      else {
+        editable(command.changes, ['at','text','executorIds']);
+        Object.assign(log, command.changes, {updatedAt:now});
+      }
       task.updatedAt = now;
       break;
     }

@@ -1,16 +1,45 @@
-import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory } from './model.mjs?v=1.3.0';
-import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.3.0';
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.4.0';
+import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.4.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
-const icon = name => `<svg class="icon" aria-hidden="true"><use href="icons.svg#${name}"/></svg>`;
+const icon = name => `<svg class="icon" aria-hidden="true"><use href="icons.svg?v=1.4.0#${name}"/></svg>`;
 const iconButton = (action, id, name, label, disabled = false) => `<button type="button" class="icon-button" data-action="${action}" data-id="${escape(id)}" title="${escape(label)}" aria-label="${escape(label)}" ${disabled ? 'disabled' : ''}>${icon(name)}</button>`;
 const option = (value, name, selected, disabled = false) => `<option value="${escape(value)}" ${value === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${escape(name)}</option>`;
 const personLabel = person => `${person.name}${person.deleted ? '（已刪除）' : !person.active ? '（已停用）' : ''}`;
 let state = null, repository, ready = false, busy = false, toastTimer, dialogAction;
 let filters = { search:'', category:'', person:'', difficulty:'', sort:'manual', unassigned:false };
+let quickExecutorIds = [], logFilters = {date:'',person:'',search:''}, logLimit = 50, lastQuick = null;
 const localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 const writable = () => ready && !busy;
+const tone = id => [...id].reduce((sum,char) => sum + char.charCodeAt(0),0) % 5;
+const dateTime = value => new Date(value).toLocaleString('zh-TW',{hour12:false});
+const executorNames = log => (log.executorIds ?? []).map(id => personLabel(state.staff.find(person => person.id === id))).join('、') || '未指定同仁';
+function executorFields(selected = []) {
+  return `<div class="assignee-options">${state.staff.filter(person => !person.deleted || selected.includes(person.id)).map(person => `<label class="check"><input name="executors" type="checkbox" value="${escape(person.id)}" ${selected.includes(person.id) ? 'checked' : ''}>${escape(personLabel(person))}</label>`).join('')}</div>`;
+}
+function logRow(task, log, showTask = false) {
+  return `<article class="log-row" data-log-id="${escape(log.id)}">
+    <div class="log-time">${icon('clock')}<time>${escape(dateTime(log.at))}</time></div>
+    <div class="log-body">${showTask ? `<strong>${escape(task.name)}</strong>` : ''}<div class="log-executors">${escape(executorNames(log))}</div>${log.text && log.text !== '完成工作' ? `<p>${escape(log.text)}</p>` : ''}</div>
+    <div class="log-actions"><button type="button" class="icon-button" data-action="edit-log" data-id="${escape(task.id)}" data-log-id="${escape(log.id)}" ${!writable() ? 'disabled' : ''} title="修改紀錄" aria-label="修改紀錄">${icon('pencil')}</button><button type="button" class="icon-button danger" data-action="delete-log" data-id="${escape(task.id)}" data-log-id="${escape(log.id)}" ${!writable() ? 'disabled' : ''} title="刪除紀錄" aria-label="刪除紀錄">${icon('trash-2')}</button></div>
+  </article>`;
+}
+function renderRecords() {
+  if (!state) return;
+  const rows = listLogs(state,logFilters);
+  $('#log-result-count').textContent = `${rows.length} 筆`;
+  $('#today-log-count').textContent = `今日 ${listLogs(state,{date:localDateKey(new Date())}).length} 筆`;
+  $('#log-person').innerHTML = option('','全部同仁',logFilters.person) + option('unspecified','未指定同仁',logFilters.person) + state.staff.map(person => option(person.id,personLabel(person),logFilters.person)).join('');
+  const groups = new Map();
+  for (const row of rows.slice(0,logLimit)) {
+    const key = localDateKey(row.log.at);
+    if (!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(row);
+  }
+  $('#record-timeline').innerHTML = rows.length ? [...groups].map(([day,rows]) => `<section class="day-group"><h3>${escape(day)} <small>${rows.length} 筆</small></h3>${rows.map(row => logRow({id:row.taskId,name:row.taskName},row.log,true)).join('')}</section>`).join('') : `<div class="empty">${icon('history')}<p>沒有符合條件的紀錄</p></div>`;
+  $('#more-logs').hidden = rows.length <= logLimit;
+}
 
 function notify(message) {
   $('#toast').textContent = message;
@@ -65,6 +94,9 @@ function peopleOptions(selected, excluded = '') {
 }
 function render() {
   if (!state) return;
+  quickExecutorIds = quickExecutorIds.filter(id => state.staff.some(person => person.id === id && !person.deleted && person.active));
+  $('#quick-executor-label').textContent = quickExecutorIds.map(id => state.staff.find(person => person.id === id).name).join('、') || '未指定';
+  $('#quick-executor-options').innerHTML = state.staff.filter(person => person.active && !person.deleted).map(person => `<label class="check"><input type="checkbox" value="${escape(person.id)}" ${quickExecutorIds.includes(person.id) ? 'checked' : ''}>${escape(person.name)}</label>`).join('') || '<p class="muted">尚無在職同仁</p>';
   const stats = statistics(state);
   for (const key of ['total','assigned','unassigned','people']) $(`#${key}`).textContent = stats[key];
   $('#filter-person').innerHTML = option('', '全部同仁', filters.person) + option('unassigned', '未分配', filters.person) + option('shared', '共通分擔', filters.person) + state.staff.filter(p => !p.deleted || state.tasks.some(t => assignees(t).includes(p.id))).map(p => option(p.id, personLabel(p), filters.person)).join('');
@@ -78,18 +110,20 @@ function render() {
 function renderLists() {
   if (!state) return;
   const categoriesSorted = [...state.categories].sort((a,b) => a.order - b.order);
-  $('#category-navigation').innerHTML = [{id:'',name:'全部工作'}, ...categoriesSorted].map(category => `<button type="button" data-category="${escape(category.id)}" aria-pressed="${filters.category === category.id}"><span>${escape(category.name)}</span><small>${category.id ? state.tasks.filter(task => task.categoryId === category.id).length : state.tasks.length}</small></button>`).join('');
+  $('#category-navigation').innerHTML = [{id:'',name:'全部工作'}, ...categoriesSorted].map(category => `<button type="button" class="tone-${tone(category.id)}" data-category="${escape(category.id)}" aria-pressed="${filters.category === category.id}"><i class="category-dot" aria-hidden="true"></i><span>${escape(category.name)}</span><small>${category.id ? state.tasks.filter(task => task.categoryId === category.id).length : state.tasks.length}</small></button>`).join('');
   const filterCount = [filters.person, filters.difficulty, filters.unassigned, filters.sort !== 'manual'].filter(Boolean).length;
   $('#filter-count').textContent = filterCount ? String(filterCount) : '';
   const disabled = !writable();
   const tasks = selectTasks(state, filters);
   $('#result-count').textContent = `${tasks.length} / ${state.tasks.length}`;
   const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned;
-  $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task" data-task-id="${escape(task.id)}">
-    <div class="task-title"><button class="task-name" data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${escape(task.name)}</button>${task.notes ? `<p class="task-notes">${escape(task.notes)}</p>` : ''}</div>
+  $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task tone-${tone(task.categoryId)}" data-task-id="${escape(task.id)}">
     <button class="category-badge" data-action="edit-task" data-id="${escape(task.id)}" title="修改工作分類" ${disabled ? 'disabled' : ''}>${escape(state.categories.find(category => category.id === task.categoryId)?.name)}</button>
+    <div class="task-title"><h3 class="task-name">${escape(task.name)}</h3>${task.notes ? `<p class="task-notes" title="${escape(task.notes)}">${escape(task.notes)}</p>` : ''}</div>
+    <div class="task-assignment">
     <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>清除評估</button>` : ''}</div></div>
-    <div class="task-owner"><button class="owner-button" data-action="assign-task" data-id="${escape(task.id)}" aria-label="${escape(task.name)}的負責人" ${disabled ? 'disabled' : ''}>${task.shared ? '共通分擔' : escape(assignees(task).map(id => personLabel(state.staff.find(p => p.id === id))).join('、') || '未分配')}</button><button class="log-button" data-action="task-log" data-id="${escape(task.id)}">${icon('clipboard-list')}紀錄 ${task.logs?.length ?? 0}</button></div>
+    <button class="owner-button" data-action="assign-task" data-id="${escape(task.id)}" aria-label="${escape(task.name)}的負責人" ${disabled ? 'disabled' : ''}>${icon('users')}${task.shared ? '共通分擔' : escape(assignees(task).map(id => personLabel(state.staff.find(p => p.id === id))).join('、') || '未分配')}</button></div>
+    <div class="task-bottom"><button class="log-button" data-action="task-log" data-id="${escape(task.id)}">${icon('history')}${task.logs?.length ?? 0} 次紀錄</button><button class="quick-log" data-action="quick-log" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('check')}記一次</button></div>
     <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
       <button data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('pencil')}編輯與備註</button>
       <button data-action="move-task-up" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === 0 ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
@@ -103,11 +137,12 @@ function renderLists() {
     const tasks = state.tasks.filter(task => assignees(task).includes(person.id));
     const history = executionHistory(state, person.id);
     const count = history.reduce((sum,group) => sum + group.logs.length,0);
-    const historyHtml = history.length ? history.map(group => `<details class="person-history-group"><summary>${escape(group.name)}<small>${group.logs.length} 次 · 最近 ${escape(new Date(group.logs[0].at).toLocaleDateString('zh-TW'))}</small></summary><div class="execution-history">${group.logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW',{hour12:false}))}</time><p>${escape(log.text)}</p></article>`).join('')}</div></details>`).join('') : '<p class="muted">尚無指定此同仁的執行紀錄</p>';
+    const historyHtml = history.length ? history.map(group => `<details class="person-history-group"><summary>${escape(group.name)}<small>${group.logs.length} 次 · 最近 ${escape(new Date(group.logs[0].at).toLocaleDateString('zh-TW'))}</small></summary><div class="execution-history">${group.logs.map(log => logRow({id:group.taskId,name:group.name},log)).join('')}</div></details>`).join('') : '<p class="muted">尚無指定此同仁的執行紀錄</p>';
     return `<div class="person-section"><div class="management-row"><div class="label"><strong>${escape(personLabel(person))}</strong><small>負責 ${tasks.length} 項 · 執行 ${history.length} 種工作／${count} 次</small></div><div class="management-actions">${iconButton('rename-person',person.id,'pencil','修改同仁姓名',disabled)}${!person.deleted ? `<button data-action="person-status" data-id="${escape(person.id)}" ${disabled ? 'disabled' : ''}>${person.active ? '停用' : '啟用'}</button>${iconButton('delete-person',person.id,'trash-2','刪除同仁',disabled)}` : ''}</div></div><h4>目前負責</h4>${workLinks(tasks)}<h4>實際執行紀錄</h4>${historyHtml}</div>`;
   }).join('') : '<p class="empty">尚無同仁，請新增同仁姓名</p>') + `<div class="person-section"><h3>共通分擔</h3>${workLinks(state.tasks.filter(task => task.shared))}</div>`;
   const categories = [...state.categories].sort((a,b) => a.order - b.order);
   $('#categories-list').innerHTML = categories.map((category,index) => `<div class="management-row"><div class="label"><strong>${escape(category.name)}</strong><small>${state.tasks.filter(t => t.categoryId === category.id).length} 項工作</small></div><div class="management-actions">${iconButton('move-category-up',category.id,'arrow-up','分類上移',disabled || index===0)}${iconButton('move-category-down',category.id,'arrow-down','分類下移',disabled || index===categories.length-1)}${iconButton('rename-category',category.id,'pencil','修改分類',disabled)}${iconButton('delete-category',category.id,'trash-2','刪除分類',disabled || categories.length===1)}</div></div>`).join('');
+  renderRecords();
 }
 
 function openDialog(title, fields, submit, label = '儲存', allowRead = false) {
@@ -117,6 +152,7 @@ function openDialog(title, fields, submit, label = '儲存', allowRead = false) 
   $('#dialog-fields').onchange = null;
   $('#dialog-error').textContent = '';
   $('#save-dialog').textContent = label;
+  $('#save-dialog').hidden = !submit;
   dialogAction = submit;
   $('#editor').showModal();
   const first = $('#dialog-fields input, #dialog-fields select, #dialog-fields textarea');
@@ -133,15 +169,23 @@ function editAssignees(id) {
 }
 function showLogs(id) {
   const task = state.tasks.find(task => task.id === id);
-  const now = new Date();
-  const localTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
   const logs = [...(task.logs ?? [])].sort((a,b) => Date.parse(b.at) - Date.parse(a.at));
-  openDialog('工作執行紀錄', `<p>${escape(task.name)} · ${logs.length} 次</p><label>執行時間<input name="at" type="datetime-local" required value="${localTime}"></label><fieldset class="executor-field"><legend>實際執行同仁（可多選）</legend><div class="assignee-options">${state.staff.filter(person => !person.deleted).map(person => `<label class="check"><input name="executors" type="checkbox" value="${escape(person.id)}">${escape(personLabel(person))}</label>`).join('')}</div><p class="muted">未勾選為未指定，不計入個人執行次數。</p></fieldset><label>執行內容<textarea name="text" maxlength="5000" required placeholder="記錄這次做了甚麼"></textarea></label><div class="execution-history">${logs.length ? logs.map(log => `<article><time>${escape(new Date(log.at).toLocaleString('zh-TW', {hour12:false}))}</time><div class="log-executors">${escape((log.executorIds ?? []).map(id => personLabel(state.staff.find(person => person.id === id))).join('、') || '未指定執行同仁')}</div><p>${escape(log.text)}</p></article>`).join('') : '<p class="muted">尚無執行紀錄</p>'}</div>`, form => {
+  openDialog('工作執行紀錄', `<p>${escape(task.name)} · ${logs.length} 次</p><button type="button" class="primary" data-action="new-log" data-id="${escape(id)}" data-write>${icon('plus')}新增／補登</button><div class="execution-history">${logs.length ? logs.map(log => logRow(task,log)).join('') : '<p class="empty">尚無執行紀錄</p>'}</div>`, null, '', true);
+  controls();
+}
+function editLog(id, logId) {
+  const task = state.tasks.find(task => task.id === id);
+  const log = task.logs?.find(log => log.id === logId);
+  if (logId && !log) { notify('紀錄已不存在，請重新開啟'); return; }
+  const expected = log ? logFingerprint(log) : null;
+  const date = log ? new Date(log.at) : new Date();
+  const localTime = new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,19);
+  openDialog(log ? '修改紀錄' : '新增紀錄', `<p>${escape(task.name)}</p><label>執行時間<input name="at" type="datetime-local" step="1" required value="${localTime}"></label><fieldset class="executor-field"><legend>實際執行同仁（可多選）</legend>${executorFields(log ? log.executorIds ?? [] : quickExecutorIds)}</fieldset><label>備註<textarea name="text" maxlength="5000" placeholder="選填">${escape(log?.text === '完成工作' ? '' : log?.text ?? '')}</textarea></label>`, form => {
     const at = new Date(form.get('at'));
     if (!Number.isFinite(at.getTime())) { $('#dialog-error').textContent = '請填寫有效的日期時間'; return false; }
-    return commit({type:'addLog', id, log:{id:crypto.randomUUID(), at:at.toISOString(), text:form.get('text').trim(), executorIds:form.getAll('executors')}});
-  }, '新增紀錄', true);
-  controls();
+    const values = {at:at.toISOString(),text:form.get('text').trim() || '完成工作',executorIds:form.getAll('executors')};
+    return commit(log ? {type:'editLog', id, logId, expected, changes:values} : {type:'addLog', id, log:{id:crypto.randomUUID(),...values}});
+  }, log ? '儲存修改' : '新增紀錄');
 }
 function editTask(id) {
   const task = state.tasks.find(t => t.id === id);
@@ -187,6 +231,21 @@ document.addEventListener('click', async event => {
   if (action === 'edit-task') editTask(id);
   else if (action === 'assign-task') editAssignees(id);
   else if (action === 'task-log') showLogs(id);
+  else if (action === 'quick-log') {
+    if (lastQuick?.id === id && Date.now() - lastQuick.at < 2000) { notify('剛剛已記錄，請稍候再新增'); return; }
+    if (await commit({type:'addLog',id,log:{id:crypto.randomUUID(),at:new Date().toISOString(),text:'完成工作',executorIds:[...quickExecutorIds]}})) {
+      lastQuick = {id,at:Date.now()};
+      notify('已記錄一次，可到工作紀錄修改');
+    }
+  }
+  else if (action === 'new-log') editLog(id);
+  else if (action === 'edit-log') editLog(id,trigger.dataset.logId);
+  else if (action === 'delete-log') {
+    const task = state.tasks.find(task => task.id === id);
+    const log = task.logs?.find(log => log.id === trigger.dataset.logId);
+    if (!log) { notify('紀錄已不存在'); return; }
+    openDialog('刪除執行紀錄', `<p>確定刪除「${escape(task.name)}」這一次的紀錄？</p><p>${escape(dateTime(log.at))}<br>${escape(executorNames(log))}</p><p class="warning">此筆紀錄將從工作與同仁統計中移除，無法復原。</p>`, () => commit({type:'deleteLog',id,logId:log.id,expected:logFingerprint(log)}), '確認刪除');
+  }
   else if (action === 'rate' || action === 'clear-rating') {
     await commit({ type:'editTask', id, changes:{difficulty: action === 'rate' ? Number(value) : null} });
     const row = Array.from(document.querySelectorAll('[data-task-id]')).find(row => row.dataset.taskId === id);
@@ -218,7 +277,7 @@ $('#editor-form').addEventListener('submit', async event => {
   event.preventDefault();
   if (!writable()) return;
   $('#dialog-error').textContent = '';
-  try { if (await dialogAction(new FormData(event.currentTarget))) $('#editor').close(); }
+  try { if (dialogAction && await dialogAction(new FormData(event.currentTarget))) $('#editor').close(); }
   catch(error) { $('#dialog-error').textContent = error.message; }
 });
 for (const selector of ['#close-dialog','#cancel-dialog']) $(selector).onclick = () => { if (!busy) $('#editor').close(); };
@@ -226,6 +285,21 @@ $('#editor').addEventListener('cancel', event => { if (busy) event.preventDefaul
 $('#add-task').onclick = () => editTask();
 $('#add-person').onclick = () => editName('Person');
 $('#add-category').onclick = () => editName('Category');
+$('#quick-executor-options').addEventListener('change', () => {
+  quickExecutorIds = Array.from($('#quick-executor-options').querySelectorAll('input:checked')).map(input => input.value);
+  $('#quick-executor-label').textContent = quickExecutorIds.map(id => state.staff.find(person => person.id === id).name).join('、') || '未指定';
+});
+for (const [id,key] of [['log-date','date'],['log-person','person'],['log-search','search']]) {
+  $(`#${id}`).addEventListener(key === 'search' ? 'input' : 'change', event => {
+    logFilters[key] = event.target.value; logLimit = 50; renderRecords();
+  });
+}
+$('#reset-log-filters').onclick = () => {
+  logFilters = {date:'',person:'',search:''}; logLimit = 50;
+  for (const id of ['log-date','log-person','log-search']) $(`#${id}`).value = '';
+  renderRecords();
+};
+$('#more-logs').onclick = () => { logLimit += 50; renderRecords(); };
 document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => {
   document.querySelectorAll('[data-tab]').forEach(tab => { const selected = tab === button; tab.setAttribute('aria-pressed', String(selected)); $(`#view-${tab.dataset.tab}`).hidden = !selected; });
 }));
