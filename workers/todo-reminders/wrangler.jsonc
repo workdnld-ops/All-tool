@@ -1,17 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "todo-reminders",
+  "account_id": "8c32d5d621ffc57f004591872e33a0ea",
   "main": "src/index.js",
   "compatibility_date": "2026-07-15",
+  "workers_dev": false,
+  "preview_urls": false,
   "triggers": {
-    "crons": ["*/5 * * * *"]
+    "crons": []
   },
   "observability": {
-    "enabled": true
-  },
-  "vars": {
-    "FIREBASE_DATABASE_URL": "https://money-card-6bf98-default-rtdb.firebaseio.com",
-    "TODO_ROOT_PATH": "users/single-user/todoBoard",
-    "VAPID_SUBJECT": "mailto:admin@example.com"
+    "enabled": false
   }
 }

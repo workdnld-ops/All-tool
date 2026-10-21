@@ -216,14 +216,3 @@ export async function addCompletion(completion) {
   const completionRef = push(ref(database, `${rootPath}/completions`));
   await set(completionRef, completion);
 }
-
-export async function savePushSubscription(subscription) {
-  const key = btoa(subscription.endpoint).replace(/[^a-zA-Z0-9]/g, "").slice(-80);
-  await set(ref(database, `${rootPath}/pushSubscriptions/${key}`), {
-    ...subscription,
-    id: key,
-    userAgent: navigator.userAgent,
-    createdAt: new Date().toISOString(),
-    active: true,
-  });
-}

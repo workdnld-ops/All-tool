@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v21";
+const CACHE_NAME = "ops-toolbox-v22";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
@@ -25,13 +25,24 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
+async function retireTodoPush() {
+  try {
+    // Only retire this toolbox registration's old todo subscription, not other PWAs.
+    const subscription = await self.registration.pushManager?.getSubscription();
+    if (subscription) await subscription.unsubscribe();
+  } catch {
+    // Subscription cleanup must not prevent the toolbox from updating.
+  }
+}
+
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
+  event.waitUntil(Promise.all([
     caches.keys().then((keys) =>
       Promise.all(keys.filter((key) => key.startsWith("ops-toolbox-") && key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
-  );
-  self.clients.claim();
+    ),
+    retireTodoPush(),
+    self.clients.claim(),
+  ]));
 });
 
 self.addEventListener("fetch", (event) => {
@@ -102,41 +113,4 @@ self.addEventListener("fetch", (event) => {
       });
     })
   );
-});
-
-self.addEventListener("push", (event) => {
-  const fallback = {
-    title: "待辦事項提醒",
-    body: "有一張待辦卡片需要處理。",
-    url: "/apps/todo-board/index.html",
-    badgeCount: 1,
-  };
-  const data = event.data ? { ...fallback, ...event.data.json() } : fallback;
-  event.waitUntil((async () => {
-    if ("setAppBadge" in self.navigator && Number(data.badgeCount) > 0) {
-      await self.navigator.setAppBadge(Number(data.badgeCount));
-    }
-    await self.registration.showNotification(data.title, {
-      body: data.body,
-      data: { url: data.url || fallback.url },
-      badge: "/assets/toolbox-icon.svg",
-      icon: "/assets/toolbox-icon.svg",
-      tag: data.url || "todo-board",
-      renotify: true,
-    });
-  })());
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/apps/todo-board/index.html", self.location.origin).href;
-  event.waitUntil((async () => {
-    const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
-    const existing = allClients.find((client) => client.url.startsWith(self.location.origin));
-    if (existing) {
-      await existing.navigate(targetUrl);
-      return existing.focus();
-    }
-    return clients.openWindow(targetUrl);
-  })());
 });
