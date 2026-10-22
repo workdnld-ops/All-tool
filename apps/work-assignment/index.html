@@ -7,13 +7,13 @@
   <title>庶務工作</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
-  <link rel="stylesheet" href="styles.css?v=1.5.0">
+  <link rel="stylesheet" href="styles.css?v=1.6.0">
 </head>
 <body>
   <main class="shell">
     <header>
       <div class="brand"><img src="../../assets/toolbox-icon.svg" alt="" width="34" height="34"><div><h1>庶務工作</h1><p id="sync-status" role="status">連線中…</p></div></div>
-      <div class="actions"><span class="version">v1.5.0</span><a class="button" href="../../index.html">工具箱</a></div>
+      <div class="actions"><span class="version">v1.6.0</span><a class="button" href="../../index.html">工具箱</a></div>
     </header>
     <p id="connection-warning" class="warning" role="alert" hidden></p>
     <section class="summary" aria-label="工作總覽">
@@ -33,7 +33,7 @@
       <div class="section-heading"><h2>工作清單 <small id="result-count"></small></h2><button id="add-task" class="primary" data-write type="button" disabled><svg class="icon"><use href="icons.svg#plus"/></svg>新增工作</button></div>
       <nav id="category-navigation" class="category-navigation" aria-label="依工作分類篩選"></nav>
       <div class="search-row"><label class="search"><input id="search" aria-label="搜尋工作名稱" type="search" placeholder="搜尋工作名稱…" autocomplete="off"></label><button id="toggle-filters" aria-expanded="false" aria-controls="advanced-filters" type="button">篩選 <span id="filter-count"></span></button></div>
-      <div class="executor-preference"><label for="default-executor">本機預設同仁</label><select id="default-executor" disabled><option value="">不預設</option></select></div>
+      <div class="executor-preference"><label for="default-executor">本機預設同仁</label><select id="default-executor" disabled><option value="">不預設</option></select><label class="check local-work-filter"><input id="only-local" type="checkbox" disabled>只看這位同仁的工作</label></div>
       <details class="quick-executors"><summary><span>本次執行同仁</span><strong id="quick-executor-label">未指定</strong></summary><div id="quick-executor-options" class="assignee-options"></div></details>
       <div class="filters" id="advanced-filters" hidden>
         <label>負責人<select id="filter-person"><option value="">全部同仁</option></select></label>
@@ -77,6 +77,6 @@
   </main>
   <dialog id="editor" aria-labelledby="dialog-title"><form id="editor-form"><div class="dialog-heading"><h2 id="dialog-title"></h2><button type="button" id="close-dialog" class="icon-button" aria-label="關閉" title="關閉"><svg class="icon"><use href="icons.svg#x"/></svg></button></div><div id="dialog-fields"></div><p id="dialog-error" role="alert" class="error"></p><footer><button type="button" id="cancel-dialog">取消</button><button id="save-dialog" type="submit" class="primary" data-write>儲存</button></footer></form></dialog>
   <div id="toast" role="status" hidden></div>
-  <script type="module" src="app.mjs?v=1.5.0"></script>
+  <script type="module" src="app.mjs?v=1.6.0"></script>
 </body>
 </html>

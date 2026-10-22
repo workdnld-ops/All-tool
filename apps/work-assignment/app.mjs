@@ -1,4 +1,4 @@
-import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.4.0';
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.6.0';
 import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.4.0';
 import { createExecutorPreference } from './local-preferences.mjs?v=1.5.0';
 
@@ -9,7 +9,7 @@ const iconButton = (action, id, name, label, disabled = false) => `<button type=
 const option = (value, name, selected, disabled = false) => `<option value="${escape(value)}" ${value === selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${escape(name)}</option>`;
 const personLabel = person => `${person.name}${person.deleted ? '（已刪除）' : !person.active ? '（已停用）' : ''}`;
 let state = null, repository, ready = false, busy = false, toastTimer, dialogAction;
-let filters = { search:'', category:'', person:'', difficulty:'', sort:'manual', unassigned:false };
+let filters = { search:'', category:'', person:'', difficulty:'', sort:'manual', unassigned:false, onlyLocal:false };
 let quickExecutorIds = [], logFilters = {date:'',person:'',search:''}, logLimit = 50, lastQuick = null;
 const executorPreference = createExecutorPreference(() => localStorage);
 let quickExecutorOverride = null;
@@ -116,28 +116,31 @@ function render() {
 }
 function renderLists() {
   if (!state) return;
+  const localPersonId = executorPreference.resolve(state.staff)[0] ?? '';
+  $('#only-local').checked = filters.onlyLocal;
+  $('#only-local').disabled = !localPersonId && !filters.onlyLocal;
   const categoriesSorted = [...state.categories].sort((a,b) => a.order - b.order);
   $('#category-navigation').innerHTML = [{id:'',name:'全部工作'}, ...categoriesSorted].map(category => `<button type="button" class="tone-${tone(category.id)}" data-category="${escape(category.id)}" aria-pressed="${filters.category === category.id}"><i class="category-dot" aria-hidden="true"></i><span>${escape(category.name)}</span><small>${category.id ? state.tasks.filter(task => task.categoryId === category.id).length : state.tasks.length}</small></button>`).join('');
-  const filterCount = [filters.person, filters.difficulty, filters.unassigned, filters.sort !== 'manual'].filter(Boolean).length;
+  const filterCount = [filters.person, filters.difficulty, filters.unassigned, filters.onlyLocal, filters.sort !== 'manual'].filter(Boolean).length;
   $('#filter-count').textContent = filterCount ? String(filterCount) : '';
   const disabled = !writable();
-  const tasks = selectTasks(state, filters);
+  const tasks = selectTasks(state, {...filters, localPersonId});
   $('#result-count').textContent = `${tasks.length} / ${state.tasks.length}`;
-  const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned;
+  const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned && !filters.onlyLocal;
   $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task tone-${tone(task.categoryId)}" data-task-id="${escape(task.id)}">
     <button class="category-badge" data-action="edit-task" data-id="${escape(task.id)}" title="修改工作分類" ${disabled ? 'disabled' : ''}>${escape(state.categories.find(category => category.id === task.categoryId)?.name)}</button>
     <div class="task-title"><h3 class="task-name">${escape(task.name)}</h3>${task.notes ? `<p class="task-notes" title="${escape(task.notes)}">${escape(task.notes)}</p>` : ''}</div>
+    <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" title="清除評估" aria-label="清除評估" ${disabled ? 'disabled' : ''}>${icon('rotate-ccw')}</button>` : ''}</div></div>
     <div class="task-assignment">
-    <div class="rating"><div class="stars" role="group" aria-label="${escape(task.name)}的難易度">${[1,2,3,4,5].map(value => `<button type="button" class="star ${task.difficulty >= value ? 'filled' : ''}" data-action="rate" data-id="${escape(task.id)}" data-value="${value}" aria-label="${value} 星：${DIFFICULTIES[value]}" aria-pressed="${task.difficulty === value}" title="${DIFFICULTIES[value]}" ${disabled ? 'disabled' : ''}>${icon('star')}</button>`).join('')}</div><div class="rating-caption">${DIFFICULTIES[task.difficulty ?? 0]}${task.difficulty !== null ? `<button type="button" class="clear-rating" data-action="clear-rating" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>清除評估</button>` : ''}</div></div>
-    <button class="owner-button" data-action="assign-task" data-id="${escape(task.id)}" aria-label="${escape(task.name)}的負責人" ${disabled ? 'disabled' : ''}>${icon('users')}${task.shared ? '共通分擔' : escape(assignees(task).map(id => personLabel(state.staff.find(p => p.id === id))).join('、') || '未分配')}</button></div>
-    <div class="task-bottom"><button class="log-button" data-action="task-log" data-id="${escape(task.id)}">${icon('history')}${task.logs?.length ?? 0} 次紀錄</button><button class="quick-log" data-action="quick-log" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('check')}記一次</button></div>
+    <button class="owner-button" data-action="assign-task" data-id="${escape(task.id)}" aria-label="${escape(task.name)}的負責人" ${disabled ? 'disabled' : ''}>${icon('users')}<span>${task.shared ? '共通分擔' : escape(assignees(task).map(id => personLabel(state.staff.find(p => p.id === id))).join('、') || '未分配')}</span></button>
+    <div class="task-actions"><button class="log-button" data-action="task-log" data-id="${escape(task.id)}" title="查看工作紀錄" aria-label="${escape(task.name)}：${task.logs?.length ?? 0} 次紀錄">${icon('history')}${task.logs?.length ?? 0}</button><button class="quick-log" data-action="quick-log" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('check')}記一次</button></div></div>
     <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
       <button data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('pencil')}編輯與備註</button>
       <button data-action="move-task-up" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === 0 ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
       <button data-action="move-task-down" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === tasks.length - 1 ? 'disabled' : ''}>${icon('arrow-down')}下移</button>
       <button class="danger" data-action="delete-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('trash-2')}刪除工作</button>
     </div></details>
-  </article>`).join('') : '<p class="empty">沒有符合條件的工作</p>';
+  </article>`).join('') : `<p class="empty">${filters.onlyLocal && !localPersonId ? '請選擇有效的本機預設同仁' : '沒有符合條件的工作'}</p>`;
   const people = state.staff.filter(p => !p.deleted || state.tasks.some(task => assignees(task).includes(p.id)) || executionHistory(state,p.id).length);
   const workLinks = tasks => tasks.length ? `<ul class="person-work">${tasks.map(task => `<li><button data-action="task-log" data-id="${escape(task.id)}">${escape(task.name)}<small>${task.logs?.length ?? 0} 次紀錄</small></button></li>`).join('')}</ul>` : '<p class="muted">尚無負責工作</p>';
   $('#staff-list').innerHTML = (people.length ? people.map(person => {
@@ -298,6 +301,10 @@ $('#default-executor').addEventListener('change', event => {
   render();
   notify(saved ? '本機預設同仁已儲存' : '瀏覽器無法保存設定，僅本次有效');
 });
+$('#only-local').addEventListener('change', event => {
+  filters.onlyLocal = event.target.checked;
+  renderLists();
+});
 $('#quick-executor-options').addEventListener('change', () => {
   quickExecutorOverride = Array.from($('#quick-executor-options').querySelectorAll('input:checked')).map(input => input.value);
   quickExecutorIds = executorPreference.resolve(state.staff, quickExecutorOverride);
@@ -333,7 +340,7 @@ for (const [id,key] of [['search','search'],['filter-person','person'],['filter-
   $(`#${id}`).addEventListener(id === 'search' ? 'input' : 'change', event => { filters[key] = id === 'only-unassigned' ? event.target.checked : event.target.value; renderLists(); });
 }
 $('#reset-filters').onclick = () => {
-  filters = {search:'',category:'',person:'',difficulty:'',sort:'manual',unassigned:false};
+  filters = {search:'',category:'',person:'',difficulty:'',sort:'manual',unassigned:false,onlyLocal:false};
   for (const id of ['search','filter-person','filter-difficulty']) $(`#${id}`).value = '';
   $('#sort').value = 'manual'; $('#only-unassigned').checked = false; renderLists();
 };

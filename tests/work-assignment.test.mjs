@@ -10,6 +10,40 @@ const fakeStorage = () => {
   return { getItem:key => map.has(key) ? map.get(key) : null, setItem:(key,value) => map.set(key,value) };
 };
 
+test('local colleague view includes primary and collaborating owners, not shared or past execution', () => {
+  let state = addPerson(addPerson(initial()), 'person-b', 'B');
+  const [primary, collaborating, shared, completed] = state.tasks;
+  state = applyCommand(state,{type:'assignTask',id:primary.id,ids:['person-a'],shared:false});
+  state = applyCommand(state,{type:'assignTask',id:collaborating.id,ids:['person-b','person-a'],shared:false});
+  state = applyCommand(state,{type:'assignTask',id:shared.id,ids:[],shared:true});
+  state = applyCommand(state,{type:'addLog',id:completed.id,log:{id:'past-run',at:'2026-10-22T04:00:00Z',text:'完成工作',executorIds:['person-a']}});
+  const before = structuredClone(state);
+  const mine = {onlyLocal:true,localPersonId:'person-a'};
+  assert.deepEqual(selectTasks(state,mine).map(t=>t.id),[primary.id,collaborating.id]);
+  assert.deepEqual(selectTasks(state,{...mine,person:'person-b'}).map(t=>t.id),[collaborating.id]);
+  assert.equal(selectTasks(state,{...mine,unassigned:true}).length,0);
+  assert.equal(selectTasks(state,{...mine,category:'category-2'}).length,0);
+  assert.equal(selectTasks(state,{...mine,difficulty:'5'}).length,0);
+  assert.deepEqual(selectTasks(state,{...mine,search:primary.name}).map(t=>t.id),[primary.id]);
+  assert.equal(selectTasks(state,{...mine,onlyLocal:false}).length,44);
+  assert.deepEqual(state,before);
+});
+
+test('local colleague filter follows fixed IDs and never falls back to all tasks for invalid defaults', () => {
+  let state = addPerson(addPerson(initial()), 'person-b', 'B');
+  state = applyCommand(state,{type:'assignTask',id:state.tasks[0].id,ids:['person-a'],shared:false});
+  state = applyCommand(state,{type:'renamePerson',id:'person-a',name:'改名'});
+  assert.equal(selectTasks(state,{onlyLocal:true,localPersonId:'person-a'}).length,1);
+  for (const id of ['',undefined,'missing','person-b']) {
+    assert.equal(selectTasks(state,{onlyLocal:true,localPersonId:id}).length,0);
+  }
+  state.staff[0].active = false;
+  assert.equal(selectTasks(state,{onlyLocal:true,localPersonId:'person-a'}).length,0);
+  state.staff[0].active = true;
+  state.staff[0].deleted = true;
+  assert.equal(selectTasks(state,{onlyLocal:true,localPersonId:'person-a'}).length,0);
+});
+
 test('legacy logs can be corrected, reassigned and deleted with statistics recomputed', () => {
   let state = addPerson(addPerson(initial()), 'person-b', 'B');
   const id = state.tasks[0].id;

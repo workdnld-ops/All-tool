@@ -116,11 +116,13 @@ export function duplicates(tasks, name, excludeId) {
 
 export function selectTasks(state, filters = {}) {
   const names = new Map(state.staff.map(person => [person.id, person.name]));
+  const localPerson = filters.onlyLocal && state.staff.find(person => person.id === filters.localPersonId && person.active && !person.deleted);
   const ownerName = task => task.shared ? '共通分擔' : assignees(task).map(id => names.get(id)).sort().join('、');
   const categoryOrder = new Map(state.categories.map(c => [c.id, c.order]));
   const tasks = state.tasks.filter(task =>
     (!filters.search || task.name.toLocaleLowerCase().includes(filters.search.trim().toLocaleLowerCase())) &&
     (!filters.category || task.categoryId === filters.category) &&
+    (!filters.onlyLocal || (localPerson && assignees(task).includes(localPerson.id))) &&
     (!filters.person || (filters.person === 'unassigned' ? !isAssigned(task) : filters.person === 'shared' ? task.shared : assignees(task).includes(filters.person))) &&
     (!filters.unassigned || !isAssigned(task)) &&
     (!filters.difficulty || (filters.difficulty === 'unrated' ? task.difficulty === null : task.difficulty === Number(filters.difficulty)))
