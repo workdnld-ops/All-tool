@@ -211,7 +211,10 @@ h1 { font-size:24px; font-weight:750; }
 .category-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; background:var(--tone); }
 .category-navigation button { background:transparent; border:1px solid var(--line); }
 .category-navigation button[aria-pressed="true"] { color:var(--tone); background:var(--tint); border-color:var(--tone); }
-.quick-executors { border-block:1px solid var(--line); padding:10px 0; margin:14px 0; }
+.executor-preference { display:flex; align-items:center; gap:12px; margin-top:14px; }
+.executor-preference label { flex-shrink:0; font-size:12px; color:var(--muted); }
+.executor-preference select { width:240px; max-width:100%; min-width:0; }
+.quick-executors { border-block:1px solid var(--line); padding:10px 0; margin:10px 0 14px; }
 .quick-executors summary { display:flex; align-items:center; gap:12px; cursor:pointer; font-size:12px; color:var(--muted); }
 .quick-executors summary strong { color:var(--primary); font-weight:600; overflow-wrap:anywhere; flex:1; }
 .quick-executors summary::after { content:'+'; color:var(--primary); font-size:18px; }

@@ -1,5 +1,6 @@
 import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.4.0';
 import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.4.0';
+import { createExecutorPreference } from './local-preferences.mjs?v=1.5.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -10,6 +11,8 @@ const personLabel = person => `${person.name}${person.deleted ? '（已刪除）
 let state = null, repository, ready = false, busy = false, toastTimer, dialogAction;
 let filters = { search:'', category:'', person:'', difficulty:'', sort:'manual', unassigned:false };
 let quickExecutorIds = [], logFilters = {date:'',person:'',search:''}, logLimit = 50, lastQuick = null;
+const executorPreference = createExecutorPreference(() => localStorage);
+let quickExecutorOverride = null;
 const localPreview = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
 const writable = () => ready && !busy;
 const tone = id => [...id].reduce((sum,char) => sum + char.charCodeAt(0),0) % 5;
@@ -55,6 +58,7 @@ function controls() {
   document.querySelectorAll('[data-write]').forEach(button => { button.disabled = !writable(); });
   document.querySelectorAll('#editor input, #editor select, #editor textarea').forEach(field => { field.disabled = busy; });
   $('#export').disabled = !state;
+  $('#default-executor').disabled = !state || busy;
 }
 function connection(connected, label) {
   ready = connected;
@@ -94,7 +98,10 @@ function peopleOptions(selected, excluded = '') {
 }
 function render() {
   if (!state) return;
-  quickExecutorIds = quickExecutorIds.filter(id => state.staff.some(person => person.id === id && !person.deleted && person.active));
+  quickExecutorIds = executorPreference.resolve(state.staff, quickExecutorOverride);
+  const activeStaff = state.staff.filter(person => person.active && !person.deleted);
+  const unavailableDefault = executorPreference.id && !activeStaff.some(person => person.id === executorPreference.id);
+  $('#default-executor').innerHTML = option('', '不預設', executorPreference.id) + activeStaff.map(person => option(person.id, person.name, executorPreference.id)).join('') + (unavailableDefault ? option(executorPreference.id, '預設同仁已停用或不存在', executorPreference.id, true) : '');
   $('#quick-executor-label').textContent = quickExecutorIds.map(id => state.staff.find(person => person.id === id).name).join('、') || '未指定';
   $('#quick-executor-options').innerHTML = state.staff.filter(person => person.active && !person.deleted).map(person => `<label class="check"><input type="checkbox" value="${escape(person.id)}" ${quickExecutorIds.includes(person.id) ? 'checked' : ''}>${escape(person.name)}</label>`).join('') || '<p class="muted">尚無在職同仁</p>';
   const stats = statistics(state);
@@ -285,8 +292,15 @@ $('#editor').addEventListener('cancel', event => { if (busy) event.preventDefaul
 $('#add-task').onclick = () => editTask();
 $('#add-person').onclick = () => editName('Person');
 $('#add-category').onclick = () => editName('Category');
+$('#default-executor').addEventListener('change', event => {
+  const saved = executorPreference.set(event.target.value);
+  quickExecutorOverride = null;
+  render();
+  notify(saved ? '本機預設同仁已儲存' : '瀏覽器無法保存設定，僅本次有效');
+});
 $('#quick-executor-options').addEventListener('change', () => {
-  quickExecutorIds = Array.from($('#quick-executor-options').querySelectorAll('input:checked')).map(input => input.value);
+  quickExecutorOverride = Array.from($('#quick-executor-options').querySelectorAll('input:checked')).map(input => input.value);
+  quickExecutorIds = executorPreference.resolve(state.staff, quickExecutorOverride);
   $('#quick-executor-label').textContent = quickExecutorIds.map(id => state.staff.find(person => person.id === id).name).join('、') || '未指定';
 });
 for (const [id,key] of [['log-date','date'],['log-person','person'],['log-search','search']]) {
