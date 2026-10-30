@@ -11,6 +11,14 @@ Cloudflare > Workers & Pages > all-tool > Settings > Variables and Secrets：
 
 完成後重新部署。未設定時網站會回應 503，刻意拒絕存取，而不是略過登入。
 
+## Cloudflare 安全設定
+
+- Settings > Runtime > Fail open/closed 必須設為 **Fail closed**。否則免費 Functions 額度用完時，Cloudflare 可能略過 middleware 直接提供靜態頁面。
+- Settings > General > Preview access 啟用 **Restrict previews**，讓舊的部署雜湊網址也受到 Cloudflare Access 保護。舊部署不會自動取得新版 middleware，僅更新主網址不足以保護它們。
+- 2026-10-30 已於正式專案確認 Fail closed 與預覽存取限制生效，並實測早期部署網址轉往 Cloudflare Access。正式網址仍使用本站密碼，不要求 Cloudflare 帳號。
+
+官方說明：https://developers.cloudflare.com/pages/functions/routing/#fail-open--closed
+
 ## 記住裝置
 
 登入後設定 `__Host-toolbox-session` Cookie，180 天有效，採 HttpOnly、Secure、SameSite=Lax，不儲存明碼。每個瀏覽器／PWA 的 Cookie 儲存區可能不同；無痕、清除網站資料、重新安裝或系統清除資料後須重新登入。這不是裝置硬體綁定。
