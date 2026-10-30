@@ -1,3 +1,5 @@
+import {groupCoursesByWeek} from './weeks.mjs';
+
 export const WEEKDAYS = ['日','一','二','三','四','五','六'];
 export const INITIAL_FILTERS = {sport:'SB',stage:'初',level:'',audience:'',exact:'',store:'',day:'',time:''};
 export function filterTitle(filters) {
@@ -9,7 +11,8 @@ export function formatLine(course) {
   return `${course.date.slice(5).replace('-','/')} (${WEEKDAYS[new Date(course.date+'T12:00:00Z').getUTCDay()]}) ${course.store.replace(/店$/,'')} ${course.time} ${course.name}`;
 }
 export function formatText(courses, filters) {
-  return [filterTitle(filters),...courses.map(formatLine)].join('\n');
+  const sections = groupCoursesByWeek(courses).map(([,rows])=>rows.map(formatLine).join('\n'));
+  return [filterTitle(filters),sections.join('\n\n──────────\n\n')].filter(Boolean).join('\n');
 }
 export function formatCSV(courses) {
   const quote = value => {

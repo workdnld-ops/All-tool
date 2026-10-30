@@ -4,6 +4,7 @@ import {readFile,access} from 'node:fs/promises';
 import {createCalendarHandler} from '../server/course-calendar.mjs';
 import {addDays} from '../apps/course-finder/calendar.mjs';
 import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from '../apps/course-finder/format.mjs';
+import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek} from '../apps/course-finder/weeks.mjs';
 
 const request = query => new Request('https://example.test/api/course-calendar?'+query);
 function fixture(week) {
@@ -39,6 +40,50 @@ test('calendar caches weeks across ranges, expires after sixty seconds and share
   assert.equal(calls,2);
   await handle(request('weeks=4')); assert.equal(calls,4);
   time += 61000; await handle(request('weeks=1')); assert.equal(calls,5);
+});
+
+test('selected weeks fetch only chosen weeks including gaps, in chronological order',async()=>{
+  const fetched = [];
+  const handle = createCalendarHandler(options(async url=>{fetched.push(new URL(url).searchParams.get('filter_time'));return htmlResponse(url);}));
+  const data = await (await handle(request('selected=2026-11-16,2026-11-02,2026-10-26'))).json();
+  assert.deepEqual(data.selected,['2026-10-26','2026-11-02','2026-11-16']);
+  assert.deepEqual(fetched.sort(),['2026/10/26','2026/11/02','2026/11/16']);
+  assert.equal(data.total,3); assert.equal(data.loaded,3);
+  assert.equal(data.courses.some(course=>course.date === '2026-11-09'),false);
+  const all = await (await handle(request('selected='+weekOptions('2026-10-30').join(',')))).json();
+  assert.equal(all.total,9); assert.equal(all.loaded,9);
+});
+
+test('invalid, repeated, empty and out-of-range selected weeks never fetch upstream',async()=>{
+  let count = 0;
+  const handle = createCalendarHandler(options(async url=>{count++;return htmlResponse(url);}));
+  for (const selected of ['', '2026-11-02,2026-11-02','2026-10-27','2026-10-19','2026-12-28','2026-02-30','invalid','2026-11-02,']) {
+    assert.equal((await handle(request('selected='+selected))).status,400,selected);
+  }
+  assert.equal(count,0);
+});
+
+test('week selections and separators handle deselection, gaps and year boundaries without mutation',()=>{
+  const selected = ['2026-12-28'];
+  assert.deepEqual(toggleWeek(selected,'2027-01-11'),['2026-12-28','2027-01-11']);
+  assert.deepEqual(toggleWeek(selected,'2026-12-28'),[]);
+  assert.deepEqual(selected,['2026-12-28']);
+  assert.equal(weekLabel('2026-12-28'),'2026/12/28 – 2027/01/03');
+  assert.equal(weekLabel('2027-01-04'),'01/04 – 01/10');
+  const base = {time:'12:00',store:'內湖店',name:'SB初2兒',color:'#cfe2f3',source:''};
+  const courses = ['2026-12-28','2027-01-03','2027-01-11'].map(date=>({...base,date}));
+  assert.deepEqual(groupCoursesByWeek(courses).map(([week,rows])=>[week,rows.length]),[['2026-12-28',2],['2027-01-11',1]]);
+  const text = formatText(courses,INITIAL_FILTERS);
+  assert.equal(text.split('──────────').length,2);
+  assert.match(text,/01\/03 \(日\).*\n\n──────────\n\n01\/11 \(一\)/);
+  assert.equal(formatText([],INITIAL_FILTERS),'SB初');
+  assert.doesNotMatch(formatCSV(courses),/──────────/);
+});
+
+test('week selector replaces duplicate period and old count controls',async()=>{
+  const html = await readFile(new URL('../apps/course-finder/index.html',import.meta.url),'utf8');
+  assert.match(html,/週次（多選）/);
+  assert.doesNotMatch(html,/查詢期間|顯示週數|id="previous"|data-weeks=/);
 });
 
 test('partial failures remain warnings and full failure is never an empty successful calendar',async()=>{

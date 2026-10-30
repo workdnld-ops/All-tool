@@ -7,11 +7,11 @@
   <title>課程時間查詢表</title>
   <link rel="icon" href="../../assets/toolbox-icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../../assets/toolbox-icon.svg">
-  <link rel="stylesheet" href="styles.css?v=1.0.0">
+  <link rel="stylesheet" href="styles.css?v=1.1.0">
 </head>
 <body>
   <main class="shell">
-    <header><div class="brand"><img src="../../assets/toolbox-icon.svg" width="32" height="32" alt=""><div><h1>課程時間查詢表</h1><span class="muted">內湖・瑞光 <small>v1.0.0</small></span></div></div><a class="button" href="../../index.html">工具箱</a></header>
+    <header><div class="brand"><img src="../../assets/toolbox-icon.svg" width="32" height="32" alt=""><div><h1>課程時間查詢表</h1><span class="muted">內湖・瑞光 <small>v1.1.0</small></span></div></div><a class="button" href="../../index.html">工具箱</a></header>
     <div class="workspace">
       <details class="filters" open>
         <summary>課程篩選</summary>
@@ -23,8 +23,7 @@
         </div>
       </details>
       <section class="results" aria-label="查詢結果">
-        <div class="period"><div><span class="muted">查詢期間</span><strong id="period-label"></strong></div><div class="period-buttons"><button id="previous" class="icon-button" aria-label="上一週" title="上一週"><svg class="icon horizontal"><use href="../work-assignment/icons.svg#arrow-up"/></svg></button><button id="current">本週</button><button id="next" class="icon-button" aria-label="下一週" title="下一週"><svg class="icon horizontal"><use href="../work-assignment/icons.svg#arrow-down"/></svg></button></div></div>
-        <fieldset class="range"><legend>顯示週數</legend><div class="segments" id="weeks"><button data-weeks="1" aria-pressed="false">1 週</button><button data-weeks="2" aria-pressed="true">2 週</button><button data-weeks="4" aria-pressed="false">4 週</button></div></fieldset>
+        <fieldset class="week-picker"><legend>週次（多選）</legend><div id="weeks"></div></fieldset>
         <div class="presets" aria-label="快速選擇"><button data-preset="all">SB初</button><button data-preset="grade">SB初2</button><button data-preset="adult">SB初2成</button></div>
         <div class="result-heading"><div><h2 id="filter-name">SB初</h2><span class="muted" id="result-count" role="status">讀取中…</span></div><div class="result-actions"><button id="copy" disabled>複製文字</button><button id="refresh" class="icon-button" aria-label="重新整理課表" title="重新整理課表"><svg class="icon"><use href="../work-assignment/icons.svg#rotate-ccw"/></svg></button><button id="download" class="icon-button" disabled aria-label="下載 CSV" title="下載 CSV"><svg class="icon"><use href="../work-assignment/icons.svg#download"/></svg></button></div></div>
         <p id="error" class="error" role="alert" hidden></p>
@@ -37,6 +36,6 @@
     </div>
   </main>
   <div id="toast" role="status" hidden></div>
-  <script type="module" src="app.mjs?v=1.0.0"></script>
+  <script type="module" src="app.mjs?v=1.1.0"></script>
 </body>
 </html>

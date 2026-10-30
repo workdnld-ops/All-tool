@@ -1,11 +1,18 @@
-import {addDays,monday,taipeiNow,matches,updateFilters} from './calendar.mjs?v=1.0.0';
-import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from './format.mjs?v=1.0.0';
+import {taipeiNow,matches,updateFilters,addDays} from './calendar.mjs?v=1.0.0';
+import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from './format.mjs?v=1.1.0';
+import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek} from './weeks.mjs';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 let filters = {...INITIAL_FILTERS};
-let start = monday(taipeiNow().slice(0,10));
-let weeks = 2, data = null, rows = [], busy = false, error = '', sequence = 0, controller, toastTimer;
+let selectedWeeks = weekOptions(taipeiNow().slice(0,10)).slice(0,2);
+let data = null, rows = [], busy = false, error = '', sequence = 0, controller, toastTimer;
+
+function renderWeeks() {
+  const options = weekOptions(taipeiNow().slice(0,10));
+  selectedWeeks = selectedWeeks.filter(week=>options.includes(week));
+  $('#weeks').innerHTML = options.map(week=>`<label class="week-choice"><input type="checkbox" value="${week}" ${selectedWeeks.includes(week) ? 'checked' : ''} aria-label="${week.replaceAll('-','/')} 至 ${addDays(week,6).replaceAll('-','/')}"><span>${weekLabel(week)}</span></label>`).join('');
+}
 
 function choices(key, title, options) {
   return `<fieldset><legend>${title}</legend><div class="segments">${options.map(([value,label]) => `<button data-filter="${key}" data-value="${escape(value)}" aria-pressed="${filters[key] === value}">${escape(label)}</button>`).join('')}</div></fieldset>`;
@@ -34,26 +41,30 @@ function renderFilters() {
 function renderResults() {
   const now = taipeiNow();
   rows = data?.courses.filter(course=>matches(course,filters,now)) ?? [];
-  const current = monday(now.slice(0,10));
-  $('#period-label').textContent = `${start.replaceAll('-','/')} – ${addDays(start,weeks*7-1).replaceAll('-','/')}`;
-  $('#previous').disabled = start <= current;
-  $('#current').disabled = start === current;
-  $('#next').disabled = start >= addDays(current,56);
-  document.querySelectorAll('[data-weeks]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.weeks) === weeks)));
   $('#filter-name').textContent = filterTitle(filters);
   $('#result-count').textContent = busy ? '讀取中…' : error ? '讀取失敗' : `${rows.length} 個時段`;
   $('#loading').hidden = !busy;
   $('#error').hidden = !error;
   $('#error').textContent = error;
   $('#empty').hidden = busy || !!error || rows.length > 0;
-  $('#schedule').replaceChildren(...rows.map(course => {
-    const item = document.createElement('li');
-    item.textContent = formatLine(course);
-    return item;
-  }));
+  $('#empty').textContent = selectedWeeks.length ? '沒有符合條件的彩色未來時段。' : '請選擇要顯示的週次。';
+  const items = [];
+  for (const [week,courses] of groupCoursesByWeek(rows)) {
+    if (items.length) {
+      const divider = document.createElement('li');
+      divider.className = 'week-divider';
+      divider.setAttribute('role','separator');
+      divider.setAttribute('aria-label',weekLabel(week));
+      items.push(divider);
+    }
+    for (const course of courses) {
+      const item = document.createElement('li'); item.textContent = formatLine(course); items.push(item);
+    }
+  }
+  $('#schedule').replaceChildren(...items);
   $('#schedule').hidden = busy || !!error;
   for (const id of ['copy','download']) $(`#${id}`).disabled = busy || !!error || !rows.length;
-  $('#refresh').disabled = busy;
+  $('#refresh').disabled = busy || !selectedWeeks.length;
   $('#warnings').hidden = !data?.warnings.length;
   $('#warnings-title').textContent = data?.warnings.length ? `部分週次未取得（${data.loaded}/${data.total} 週），未取得不代表沒有課` : '';
   $('#warnings-list').replaceChildren(...(data?.warnings ?? []).map(message => {
@@ -63,13 +74,16 @@ function renderResults() {
 }
 async function load() {
   controller?.abort();
+  const request = ++sequence;
+  renderWeeks();
+  data = null; error = '';
+  if (!selectedWeeks.length) { busy = false; renderFilters(); renderResults(); return; }
   controller = new AbortController();
   const activeController = controller;
-  const request = ++sequence;
-  busy = true; error = ''; data = null; renderResults();
-  const timeout = setTimeout(()=>activeController.abort(),40000);
+  busy = true; renderResults();
+  const timeout = setTimeout(()=>activeController.abort(),60000);
   try {
-    const response = await fetch(`../../api/course-calendar?start=${encodeURIComponent(start)}&weeks=${weeks}`,{signal:activeController.signal,cache:'no-store'});
+    const response = await fetch(`../../api/course-calendar?selected=${encodeURIComponent(selectedWeeks.join(','))}`,{signal:activeController.signal,cache:'no-store'});
     if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('課表查詢服務尚未就緒，請稍後重新整理。');
     const result = await response.json();
     if (!response.ok) throw new Error([result.error,...(result.warnings ?? [])].join('\n'));
@@ -105,25 +119,20 @@ document.querySelector('.presets').addEventListener('click',event=>{
   filters = {...filters,sport:'SB',stage:'初',level:button.dataset.preset === 'all' ? '' : '2',audience:button.dataset.preset === 'adult' ? '成' : '',exact:''};
   renderFilters(); renderResults();
 });
-$('#weeks').addEventListener('click',event=>{
-  const button = event.target.closest('[data-weeks]'); if (!button || weeks === Number(button.dataset.weeks)) return;
-  weeks = Number(button.dataset.weeks); load();
+$('#weeks').addEventListener('change',event=>{
+  const week = event.target.value;
+  if (!weekOptions(taipeiNow().slice(0,10)).includes(week)) return;
+  selectedWeeks = toggleWeek(selectedWeeks,week); load();
+  [...$('#weeks').querySelectorAll('input')].find(input=>input.value === week)?.focus({preventScroll:true});
 });
-$('#previous').onclick = () => { start = addDays(start,-7); load(); };
-$('#next').onclick = () => { start = addDays(start,7); load(); };
-$('#current').onclick = () => { start = monday(taipeiNow().slice(0,10)); load(); };
-$('#refresh').onclick = () => {
-  const current = monday(taipeiNow().slice(0,10));
-  if (start < current) start = current;
-  load();
-};
+$('#refresh').onclick = () => load();
 $('#copy').onclick = async () => {
   try { await navigator.clipboard.writeText(formatText(rows,filters)); notify('已複製課程時段'); }
   catch { notify('瀏覽器不允許複製，請改用下載 CSV'); }
 };
 $('#download').onclick = () => {
   const url = URL.createObjectURL(new Blob([formatCSV(rows)],{type:'text/csv;charset=utf-8'}));
-  const anchor = document.createElement('a'); anchor.href = url; anchor.download = `iski-${start}.csv`;
+  const anchor = document.createElement('a'); anchor.href = url; anchor.download = `iski-${selectedWeeks[0]}.csv`;
   anchor.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 document.addEventListener('gesturestart',event=>event.preventDefault(),{passive:false});
