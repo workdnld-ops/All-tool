@@ -107,6 +107,8 @@
       background: var(--primary);
     }
 
+    a.edit-button { display: grid; place-items: center; text-decoration: none; }
+
     h1 {
       margin: 0;
       font-size: 1.45rem;
@@ -292,6 +294,7 @@
       <div class="header-actions">
         <div class="date" id="today"></div>
         <button class="edit-button" id="edit-tools" type="button">編輯</button>
+        <a class="edit-button" href="/logout" title="登出並取消此瀏覽器的登入憑證">登出</a>
       </div>
     </header>
 

@@ -6,6 +6,8 @@ Thumbs.db
 .preview/
 /.wrangler/
 .tools/
+.dev.vars*
+.env*
 .npm-cache/
 apps/*/.npm-cache/
 deploy/

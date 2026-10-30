@@ -145,9 +145,9 @@ test('text exports match plain-text date, branch and course format',()=>{
   assert.match(formatCSV([{...courses[0],name:'=1+1'}]),/"'=1\+1"/);
 });
 
-test('only calendar API invokes Pages Functions and SW never freezes calendar results',async()=>{
+test('site login protects all routes and SW never freezes calendar results',async()=>{
   const routes = JSON.parse(await readFile(new URL('../_routes.json',import.meta.url)));
-  assert.deepEqual(routes,{version:1,include:['/api/course-calendar'],exclude:[]});
+  assert.deepEqual(routes,{version:1,include:['/*'],exclude:[]});
   const sw = await readFile(new URL('../sw.js',import.meta.url),'utf8');
   assert.match(sw,/pathname\.startsWith\("\/apps\/course-finder\/"\)/);
   assert.match(sw,/pathname === "\/api\/course-calendar"/);
