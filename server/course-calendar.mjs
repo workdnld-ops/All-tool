@@ -4,39 +4,50 @@ import { parseSelectedWeeks } from '../apps/course-finder/weeks.mjs';
 const TTL = 60000;
 const json = (body, status = 200) => Response.json(body, {status, headers:{'Cache-Control':'no-store'}});
 
-export function createCalendarHandler({fetcher = fetch, now = () => Date.now(), today = () => taipeiNow(), edgeCache} = {}) {
+export function createCalendarHandler({fetcher = fetch, now = () => Date.now(), today = () => taipeiNow(), edgeCache, timeoutMs = 10000, cacheTimeoutMs = 500} = {}) {
   const memory = new Map();
   const pending = new Map();
   async function loadWeek(week, origin) {
     const saved = memory.get(week);
     if (saved && now() - saved.at < TTL) return saved;
     if (pending.has(week)) return pending.get(week);
+    const controller = new AbortController();
+    const timed = async (operation, milliseconds, onTimeout = () => {}) => {
+      let timer;
+      try {
+        return await Promise.race([operation, new Promise((_,reject)=>{
+          timer = setTimeout(()=>{ onTimeout(); reject(new DOMException('讀取逾時','TimeoutError')); },milliseconds);
+        })]);
+      } finally { clearTimeout(timer); }
+    };
     const job = (async () => {
       const key = new Request(`${origin}/_course-calendar-cache/v1/${week}`);
       try {
-        const hit = await edgeCache?.match(key);
+        const hit = await timed(Promise.resolve(edgeCache?.match(key)),cacheTimeoutMs);
         if (hit) {
-          const entry = await hit.json();
+          const entry = await timed(hit.json(),cacheTimeoutMs);
           if (now() - entry.at < TTL && Array.isArray(entry.courses)) return entry;
         }
       } catch { /* A cache failure must not prevent a live lookup. */ }
-      const response = await fetcher(`${SOURCE}&location_id=1&filter_time=${week.replaceAll('-','/')}`, {
-        signal:AbortSignal.timeout(15000), headers:{Accept:'text/html','Cache-Control':'no-cache'}, redirect:'follow'
+      const response = await fetcher(`${SOURCE}&filter_time=${week.replaceAll('-','/')}`, {
+        signal:controller.signal, headers:{Accept:'text/html','Cache-Control':'no-cache'}, redirect:'follow'
       });
       if (!response.ok) throw new Error(`原站暫時無法讀取（${response.status}）`);
       const html = await response.text();
+      if (controller.signal.aborted) throw new DOMException('讀取逾時','TimeoutError');
       if (html.length > 2500000) throw new Error('課表資料異常');
       const courses = parseCalendar(html, '1', week).filter(course => ['內湖店','瑞光店'].includes(course.store));
       const entry = {at:now(), courses};
       if (memory.size >= 16) memory.clear();
       memory.set(week, entry);
       try {
-        await edgeCache?.put(key, Response.json(entry, {headers:{'Cache-Control':'public, max-age=60'}}));
+        await timed(Promise.resolve(edgeCache?.put(key, Response.json(entry, {headers:{'Cache-Control':'public, max-age=60'}}))),cacheTimeoutMs);
       } catch { /* In-memory caching remains available. */ }
       return entry;
     })();
-    pending.set(week, job);
-    try { return await job; } finally { pending.delete(week); }
+    const bounded = timed(job,timeoutMs,()=>controller.abort());
+    pending.set(week, bounded);
+    try { return await bounded; } finally { pending.delete(week); }
   }
   return async request => {
     if (request.method !== 'GET') return json({error:'僅支援 GET 查詢'}, 405);

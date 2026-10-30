@@ -1,6 +1,7 @@
 import {taipeiNow,matches,updateFilters,addDays} from './calendar.mjs?v=1.0.0';
 import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from './format.mjs?v=1.1.0';
 import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek,reconcileWeeks} from './weeks.mjs?v=1.2.0';
+import {createWeekLoader} from './load-weeks.mjs?v=1.2.1';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -8,6 +9,7 @@ let filters = {...INITIAL_FILTERS};
 let availableWeeks = weekOptions(taipeiNow());
 let selectedWeeks = availableWeeks.slice(0,2);
 let data = null, rows = [], busy = false, error = '', sequence = 0, controller, toastTimer;
+const loadWeeks = createWeekLoader();
 
 function renderWeeks() {
   const options = weekOptions(taipeiNow());
@@ -44,7 +46,7 @@ function renderResults() {
   const now = taipeiNow();
   rows = data?.courses.filter(course=>matches(course,filters,now)) ?? [];
   $('#filter-name').textContent = filterTitle(filters);
-  $('#result-count').textContent = busy ? '讀取中…' : error ? '讀取失敗' : `${rows.length} 個時段`;
+  $('#result-count').textContent = busy ? `${rows.length} 個時段 · 讀取中（${data?.loaded ?? 0}/${selectedWeeks.length} 週）` : error ? '讀取失敗' : `${rows.length} 個時段`;
   $('#loading').hidden = !busy;
   $('#error').hidden = !error;
   $('#error').textContent = error;
@@ -64,7 +66,7 @@ function renderResults() {
     }
   }
   $('#schedule').replaceChildren(...items);
-  $('#schedule').hidden = busy || !!error;
+  $('#schedule').hidden = !!error;
   for (const id of ['copy','download']) $(`#${id}`).disabled = busy || !!error || !rows.length;
   $('#refresh').disabled = busy || !selectedWeeks.length;
   $('#warnings').hidden = !data?.warnings.length;
@@ -74,7 +76,7 @@ function renderResults() {
   }));
   $('#updated').textContent = data && !busy ? `更新於 ${new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(data.fetchedAt))}（台灣時間）` : '';
 }
-async function load() {
+async function load(refresh = false) {
   controller?.abort();
   const request = ++sequence;
   renderWeeks();
@@ -83,18 +85,17 @@ async function load() {
   controller = new AbortController();
   const activeController = controller;
   busy = true; renderResults();
-  const timeout = setTimeout(()=>activeController.abort(),60000);
   try {
-    const response = await fetch(`../../api/course-calendar?selected=${encodeURIComponent(selectedWeeks.join(','))}`,{signal:activeController.signal,cache:'no-store'});
-    if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('課表查詢服務尚未就緒，請稍後重新整理。');
-    const result = await response.json();
-    if (!response.ok) throw new Error([result.error,...(result.warnings ?? [])].join('\n'));
-    if (!Array.isArray(result.courses) || !Array.isArray(result.warnings) || !Number.isFinite(Date.parse(result.fetchedAt))) throw new Error('課表資料格式異常');
-    if (sequence === request) data = result;
+    const result = await loadWeeks([...selectedWeeks],{signal:activeController.signal,refresh,onProgress:result=>{
+      if (sequence === request) { data = result; renderResults(); }
+    }});
+    if (sequence === request) {
+      data = result;
+      if (!result.loaded) error = '目前無法取得課表，請重新整理重試。';
+    }
   } catch (failure) {
     if (sequence === request) error = failure.name === 'AbortError' ? '讀取逾時，請重新整理課表。' : failure.message || '目前無法連線，請檢查網路後重試。';
   } finally {
-    clearTimeout(timeout);
     if (sequence === request) { busy = false; renderFilters(); renderResults(); }
   }
 }
@@ -127,7 +128,7 @@ $('#weeks').addEventListener('change',event=>{
   selectedWeeks = toggleWeek(selectedWeeks,week); load();
   [...$('#weeks').querySelectorAll('input')].find(input=>input.value === week)?.focus({preventScroll:true});
 });
-$('#refresh').onclick = () => load();
+$('#refresh').onclick = () => load(true);
 $('#copy').onclick = async () => {
   try { await navigator.clipboard.writeText(formatText(rows,filters)); notify('已複製課程時段'); }
   catch { notify('瀏覽器不允許複製，請改用下載 CSV'); }
