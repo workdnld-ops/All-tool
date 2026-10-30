@@ -1,4 +1,4 @@
-const CACHE_NAME = "ops-toolbox-v22";
+const CACHE_NAME = "ops-toolbox-v23";
 const APP_SHELL = [
   "./manifest.json",
   "./assets/toolbox-icon.svg"
@@ -50,6 +50,10 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+
+  if (requestUrl.pathname.startsWith("/apps/course-finder/") || requestUrl.pathname === "/api/course-calendar") {
+    return;
+  }
 
   if (requestUrl.pathname.startsWith("/apps/drink-calculator/")) {
     return;

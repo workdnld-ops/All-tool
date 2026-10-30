@@ -15,7 +15,7 @@ test('staff workload appears only in the people management view', async () => {
 test('all toolbox destinations remain present and new tool is registered once', async () => {
   const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
   const destinations=[...html.matchAll(/data-tool-url="([^"]+)"/g)].map(match=>match[1]);
-  const expected=['credit-card-slip-stats','purchase-accounting','drink-calculator','cleaning-schedule','celebration-calculator','schedule-record','todo-board','cash-change-planner','store-cost-sharing','acceptance-form','leave-lottery','work-assignment'];
+  const expected=['credit-card-slip-stats','purchase-accounting','drink-calculator','cleaning-schedule','celebration-calculator','schedule-record','todo-board','cash-change-planner','store-cost-sharing','acceptance-form','leave-lottery','work-assignment','course-finder'];
   for(const name of expected) assert.equal(destinations.filter(url=>url.startsWith(`apps/${name}/`)).length,1,name);
   for(const url of destinations) await access(new URL(`../${url}${url.endsWith('/')?'index.html':''}`,import.meta.url));
   assert.match(html,/window\.location\.replace\(toolUrl\)/);

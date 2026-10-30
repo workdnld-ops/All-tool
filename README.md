@@ -4,6 +4,7 @@
 
 ## 工具清單
 
+- `apps/course-finder`：課程時間查詢表，內湖／瑞光跨週課表、快速篩選、純文字複製及 CSV 匯出；由 `functions/api/course-calendar.js` 讀取公開課表。
 - `apps/work-assignment`：庶務工作，工作分類、同仁指派、難易度與負擔統計、JSON 備份還原。
 - `apps/credit-card-slip-stats`：信用卡簽單紙消耗統計。
 - `apps/purchase-accounting`：採購記帳，Cloudflare 會使用 build 後的 `apps/purchase-accounting/dist/`。

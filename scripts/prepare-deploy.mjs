@@ -8,6 +8,7 @@ const copyItems = [
   ["index.html", "index.html"],
   ["manifest.json", "manifest.json"],
   ["sw.js", "sw.js"],
+  ["_routes.json", "_routes.json"],
   ["assets", "assets"],
   ["apps/credit-card-slip-stats", "apps/credit-card-slip-stats"],
   ["apps/purchase-accounting/dist", "apps/purchase-accounting/dist"],
@@ -21,6 +22,7 @@ const copyItems = [
   ["apps/acceptance-form", "apps/acceptance-form"],
   ["apps/leave-lottery", "apps/leave-lottery"],
   ["apps/work-assignment", "apps/work-assignment"],
+  ["apps/course-finder", "apps/course-finder"],
   ["workers", "workers"],
 ];
 

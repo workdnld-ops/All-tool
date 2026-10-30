@@ -41,6 +41,7 @@ test('on-screen overdue carry-over and pinned/reminder sorting remain intact', (
 for (const mode of ['subscribed', 'unsupported', 'failure']) {
   test(`service worker safely retires only its own subscription (${mode})`, async () => {
     const handlers = new Map(), removed = [];
+    const currentCache = sw.match(/const CACHE_NAME = "([^"]+)"/)[1];
     let unsubscribed = 0, claimed = 0, pending;
     const pushManager = mode === 'unsupported' ? undefined : {getSubscription:async () => {
       if (mode === 'failure') throw new Error('unavailable');
@@ -48,7 +49,7 @@ for (const mode of ['subscribed', 'unsupported', 'failure']) {
     }};
     const context = vm.createContext({
       self:{registration:{pushManager}, addEventListener:(event,fn)=>handlers.set(event,fn), clients:{claim:async()=> { claimed++; }}},
-      caches:{keys:async()=>['ops-toolbox-v21','ops-toolbox-v22','purchase-cache'], delete:async key=>removed.push(key)},
+      caches:{keys:async()=>['ops-toolbox-v21',currentCache,'purchase-cache'], delete:async key=>removed.push(key)},
     });
     vm.runInContext(sw,context);
     assert.equal(handlers.has('push'),false);

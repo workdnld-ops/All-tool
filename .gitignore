@@ -4,6 +4,7 @@ Thumbs.db
 # Local-only credentials and temporary folders
 .gh-auth/
 .preview/
+/.wrangler/
 .tools/
 .npm-cache/
 apps/*/.npm-cache/
