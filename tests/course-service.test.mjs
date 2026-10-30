@@ -4,7 +4,7 @@ import {readFile,access} from 'node:fs/promises';
 import {createCalendarHandler} from '../server/course-calendar.mjs';
 import {addDays} from '../apps/course-finder/calendar.mjs';
 import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from '../apps/course-finder/format.mjs';
-import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek} from '../apps/course-finder/weeks.mjs';
+import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek,reconcileWeeks} from '../apps/course-finder/weeks.mjs';
 
 const request = query => new Request('https://example.test/api/course-calendar?'+query);
 function fixture(week) {
@@ -51,7 +51,33 @@ test('selected weeks fetch only chosen weeks including gaps, in chronological or
   assert.equal(data.total,3); assert.equal(data.loaded,3);
   assert.equal(data.courses.some(course=>course.date === '2026-11-09'),false);
   const all = await (await handle(request('selected='+weekOptions('2026-10-30').join(',')))).json();
-  assert.equal(all.total,9); assert.equal(all.loaded,9);
+  assert.equal(all.total,5); assert.equal(all.loaded,5);
+});
+
+test('five weeks roll over only at Monday 14:00 Taipei, including year boundaries',()=>{
+  const before = weekOptions('2026-11-02T13:59:59');
+  const after = weekOptions('2026-11-02T14:00:00');
+  assert.deepEqual(before,['2026-10-26','2026-11-02','2026-11-09','2026-11-16','2026-11-23']);
+  assert.deepEqual(after,['2026-11-02','2026-11-09','2026-11-16','2026-11-23','2026-11-30']);
+  assert.deepEqual(weekOptions('2026-11-01T23:59:59'),before);
+  assert.deepEqual(weekOptions('2026-11-03T00:00:00'),after);
+  assert.equal(weekOptions('2027-01-04T13:59:59')[0],'2026-12-28');
+  assert.equal(weekOptions('2027-01-04T14:00:00')[0],'2027-01-04');
+  assert.deepEqual(reconcileWeeks(before,before,after),after);
+  assert.deepEqual(reconcileWeeks([before[0]],before,after),[after[0]]);
+  assert.deepEqual(reconcileWeeks([before[0],before[2]],before,after),[before[2]]);
+  assert.deepEqual(reconcileWeeks([],before,after),[]);
+});
+
+test('API rejects the unopened fifth week before release and accepts it at 14:00',async()=>{
+  let time = '2026-11-02T13:59:59', calls = 0;
+  const handle = createCalendarHandler({...options(async url=>{calls++;return htmlResponse(url);}),today:()=>time});
+  assert.equal((await handle(request('selected=2026-11-30'))).status,400);
+  assert.equal(calls,0);
+  time = '2026-11-02T14:00:00';
+  assert.equal((await handle(request('selected=2026-11-30'))).status,200);
+  assert.equal(calls,1);
+  assert.equal((await handle(request('selected=2026-10-26'))).status,400);
 });
 
 test('invalid, repeated, empty and out-of-range selected weeks never fetch upstream',async()=>{

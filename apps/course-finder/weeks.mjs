@@ -1,8 +1,17 @@
 import {addDays,monday} from './calendar.mjs';
 
-export function weekOptions(today) {
+export function weekOptions(localTime) {
+  const today = localTime.slice(0,10);
   const current = monday(today);
-  return Array.from({length:9},(_,index)=>addDays(current,index*7));
+  const beforeRelease = today === current && (localTime.slice(11,16) || '00:00') < '14:00';
+  const first = beforeRelease ? addDays(current,-7) : current;
+  return Array.from({length:5},(_,index)=>addDays(first,index*7));
+}
+export function reconcileWeeks(selected, previous, next) {
+  if (!selected.length) return [];
+  if (previous.every(week=>selected.includes(week))) return [...next];
+  const retained = selected.filter(week=>next.includes(week));
+  return retained.length ? retained : [next[0]];
 }
 export function weekLabel(week) {
   const end = addDays(week,6);
@@ -15,8 +24,8 @@ export function toggleWeek(selected, week) {
 export function parseSelectedWeeks(value, today) {
   const selected = value.split(',');
   const allowed = new Set(weekOptions(today));
-  if (!selected.length || selected.length > 9 || new Set(selected).size !== selected.length || selected.some(week=>!allowed.has(week))) {
-    throw new Error('請選擇本週至未來八週內的有效週次，且不可重複');
+  if (!selected.length || selected.length > 5 || new Set(selected).size !== selected.length || selected.some(week=>!allowed.has(week))) {
+    throw new Error('請選擇目前已開放的五週內的有效週次，且不可重複');
   }
   return selected.sort();
 }

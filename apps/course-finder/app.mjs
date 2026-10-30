@@ -1,16 +1,18 @@
 import {taipeiNow,matches,updateFilters,addDays} from './calendar.mjs?v=1.0.0';
 import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from './format.mjs?v=1.1.0';
-import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek} from './weeks.mjs';
+import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek,reconcileWeeks} from './weeks.mjs?v=1.2.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 let filters = {...INITIAL_FILTERS};
-let selectedWeeks = weekOptions(taipeiNow().slice(0,10)).slice(0,2);
+let availableWeeks = weekOptions(taipeiNow());
+let selectedWeeks = availableWeeks.slice(0,2);
 let data = null, rows = [], busy = false, error = '', sequence = 0, controller, toastTimer;
 
 function renderWeeks() {
-  const options = weekOptions(taipeiNow().slice(0,10));
-  selectedWeeks = selectedWeeks.filter(week=>options.includes(week));
+  const options = weekOptions(taipeiNow());
+  selectedWeeks = reconcileWeeks(selectedWeeks,availableWeeks,options);
+  availableWeeks = options;
   $('#weeks').innerHTML = options.map(week=>`<label class="week-choice"><input type="checkbox" value="${week}" ${selectedWeeks.includes(week) ? 'checked' : ''} aria-label="${week.replaceAll('-','/')} 至 ${addDays(week,6).replaceAll('-','/')}"><span>${weekLabel(week)}</span></label>`).join('');
 }
 
@@ -121,7 +123,7 @@ document.querySelector('.presets').addEventListener('click',event=>{
 });
 $('#weeks').addEventListener('change',event=>{
   const week = event.target.value;
-  if (!weekOptions(taipeiNow().slice(0,10)).includes(week)) return;
+  if (!weekOptions(taipeiNow()).includes(week)) { load(); return; }
   selectedWeeks = toggleWeek(selectedWeeks,week); load();
   [...$('#weeks').querySelectorAll('input')].find(input=>input.value === week)?.focus({preventScroll:true});
 });
@@ -137,6 +139,12 @@ $('#download').onclick = () => {
 };
 document.addEventListener('gesturestart',event=>event.preventDefault(),{passive:false});
 document.addEventListener('touchmove',event=>{if (event.touches.length > 1) event.preventDefault();},{passive:false});
+function refreshClock() {
+  if (document.hidden) return;
+  if (weekOptions(taipeiNow()).join(',') !== availableWeeks.join(',')) load();
+  else renderResults();
+}
 renderFilters(); load();
-setInterval(()=>{if(!document.hidden) renderResults();},30000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden) renderResults();});
+setInterval(refreshClock,30000);
+document.addEventListener('visibilitychange',refreshClock);
+window.addEventListener('pageshow',refreshClock);

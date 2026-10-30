@@ -4,7 +4,7 @@ import { parseSelectedWeeks } from '../apps/course-finder/weeks.mjs';
 const TTL = 60000;
 const json = (body, status = 200) => Response.json(body, {status, headers:{'Cache-Control':'no-store'}});
 
-export function createCalendarHandler({fetcher = fetch, now = () => Date.now(), today = () => taipeiNow().slice(0,10), edgeCache} = {}) {
+export function createCalendarHandler({fetcher = fetch, now = () => Date.now(), today = () => taipeiNow(), edgeCache} = {}) {
   const memory = new Map();
   const pending = new Map();
   async function loadWeek(week, origin) {
@@ -47,12 +47,12 @@ export function createCalendarHandler({fetcher = fetch, now = () => Date.now(), 
       catch (error) { return json({error:error.message},400); }
     } else {
       // Preserve the original API for previously opened pages.
-      const start = url.searchParams.get('start') || monday(today());
+      const start = url.searchParams.get('start') || monday(today().slice(0,10));
       const weeks = Number(url.searchParams.get('weeks') || 2);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || !Number.isFinite(Date.parse(start)) || new Date(start+'T12:00:00Z').toISOString().slice(0,10) !== start || ![1,2,4].includes(weeks)) {
         return json({error:'日期或週數不正確'}, 400);
       }
-      const current = monday(today());
+      const current = monday(today().slice(0,10));
       if (start < current || start > addDays(current,56) || monday(start) !== start) return json({error:'請選擇本週至未來八週之間的週一'},400);
       jobs = Array.from({length:weeks}, (_,i) => addDays(start,i*7));
     }
