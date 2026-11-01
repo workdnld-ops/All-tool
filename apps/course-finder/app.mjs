@@ -1,5 +1,5 @@
 import {taipeiNow,matches,updateFilters,addDays} from './calendar.mjs?v=1.0.0';
-import {INITIAL_FILTERS,filterTitle,formatLine,formatText,formatCSV} from './format.mjs?v=1.1.0';
+import {INITIAL_FILTERS,filterTitle,formatLineParts,courseTimeClass,formatText,formatCSV} from './format.mjs?v=1.2.2';
 import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek,reconcileWeeks} from './weeks.mjs?v=1.2.0';
 import {createWeekLoader} from './load-weeks.mjs?v=1.2.1';
 
@@ -62,7 +62,13 @@ function renderResults() {
       items.push(divider);
     }
     for (const course of courses) {
-      const item = document.createElement('li'); item.textContent = formatLine(course); items.push(item);
+      const item = document.createElement('li');
+      const [before,time,after] = formatLineParts(course);
+      const timeElement = document.createElement('span');
+      timeElement.className = courseTimeClass(course);
+      timeElement.textContent = time;
+      item.append(before,timeElement,after);
+      items.push(item);
     }
   }
   $('#schedule').replaceChildren(...items);

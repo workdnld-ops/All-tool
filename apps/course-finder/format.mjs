@@ -7,8 +7,17 @@ export function filterTitle(filters) {
   if (filters.sport === 'training') return '自主訓練';
   return [filters.sport,filters.stage,filters.level ? (filters.stage ? filters.level : ` ${filters.level}級`) : '',filters.audience].join('') || '全部課程';
 }
+export function formatLineParts(course) {
+  return [`${course.date.slice(5).replace('-','/')} (${WEEKDAYS[new Date(course.date+'T12:00:00Z').getUTCDay()]}) ${course.store.replace(/店$/,'')} `,course.time,` ${course.name}`];
+}
+export function courseTimeClass(course) {
+  const day = new Date(course.date+'T12:00:00Z').getUTCDay();
+  if (day === 0 || day === 6) return 'course-time--weekend';
+  const [hour,minute] = course.time.split(':').map(Number);
+  return hour * 60 + minute >= 18 * 60 ? 'course-time--evening' : '';
+}
 export function formatLine(course) {
-  return `${course.date.slice(5).replace('-','/')} (${WEEKDAYS[new Date(course.date+'T12:00:00Z').getUTCDay()]}) ${course.store.replace(/店$/,'')} ${course.time} ${course.name}`;
+  return formatLineParts(course).join('');
 }
 export function formatText(courses, filters) {
   const sections = groupCoursesByWeek(courses).map(([,rows])=>rows.map(formatLine).join('\n'));

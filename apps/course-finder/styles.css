@@ -22,6 +22,7 @@ label{display:flex;flex-direction:column;gap:6px}select{width:100%;min-width:0}
 .week-choice input{width:16px;height:16px;margin:0;accent-color:var(--primary);flex-shrink:0}.week-choice span{overflow-wrap:anywhere}
 .week-choice:has(input:checked){background:#e6f1ec;border-color:#6e9f8b;color:#205b4b;font-weight:600}.week-choice:focus-within{outline:2px solid var(--primary);outline-offset:2px}
 #schedule .week-divider{height:1px;border-top:1px solid #cbd6de;margin:14px 0;list-style:none}
+.course-time--weekend{color:#c52222;font-weight:700}.course-time--evening{color:#111;font-weight:700}
 .presets{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 22px}.presets button{font-size:12px;min-height:34px}
 .result-heading{margin:16px 0}.result-actions #copy{color:var(--primary);font-weight:600}
 #schedule{list-style:none;padding:0;margin:0;font-size:16px;line-height:2.25;font-variant-numeric:tabular-nums}#schedule li{overflow-wrap:anywhere;white-space:pre-wrap}
