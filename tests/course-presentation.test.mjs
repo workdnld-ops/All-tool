@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {courseTimeClass,formatLineParts,formatLine,formatText,INITIAL_FILTERS} from '../apps/course-finder/format.mjs';
+
+test('emphasis is applied to the entire course row, not only its time',async()=>{
+  const app = await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
+  assert.match(app,/item\.className = courseTimeClass\(course\)/);
+  assert.match(app,/item\.textContent = formatLine\(course\)/);
+  assert.doesNotMatch(app,/timeElement/);
+});
 
 test('weekend times stay red, including evenings; weekday emphasis starts at 18:00',()=>{
   for (const date of ['2026-11-07','2026-11-08']) {
