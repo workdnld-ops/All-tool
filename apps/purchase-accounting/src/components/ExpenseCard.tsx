@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { X, File, Zap, Minus, GripVertical, Package, FileText, FileCheck2, Check } from 'lucide-react';
+import { X, File, Zap, Cloud, Minus, GripVertical, Package, FileText, FileCheck2, Check } from 'lucide-react';
 import { ExpenseCard as ExpenseCardType, InvoiceType, Tag } from '@/types';
 import { cn } from '@/lib/utils';
 import { useSortable } from '@dnd-kit/sortable';
@@ -29,10 +29,14 @@ interface ExpenseCardProps {
 const invoiceTypeIcons: Record<InvoiceType, React.ReactNode> = {
   paper: <File className="w-4 h-4" />,
   electronic: <Zap className="w-4 h-4" />,
+  cloud: <Cloud className="w-4 h-4" />,
   none: <Minus className="w-4 h-4" />,
 };
 
-const invoiceTypeOrder: InvoiceType[] = ['none', 'electronic', 'paper'];
+const invoiceTypeOrder: InvoiceType[] = ['none', 'electronic', 'paper', 'cloud'];
+const invoiceTypeLabels: Record<InvoiceType, string> = {
+  none: '無', electronic: '電子', paper: '紙本', cloud: '雲端發票',
+};
 
 export function ExpenseCard({ 
   card, 
@@ -365,7 +369,8 @@ export function ExpenseCard({
           variant="ghost"
           size="icon"
           className="h-9 w-6 flex-shrink-0 p-0"
-          aria-label={`發票類型：${card.invoiceType === 'paper' ? '紙本' : card.invoiceType === 'electronic' ? '電子' : '無'}`}
+          aria-label={`發票類型：${invoiceTypeLabels[card.invoiceType]}`}
+          title={`發票類型：${invoiceTypeLabels[card.invoiceType]}`}
           onClick={cycleInvoiceType}
           disabled={isDeleteMode}
         >

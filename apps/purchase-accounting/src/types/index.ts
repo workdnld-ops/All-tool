@@ -11,7 +11,7 @@ export interface MonthlySnackBudget extends SnackBudgetSettings {
   updatedAt: string;
 }
 
-export type InvoiceType = 'paper' | 'electronic' | 'none';
+export type InvoiceType = 'paper' | 'electronic' | 'cloud' | 'none';
 
 export interface Tag {
   id: string;
