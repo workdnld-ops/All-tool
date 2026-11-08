@@ -1,0 +1,29 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {calculate} from '../apps/price-difference/calculator.mjs';
+
+const sample = {srcCourse:'初階',srcPrice:'單堂方案/套裝價',remaining:3,srcDiscount:5,convert:'單堂',dstCourse:'高階(雙)',dstPrice:'會員',dstCount:3};
+
+test('attachment example preserves sheet rounding and both copy formats',()=>{
+  const result = calculate(sample);
+  assert.equal(result.diff,3334.2);
+  assert.equal(result.crm,'#轉換單堂_原課程:初階_單堂價值1988.(折5%)_剩餘3堂_殘餘總值5665.8_目標:高階(雙)_會員3000x3堂_總價9000_差價3334.2_需補價差 NT$3,334');
+  assert.equal(result.student,'學員原購買「初階」，剩餘 3 堂，殘餘價值 NT$5,666；轉換為「高階(雙)」 3 堂（會員 NT$3,000/堂），總價 NT$9,000。需補價差 NT$3,334。');
+});
+
+test('plan and package conversions use the fixed price and ignore single-lesson count',()=>{
+  for(const [convert,dstCourse,price] of [['方案','中階',33200],['套裝','小全套',46100]]) {
+    const result=calculate({...sample,convert,dstCourse,dstPrice:'',dstCount:0});
+    assert.equal(result.done,true);
+    assert.equal(result.newValue,price);
+  }
+});
+
+test('missing inputs block output and sufficient credit requires no payment',()=>{
+  for(const change of [{srcCourse:''},{remaining:''},{dstCount:0},{dstPrice:''}]) {
+    assert.equal(calculate({...sample,...change}).done,false);
+  }
+  const credit=calculate({...sample,remaining:12});
+  assert.ok(credit.diff<0);
+  assert.match(credit.student,/無需補價差/);
+});

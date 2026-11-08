@@ -55,6 +55,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (requestUrl.pathname.startsWith("/apps/price-difference/")) return;
+
   if (requestUrl.pathname.startsWith("/apps/drink-calculator/")) {
     return;
   }
