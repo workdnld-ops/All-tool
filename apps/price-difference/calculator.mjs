@@ -30,7 +30,7 @@ const OPTIONS = [
  {name:'大全套(單/桃雙)高階',group:'大全套'}, {name:'大全套(雙)初階',group:'大全套'},
  {name:'大全套(雙)中階',group:'大全套'}, {name:'大全套(雙)高階',group:'大全套'}
 ];
-const SRC_GROUPS=['幼幼','一般','小全套','中全套','大全套'];
+const SRC_GROUPS=['一般','小全套','中全套','大全套','幼幼'];
 const PRICE_TYPES=['非會員','會員','單堂方案/套裝價'];
 const TYPES=['單堂','方案','套裝'];
 const fmt=n=>roundSheet(n).toLocaleString('en-US'); // 模擬 Sheets TEXT(number,"#,##0") 四捨五入

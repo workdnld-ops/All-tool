@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {calculate} from '../apps/price-difference/calculator.mjs';
+import {calculate,SRC_GROUPS} from '../apps/price-difference/calculator.mjs';
 
 const sample = {srcCourse:'初階',srcPrice:'單堂方案/套裝價',remaining:3,srcDiscount:5,convert:'單堂',dstCourse:'高階(雙)',dstPrice:'會員',dstCount:3};
+
+test('source categories start with general courses and end with young children',()=>{
+  assert.deepEqual(SRC_GROUPS,['一般','小全套','中全套','大全套','幼幼']);
+});
+
+test('direct percentage input handles fractional discounts and both limits',()=>{
+  for(const [srcDiscount,oldValue] of [[0,5964],[2.5,5814.9],[100,0]]) {
+    assert.equal(calculate({...sample,srcDiscount}).oldValue,oldValue);
+  }
+});
 
 test('attachment example preserves sheet rounding and both copy formats',()=>{
   const result = calculate(sample);
