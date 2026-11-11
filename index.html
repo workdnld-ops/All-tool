@@ -184,7 +184,8 @@
 
     .color-handle { display:none; position:absolute; top:5px; left:5px; width:30px; height:30px; border:1px solid #c8d2d9; border-radius:50%; background:var(--tool-color,#e5f2ef); cursor:pointer; box-shadow:inset 0 0 0 4px white; }
     .grid.editing .color-handle { display:block; }
-    .tool[style*="--tool-color"] .icon { background:var(--tool-color); color:#24343d; }
+    .tool[style*="--tool-color"] .icon { background:var(--tool-color); color:var(--tool-ink); }
+    .tool[style*="--tool-color"] h2 { color:var(--tool-ink); }
     #preferences-status { font-size:12px; color:var(--muted); margin:0 0 12px; min-height:18px; }
     #color-picker { border:1px solid var(--line); border-radius:8px; padding:18px; width:min(360px,calc(100% - 32px)); color:var(--ink); }
     #color-picker::backdrop { background:#172d3c66; }
@@ -469,7 +470,7 @@
 
   <dialog id="color-picker" aria-labelledby="color-title"><div class="palette-head"><h2 id="color-title">縮圖顏色</h2><button type="button" class="edit-button" id="close-color" aria-label="關閉">×</button></div><div class="palette" id="palette"></div><button type="button" class="edit-button" id="reset-color">恢復原色</button></dialog>
   <script type="module">
-    import { PALETTE, connectPreferences, orderedIds } from './assets/toolbox-preferences.mjs';
+    import { PALETTE, paletteInk, connectPreferences, orderedIds } from './assets/toolbox-preferences.mjs?v=2';
     const today = new Intl.DateTimeFormat("zh-TW", {
       year: "numeric",
       month: "long",
@@ -531,8 +532,14 @@
       try {
         const savedOrder = orderedIds(toolLinks().map(link => link.dataset.toolId), preferences.order);
         for (const link of toolLinks()) {
-          if (preferences.colors[link.dataset.toolId]) link.style.setProperty('--tool-color',preferences.colors[link.dataset.toolId]);
-          else link.style.removeProperty('--tool-color');
+          const color = preferences.colors[link.dataset.toolId];
+          if (color) {
+            link.style.setProperty('--tool-color',color);
+            link.style.setProperty('--tool-ink',paletteInk(color));
+          } else {
+            link.style.removeProperty('--tool-color');
+            link.style.removeProperty('--tool-ink');
+          }
         }
         const orderIndex = new Map(savedOrder.map((id, index) => [id, index]));
         toolLinks()

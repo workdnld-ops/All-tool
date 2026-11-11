@@ -2,9 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {analyze,parseDay,stockForecast,dayKey} from '../apps/credit-card-slip-stats/model.mjs';
 import {textareaHeight} from '../assets/auto-textarea.mjs';
-import {PALETTE,changePreferences,validatePreferences,readPreferences,orderedIds,firebasePreferences,PREFERENCES_PATH} from '../assets/toolbox-preferences.mjs';
+import {PALETTE,paletteInk,changePreferences,validatePreferences,readPreferences,orderedIds,firebasePreferences,PREFERENCES_PATH} from '../assets/toolbox-preferences.mjs';
 import {createInitialState,applyCommand,selectTasks,backup,parseBackup} from '../apps/work-assignment/model.mjs';
 const memory=() => {const data=new Map();return {getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};};
+
+test('all toolbox swatches have matching dark ink with readable text contrast',()=>{
+  const luminance=hex=>hex.slice(1).match(/../g).map(value=>parseInt(value,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+  for (const [name,color,ink] of PALETTE) {
+    assert.equal(paletteInk(color),ink);
+    for (const background of [color,'#FFFFFF']) assert.ok((luminance(background)+.05)/(luminance(ink)+.05)>=4.5,`${name} text contrast on ${background}`);
+    const saved=changePreferences({version:1,order:[],colors:{}},{type:'color',id:'todo-board',color});
+    assert.deepEqual(saved.colors,{'todo-board':color});
+    assert.deepEqual(changePreferences(saved,{type:'color',id:'todo-board',color:null}).colors,{});
+  }
+  assert.equal(paletteInk('#FFE8A8'),'#805500');
+  assert.equal(paletteInk('unknown'),null);
+});
 
 test('paper records are strict, unique, selected-year counts with seasonal forecasts',()=>{
   const result=analyze({2024:'1/1, 1/11, 1/11 2/30 invalid 2/29 7/1',2023:'12/22',bad:{}},2024);

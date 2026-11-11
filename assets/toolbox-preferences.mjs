@@ -1,8 +1,9 @@
 export const PALETTE = [
-  ['柔霧紅','#E7B1B1'],['珊瑚粉','#F6A6A6'],['蜜桃橘','#FFB997'],['杏桃橘','#FFD29A'],['奶油黃','#FFE8A8'],['檸檬黃','#FFF6B6'],
-  ['嫩芽綠','#E6F39C'],['酪梨綠','#CDE8B2'],['薄荷綠','#BFE7D5'],['湖水綠','#A6E1DF'],['青瓷藍','#A9D9E8'],['天空藍','#B7D8F6'],
-  ['霧海藍','#9DBBE6'],['薰衣草藍','#A7B4ED'],['丁香紫','#CBB5E8'],['藤花紫','#DAB9EF'],['藕粉紫','#E8B7D6'],['櫻花粉','#F6C2D9'],
+  ['柔霧紅','#E7B1B1','#7B3030'],['珊瑚粉','#F6A6A6','#842D32'],['蜜桃橘','#FFB997','#87401F'],['杏桃橘','#FFD29A','#805015'],['奶油黃','#FFE8A8','#805500'],['檸檬黃','#FFF6B6','#71600C'],
+  ['嫩芽綠','#E6F39C','#506418'],['酪梨綠','#CDE8B2','#426230'],['薄荷綠','#BFE7D5','#28634C'],['湖水綠','#A6E1DF','#236161'],['青瓷藍','#A9D9E8','#275F72'],['天空藍','#B7D8F6','#285B86'],
+  ['霧海藍','#9DBBE6','#234675'],['薰衣草藍','#A7B4ED','#343C78'],['丁香紫','#CBB5E8','#593873'],['藤花紫','#DAB9EF','#6C3D83'],['藕粉紫','#E8B7D6','#7C365F'],['櫻花粉','#F6C2D9','#87385D'],
 ];
+export const paletteInk = color => PALETTE.find(([,hex]) => hex === color)?.[2] ?? null;
 export const PREFERENCES_PATH = 'users/single-user/toolboxPreferences';
 const CACHE = 'opsToolboxPreferencesV1';
 const validId = id => typeof id === 'string' && /^[a-z0-9-]{1,80}$/.test(id);
