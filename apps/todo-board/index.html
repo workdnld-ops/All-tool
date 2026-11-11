@@ -75,7 +75,7 @@
     textarea {
       min-height: 76px;
       padding: 9px;
-      resize: vertical;
+      resize: none;
       line-height: 1.35;
     }
 
@@ -641,7 +641,7 @@
       <div>
         <div class="title-line">
           <h1>待辦事項</h1>
-          <span class="version">v7.17.0</span>
+          <span class="version">v7.18.0</span>
           <span class="status" id="status">讀取待辦卡片中...</span>
         </div>
       </div>
@@ -744,6 +744,7 @@
   </section>
 
   <script type="module">
+    import { autoTextarea } from '../../assets/auto-textarea.mjs';
     import {
       DEFAULT_BOX,
       DEFAULT_RECURRENCE,
@@ -789,6 +790,7 @@
       monthMode: document.getElementById("month-mode-input"),
     };
 
+    const resizeNotes = autoTextarea(fields.notes);
     const state = {
       boxes: [DEFAULT_BOX],
       cards: [],
@@ -1179,6 +1181,7 @@
       state.selectedWeekdays = new Set(draft.recurrence.weekdays || []);
       renderRecurrenceControls();
       modal.classList.add("open");
+      resizeNotes();
     }
 
     function closeModal() {

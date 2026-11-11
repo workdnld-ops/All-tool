@@ -182,6 +182,18 @@
       cursor: grabbing;
     }
 
+    .color-handle { display:none; position:absolute; top:5px; left:5px; width:30px; height:30px; border:1px solid #c8d2d9; border-radius:50%; background:var(--tool-color,#e5f2ef); cursor:pointer; box-shadow:inset 0 0 0 4px white; }
+    .grid.editing .color-handle { display:block; }
+    .tool[style*="--tool-color"] .icon { background:var(--tool-color); color:#24343d; }
+    #preferences-status { font-size:12px; color:var(--muted); margin:0 0 12px; min-height:18px; }
+    #color-picker { border:1px solid var(--line); border-radius:8px; padding:18px; width:min(360px,calc(100% - 32px)); color:var(--ink); }
+    #color-picker::backdrop { background:#172d3c66; }
+    #color-picker h2 { font-size:18px; margin:0; }
+    .palette-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; }
+    .palette { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
+    .swatch { aspect-ratio:1; min-height:36px; border:2px solid transparent; border-radius:6px; cursor:pointer; }
+    .swatch[aria-pressed="true"] { border-color:#24343d; box-shadow:inset 0 0 0 3px white; }
+    .swatch:focus-visible { outline:3px solid #24343d; outline-offset:2px; }
     .grid.editing .tool {
       cursor: default;
       padding-top: 18px;
@@ -455,7 +467,9 @@
     </section>
   </main>
 
-  <script>
+  <dialog id="color-picker" aria-labelledby="color-title"><div class="palette-head"><h2 id="color-title">縮圖顏色</h2><button type="button" class="edit-button" id="close-color" aria-label="關閉">×</button></div><div class="palette" id="palette"></div><button type="button" class="edit-button" id="reset-color">恢復原色</button></dialog>
+  <script type="module">
+    import { PALETTE, connectPreferences, orderedIds } from './assets/toolbox-preferences.mjs';
     const today = new Intl.DateTimeFormat("zh-TW", {
       year: "numeric",
       month: "long",
@@ -470,6 +484,36 @@
     const TOOL_ORDER_KEY = "opsToolboxToolOrder";
     let editMode = false;
     let dragState = null;
+    let preferences = {version:1,order:[],colors:{}}, preferencesRepo, colorTool = null, canEdit = false;
+    const preferencesStatus = document.createElement('p');
+    preferencesStatus.id = 'preferences-status';
+    preferencesStatus.setAttribute('role','status');
+    toolGrid.before(preferencesStatus);
+    editButton.disabled = true;
+    const colorPicker = document.getElementById('color-picker');
+    document.getElementById('close-color').onclick = () => colorPicker.close();
+    colorPicker.addEventListener('click', event => { if (event.target === colorPicker && (event.clientX < colorPicker.getBoundingClientRect().left || event.clientX > colorPicker.getBoundingClientRect().right || event.clientY < colorPicker.getBoundingClientRect().top || event.clientY > colorPicker.getBoundingClientRect().bottom)) colorPicker.close(); });
+    async function savePreference(command) {
+      if (!canEdit || !preferencesRepo) return;
+      preferencesStatus.textContent = '儲存中…';
+      try { await preferencesRepo.commit(command); preferencesStatus.textContent = '設定已儲存'; }
+      catch (error) { preferencesStatus.textContent = error.message; applyToolOrder(); }
+    }
+    function openColors(link) {
+      if (!canEdit) return;
+      colorTool = link.dataset.toolId;
+      document.getElementById('color-title').textContent = link.querySelector('h2').textContent + ' · 顏色';
+      document.getElementById('palette').replaceChildren(...PALETTE.map(([name,hex]) => {
+        const swatch=document.createElement('button');
+        swatch.type='button'; swatch.className='swatch'; swatch.style.background=hex;
+        swatch.title=`${name} ${hex}`; swatch.setAttribute('aria-label',swatch.title);
+        swatch.setAttribute('aria-pressed',String(preferences.colors[colorTool] === hex));
+        swatch.onclick=() => { savePreference({type:'color',id:colorTool,color:hex}); colorPicker.close(); };
+        return swatch;
+      }));
+      colorPicker.showModal();
+    }
+    document.getElementById('reset-color').onclick = () => { savePreference({type:'color',id:colorTool,color:null}); colorPicker.close(); };
 
     function toolLinks() {
       return Array.from(toolGrid.querySelectorAll("[data-tool-url]"));
@@ -479,13 +523,17 @@
       const order = toolLinks()
         .map((link) => link.getAttribute("data-tool-id"))
         .filter(Boolean);
-      localStorage.setItem(TOOL_ORDER_KEY, JSON.stringify(order));
+      try { localStorage.setItem(TOOL_ORDER_KEY, JSON.stringify(order)); } catch { /* Cloud saving is independent of local cache. */ }
+      savePreference({type:'order',order});
     }
 
     function applyToolOrder() {
       try {
-        const savedOrder = JSON.parse(localStorage.getItem(TOOL_ORDER_KEY) || "[]");
-        if (!Array.isArray(savedOrder) || savedOrder.length === 0) return;
+        const savedOrder = orderedIds(toolLinks().map(link => link.dataset.toolId), preferences.order);
+        for (const link of toolLinks()) {
+          if (preferences.colors[link.dataset.toolId]) link.style.setProperty('--tool-color',preferences.colors[link.dataset.toolId]);
+          else link.style.removeProperty('--tool-color');
+        }
         const orderIndex = new Map(savedOrder.map((id, index) => [id, index]));
         toolLinks()
           .sort((a, b) => {
@@ -509,10 +557,26 @@
         handle.setAttribute("tabindex", "0");
         handle.setAttribute("aria-label", `拖曳排序：${link.textContent.trim()}`);
         link.append(handle);
+        const colorHandle = document.createElement('span');
+        colorHandle.className='color-handle'; colorHandle.tabIndex=0; colorHandle.setAttribute('role','button');
+        colorHandle.setAttribute('aria-label',`調整顏色：${link.querySelector('h2').textContent}`);
+        colorHandle.title='縮圖顏色';
+        colorHandle.onclick=event => { event.preventDefault(); event.stopPropagation(); openColors(link); };
+        colorHandle.onkeydown=event => { if (['Enter',' '].includes(event.key)) { event.preventDefault(); event.stopPropagation(); openColors(link); } };
+        link.append(colorHandle);
+        handle.addEventListener('keydown',event => {
+          if (!editMode || !['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
+          event.preventDefault(); event.stopPropagation();
+          const links=toolLinks(), index=links.indexOf(link), delta={ArrowLeft:-1,ArrowRight:1,ArrowUp:-3,ArrowDown:3}[event.key], target=links[index+delta];
+          if (!target) return;
+          if (delta>0) target.after(link); else target.before(link);
+          saveToolOrder(); handle.focus();
+        });
       });
     }
 
     function setEditMode(nextMode) {
+      if (nextMode && !canEdit) return;
       editMode = nextMode;
       toolGrid.classList.toggle("editing", editMode);
       editButton.classList.toggle("active", editMode);
@@ -539,10 +603,18 @@
         }, 250);
       }
       dragState = null;
+      if (!didDrag) applyToolOrder();
     }
 
     applyToolOrder();
     installDragHandles();
+    connectPreferences(data => {
+      preferences=data;
+      if (!dragState) applyToolOrder();
+    }, (ready,message) => {
+      canEdit=ready; editButton.disabled=!ready; preferencesStatus.textContent=message;
+      if (!ready && editMode) { setEditMode(false); colorPicker.close(); }
+    }).then(repo => { preferencesRepo=repo; }).catch(() => { preferencesStatus.textContent='同步失敗，請重新整理後重試'; });
 
     toolLinks().forEach((link) => {
       const handle = link.querySelector(".drag-handle");

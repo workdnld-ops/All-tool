@@ -15,7 +15,16 @@
         :root { --primary: #1a73e8; --bg: #f8f9fa; --peak: #e74c3c; --off: #27ae60; }
         body { font-family: -apple-system, sans-serif; background-color: var(--bg); display: flex; justify-content: center; padding: 15px; margin: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
         button, select, .container, .stat-card, .day-tag { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
-        textarea { -webkit-user-select: text; user-select: text; }
+        textarea, input { -webkit-user-select: text; user-select: text; }
+        .usage { width:100%; border-collapse:collapse; margin:12px 0 20px; font-size:14px; }
+        .usage th, .usage td { padding:9px 4px; text-align:right; border-bottom:1px solid #e3e7eb; }
+        .usage th:first-child, .usage td:first-child { text-align:left; }
+        .stock-fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
+        .stock-fields label { display:grid; gap:6px; font-size:14px; min-width:0; }
+        .stock-fields input { width:100%; min-width:0; box-sizing:border-box; padding:9px; font:inherit; font-size:16px; border:1px solid #ccd3da; border-radius:6px; }
+        #save-stock { min-height:40px; padding:8px 16px; background:#1a73e8; color:white; border:0; border-radius:6px; font:inherit; }
+        #stock-result { display:block; margin:12px 0; font-weight:600; line-height:1.7; }
+        .estimate-note { color:#5f6368; font-size:12px; line-height:1.6; }
         .container { background: white; padding: 1.2rem; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); width: 100%; max-width: 480px; box-sizing: border-box; }
         
         /* 店鋪切換 */
@@ -94,9 +103,19 @@
 
     <div class="section-title">更換紀錄 (由新到舊)</div>
     <div id="daysContainer" class="tag-container"></div>
+    <div class="section-title">年度紙捲用量</div>
+    <table class="usage"><thead><tr><th>期間</th><th>已記錄（捲）</th><th>預估（捲）</th></tr></thead><tbody id="usage-periods"></tbody></table>
+    <p class="estimate-note">每個更換日期計為 1 捲；預估依歷史更換間隔推算，旺季為 7～1 月、淡季為 2～6 月。該季無樣本時採全期平均。年度旺季合計當年 1 月及 7～12 月。</p>
+    <div class="section-title">庫存盤點</div>
+    <div class="stock-fields"><label>盤點日期<input id="stock-date" type="date"></label><label>可用紙捲數<input id="stock-quantity" type="number" inputmode="numeric" min="0" step="1" placeholder="0"></label></div>
+    <button id="save-stock" type="button">儲存盤點</button>
+    <span id="stock-status" role="status"></span>
+    <output id="stock-result" aria-live="polite"></output>
+    <p class="estimate-note">可用數量包含機上剩餘紙捲（不足一捲可不計）。剩餘天數以今天起算，扣除盤點後的估計用量；補貨或實際用量不同時請重新盤點。</p>
 </div>
 
 <script type="module">
+  import { analyze, stockForecast, dayKey, parseDay } from './model.mjs';
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -116,11 +135,45 @@
 
   let currentShop = 'neihu';
   let allData = { neihu: {}, ruiguang: {} };
-  let debounceTimer;
+  const pending = new Map();
+  const timers = new Map();
+  let stockData = {};
+  let stockReady = false;
+  const stockDate = document.getElementById('stock-date');
+  const stockQuantity = document.getElementById('stock-quantity');
+  stockDate.max = dayKey();
+  stockDate.value = dayKey();
+  onValue(ref(db, 'stocktakes'), snapshot => {
+    stockData = snapshot.val() || {};
+    stockReady = true;
+    loadStock();
+  }, () => { document.getElementById('stock-status').textContent = '盤點資料讀取失敗，請重新整理'; });
+  function loadStock() {
+    if (![stockDate,stockQuantity].includes(document.activeElement)) {
+      stockDate.value = stockData[currentShop]?.date || dayKey();
+      stockQuantity.value = stockData[currentShop]?.quantity ?? '';
+    }
+    renderStock();
+  }
+  function renderStock() {
+    const forecast = stockForecast(stockData[currentShop], analyze(allData[currentShop]).rates);
+    document.getElementById('stock-result').textContent = !stockData[currentShop] ? '尚無盤點紀錄' : !forecast ? '更換紀錄不足，尚無法估算天數' : forecast.remaining === 0 ? '預估庫存已用完，請確認或重新盤點' : `預估剩餘 ${forecast.remaining.toFixed(1)} 捲 · ${forecast.days === null ? '超過 1,000 年，請確認盤點數量' : `約可用 ${forecast.days} 天（至 ${forecast.end}）`}`;
+  }
+  document.getElementById('save-stock').onclick = async () => {
+    const status = document.getElementById('stock-status');
+    if (!stockReady) { status.textContent = '請等待盤點資料載入'; return; }
+    const quantity = Number(stockQuantity.value), date = stockDate.value, shop = currentShop;
+    if (!stockQuantity.value.trim() || !Number.isSafeInteger(quantity) || quantity < 0 || parseDay(date) === null || date > dayKey()) { status.textContent = '請填入今天以前的日期與非負整數'; return; }
+    status.textContent = '儲存中…';
+    try {
+      await set(ref(db, `stocktakes/${shop}`), {date,quantity});
+      status.textContent = '盤點已儲存';
+    } catch { status.textContent = '儲存失敗，請重試'; }
+  };
 
   const yearSelect = document.getElementById('yearSelect');
   const thisYear = new Date().getFullYear();
-  for (let y = 2030; y >= 2022; y--) {
+  for (let y = Math.max(2030, thisYear + 1); y >= 2022; y--) {
       let opt = document.createElement('option');
       opt.value = y;
       opt.innerHTML = y + ' 年';
@@ -131,18 +184,20 @@
 
   onValue(ref(db, 'shops/'), (snapshot) => {
       const data = snapshot.val();
-      if (data) {
-          allData = data;
+      {
+          allData = data || {neihu:{},ruiguang:{}};
+          for (const [key,text] of pending) { const [shop,year] = key.split('/'); allData[shop] ||= {}; allData[shop][year] = text; }
           updateUI();
           document.getElementById('saveStatus').innerText = "雲端同步成功";
       }
-  });
+  }, () => { document.getElementById('saveStatus').innerText = '讀取失敗，請重新整理'; });
 
   window.switchShop = (shop) => {
       currentShop = shop;
       document.querySelectorAll('.shop-btn').forEach(b => b.classList.remove('active'));
       document.getElementById('btn-' + shop).classList.add('active');
       updateUI();
+      loadStock();
   };
 
   window.loadCurrentInput = () => {
@@ -157,11 +212,14 @@
       allData[currentShop][year] = text;
       
       document.getElementById('saveStatus').innerText = "儲存中...";
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-          set(ref(db, `shops/${currentShop}/${year}`), text)
-            .then(() => document.getElementById('saveStatus').innerText = "已安全儲存");
-      }, 800);
+      const shop = currentShop, key = `${shop}/${year}`;
+      pending.set(key,text);
+      clearTimeout(timers.get(key));
+      timers.set(key, setTimeout(() => {
+          set(ref(db, `shops/${shop}/${year}`), text)
+            .then(() => { if (pending.get(key) === text) pending.delete(key); document.getElementById('saveStatus').innerText = "已安全儲存"; })
+            .catch(() => { document.getElementById('saveStatus').innerText = '儲存失敗，請重新輸入重試'; });
+      }, 800));
       calculateAndRender();
   };
 
@@ -172,61 +230,11 @@
   }
 
   function calculateAndRender() {
-      const shopObj = allData[currentShop] || {};
-      const selectedYear = yearSelect.value;
-      let allDates = [];
-      
-      for (let year in shopObj) {
-          const lines = shopObj[year].split(/[\n,，、\s]+/).filter(d => d.includes('/'));
-          lines.forEach(dStr => {
-              const [m, d] = dStr.split('/');
-              const dateObj = new Date(parseInt(year), parseInt(m)-1, parseInt(d));
-              if (!isNaN(dateObj.getTime())) {
-                  allDates.push({ date: dateObj, year: year, month: parseInt(m) });
-              }
-          });
-      }
-
-      allDates.sort((a, b) => b.date - a.date);
-
-      let stats = {
-          full: { total: 0, count: 0 },
-          year: { total: 0, count: 0 },
-          peak: { total: 0, count: 0 },
-          off: { total: 0, count: 0 }
-      };
-
-      const container = document.getElementById('daysContainer');
-      container.innerHTML = "";
-
-      for (let i = 0; i < allDates.length - 1; i++) {
-          const diff = Math.round((allDates[i].date - allDates[i+1].date) / 86400000);
-          if (diff > 0) {
-              stats.full.total += diff;
-              stats.full.count++;
-
-              if (allDates[i].year === selectedYear) {
-                  stats.year.total += diff;
-                  stats.year.count++;
-              }
-
-              const m = allDates[i].month;
-              if (m === 1 || m >= 7) {
-                  stats.peak.total += diff;
-                  stats.peak.count++;
-              } else {
-                  stats.off.total += diff;
-                  stats.off.count++;
-              }
-              container.innerHTML += `<span class="day-tag">${diff}天</span>`;
-          }
-      }
-
-      const getAvg = (s) => s.count > 0 ? (s.total / s.count).toFixed(1) : "0";
-      document.getElementById('avg-full').innerText = getAvg(stats.full);
-      document.getElementById('avg-year').innerText = getAvg(stats.year);
-      document.getElementById('avg-peak').innerText = getAvg(stats.peak);
-      document.getElementById('avg-off').innerText = getAvg(stats.off);
+      const result = analyze(allData[currentShop], yearSelect.value);
+      for (const [key,stat] of Object.entries(result.stats)) document.getElementById('avg-' + key).textContent = stat.count ? (stat.total/stat.count).toFixed(1) : '—';
+      document.getElementById('daysContainer').innerHTML = result.intervals.map(days => '<span class="day-tag">' + days + '天</span>').join('');
+      document.getElementById('usage-periods').innerHTML = result.periods.map(period => '<tr><td>' + period.name + '</td><td>' + period.recorded + '</td><td>' + (period.estimate === null ? '—' : period.estimate.toFixed(1)) + '</td></tr>').join('');
+      renderStock();
   }
 
   if ('serviceWorker' in navigator) {

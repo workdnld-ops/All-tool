@@ -1,5 +1,5 @@
-import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.6.0';
-import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.4.0';
+import { DIFFICULTIES, validateState, duplicates, selectTasks, statistics, backup, parseBackup, assignees, executionHistory, listLogs, localDateKey, logFingerprint } from './model.mjs?v=1.7.0';
+import { CACHE_KEY, LOCAL_KEY, createLocalRepository, createCloudRepository } from './storage.mjs?v=1.7.0';
 import { createExecutorPreference } from './local-preferences.mjs?v=1.5.0';
 
 const $ = selector => document.querySelector(selector);
@@ -126,7 +126,7 @@ function renderLists() {
   const disabled = !writable();
   const tasks = selectTasks(state, {...filters, localPersonId});
   $('#result-count').textContent = `${tasks.length} / ${state.tasks.length}`;
-  const canMove = filters.sort === 'manual' && !filters.search && !filters.category && !filters.person && !filters.difficulty && !filters.unassigned && !filters.onlyLocal;
+  const canMove = ['manual', 'category'].includes(filters.sort) && !filters.search && !filters.person && !filters.difficulty && !filters.unassigned && !filters.onlyLocal;
   $('#tasks').innerHTML = tasks.length ? tasks.map((task, index) => `<article class="task tone-${tone(task.categoryId)}" data-task-id="${escape(task.id)}">
     <button class="category-badge" data-action="edit-task" data-id="${escape(task.id)}" title="修改工作分類" ${disabled ? 'disabled' : ''}>${escape(state.categories.find(category => category.id === task.categoryId)?.name)}</button>
     <div class="task-title"><h3 class="task-name">${escape(task.name)}</h3>${task.notes ? `<p class="task-notes" title="${escape(task.notes)}">${escape(task.notes)}</p>` : ''}</div>
@@ -136,8 +136,8 @@ function renderLists() {
     <div class="task-actions"><button class="log-button" data-action="task-log" data-id="${escape(task.id)}" title="查看工作紀錄" aria-label="${escape(task.name)}：${task.logs?.length ?? 0} 次紀錄">${icon('history')}${task.logs?.length ?? 0}</button><button class="quick-log" data-action="quick-log" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('check')}記一次</button></div></div>
     <details class="task-menu"><summary aria-label="${escape(task.name)}的操作" title="工作操作">${icon('ellipsis')}</summary><div class="menu">
       <button data-action="edit-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('pencil')}編輯與備註</button>
-      <button data-action="move-task-up" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === 0 ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
-      <button data-action="move-task-down" data-id="${escape(task.id)}" title="完整清單的手動排序模式可使用" ${disabled || !canMove || index === tasks.length - 1 ? 'disabled' : ''}>${icon('arrow-down')}下移</button>
+      <button data-action="move-task-up" data-id="${escape(task.id)}" title="在此分類中上移" ${disabled || !canMove || tasks[index - 1]?.categoryId !== task.categoryId ? 'disabled' : ''}>${icon('arrow-up')}上移</button>
+      <button data-action="move-task-down" data-id="${escape(task.id)}" title="在此分類中下移" ${disabled || !canMove || tasks[index + 1]?.categoryId !== task.categoryId ? 'disabled' : ''}>${icon('arrow-down')}下移</button>
       <button class="danger" data-action="delete-task" data-id="${escape(task.id)}" ${disabled ? 'disabled' : ''}>${icon('trash-2')}刪除工作</button>
     </div></details>
   </article>`).join('') : `<p class="empty">${filters.onlyLocal && !localPersonId ? '請選擇有效的本機預設同仁' : '沒有符合條件的工作'}</p>`;

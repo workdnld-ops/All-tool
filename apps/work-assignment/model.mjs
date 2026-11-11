@@ -132,7 +132,7 @@ export function selectTasks(state, filters = {}) {
     if (['difficulty-desc', 'difficulty-asc'].includes(filters.sort)) {
       if (a.difficulty === null || b.difficulty === null) comparison = Number(a.difficulty === null) - Number(b.difficulty === null);
       else comparison = (a.difficulty - b.difficulty) * (filters.sort === 'difficulty-desc' ? -1 : 1);
-    } else if (filters.sort === 'category') comparison = categoryOrder.get(a.categoryId) - categoryOrder.get(b.categoryId);
+    } else if (!filters.sort || ['category', 'manual'].includes(filters.sort)) comparison = categoryOrder.get(a.categoryId) - categoryOrder.get(b.categoryId);
     else if (filters.sort === 'person') comparison = Number(!isAssigned(a)) - Number(!isAssigned(b)) || ownerName(a).localeCompare(ownerName(b), 'zh-Hant');
     return comparison || a.order - b.order || a.id.localeCompare(b.id);
   });
@@ -281,7 +281,9 @@ export function applyCommand(original, command, now = new Date().toISOString()) 
     }
     case 'move': {
       if (!['tasks', 'categories'].includes(command.collection) || ![-1, 1].includes(command.direction)) fail('排序指令不正確');
-      const ordered = [...state[command.collection]].sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+      const moving = state[command.collection].find(entry => entry.id === command.id);
+      if (!moving) fail('排序項目不存在');
+      const ordered = state[command.collection].filter(entry => command.collection !== 'tasks' || entry.categoryId === moving.categoryId).sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
       const index = ordered.findIndex(entry => entry.id === command.id);
       if (index < 0) fail('排序項目不存在');
       const target = index + command.direction;
