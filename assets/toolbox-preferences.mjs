@@ -1,9 +1,18 @@
 export const PALETTE = [
-  ['柔霧紅','#E7B1B1','#7B3030'],['珊瑚粉','#F6A6A6','#842D32'],['蜜桃橘','#FFB997','#87401F'],['杏桃橘','#FFD29A','#805015'],['奶油黃','#FFE8A8','#805500'],['檸檬黃','#FFF6B6','#71600C'],
-  ['嫩芽綠','#E6F39C','#506418'],['酪梨綠','#CDE8B2','#426230'],['薄荷綠','#BFE7D5','#28634C'],['湖水綠','#A6E1DF','#236161'],['青瓷藍','#A9D9E8','#275F72'],['天空藍','#B7D8F6','#285B86'],
-  ['霧海藍','#9DBBE6','#234675'],['薰衣草藍','#A7B4ED','#343C78'],['丁香紫','#CBB5E8','#593873'],['藤花紫','#DAB9EF','#6C3D83'],['藕粉紫','#E8B7D6','#7C365F'],['櫻花粉','#F6C2D9','#87385D'],
+  ['霧粉紅','#FCEDEE','#914653'],['淡玫瑰','#FBE4E6','#984953'],['珊瑚粉','#FFE1DF','#984B4B'],['蜜桃橘','#FFE6D8','#934A18'],['杏桃橘','#FFF0DC','#92550D'],['奶油黃','#FFF6E1','#805500'],
+  ['檸檬黃','#FFFBE2','#78620C'],['米黃','#F9F4D9','#685816'],['嫩芽綠','#F1F9E8','#496837'],['酪梨綠','#EAF6E1','#435E37'],['薄荷綠','#E3F7EF','#28634F'],['湖水綠','#DEF6F3','#20656A'],
+  ['青瓷綠','#E1F5F6','#235D65'],['淺水藍','#E3F3FB','#30617F'],['天空藍','#E6F0FF','#356399'],['霧海藍','#DEEAF9','#304F73'],['薰衣草藍','#E4E8FF','#424078'],['藍紫','#EAE4FF','#493D78'],
+  ['丁香紫','#F3E9FF','#613877'],['藤花紫','#F6E6FB','#703C7E'],['夢幻紫','#F9E6F9','#7C3D7C'],['櫻花粉','#FFE7F3','#8F3761'],['玫瑰粉','#FFE0EB','#90384F'],['裸杏粉','#FBE7E3','#834B43'],
+  ['霧米白','#FCFCF9','#5B5851'],['象牙白','#F7F7F3','#55534E'],['淺灰','#F0F2F5','#51545C'],['灰藍','#E8EDF3','#455970'],['莫蘭灰','#E1E4E8','#44494F'],['深石灰','#D6D8DD','#383C42'],
 ];
-export const paletteInk = color => PALETTE.find(([,hex]) => hex === color)?.[2] ?? null;
+// Resolve old saved colors without resetting order or requiring a database migration.
+const LEGACY_COLORS = {
+  '#E7B1B1':'#FCEDEE', '#F6A6A6':'#FFE1DF', '#FFB997':'#FFE6D8', '#FFD29A':'#FFF0DC', '#FFE8A8':'#FFF6E1', '#FFF6B6':'#FFFBE2',
+  '#E6F39C':'#F1F9E8', '#CDE8B2':'#EAF6E1', '#BFE7D5':'#E3F7EF', '#A6E1DF':'#DEF6F3', '#A9D9E8':'#E1F5F6', '#B7D8F6':'#E6F0FF',
+  '#9DBBE6':'#DEEAF9', '#A7B4ED':'#E4E8FF', '#CBB5E8':'#F3E9FF', '#DAB9EF':'#F6E6FB', '#E8B7D6':'#FFE0EB', '#F6C2D9':'#FFE7F3',
+};
+const currentColor = color => LEGACY_COLORS[color] ?? color;
+export const paletteInk = color => PALETTE.find(([,hex]) => hex === currentColor(color))?.[2] ?? null;
 export const PREFERENCES_PATH = 'users/single-user/toolboxPreferences';
 const CACHE = 'opsToolboxPreferencesV1';
 const validId = id => typeof id === 'string' && /^[a-z0-9-]{1,80}$/.test(id);
@@ -11,8 +20,13 @@ export function validatePreferences(value) {
   if (!value || value.version !== 1) throw new Error('工具箱設定版本不相容');
   const order = value.order ?? [], colors = value.colors ?? {};
   if (!Array.isArray(order) || !order.every(validId) || new Set(order).size !== order.length || typeof colors !== 'object' || Array.isArray(colors)) throw new Error('工具箱設定格式錯誤');
-  for (const [id,color] of Object.entries(colors)) if (!validId(id) || !PALETTE.some(([,hex]) => hex === color)) throw new Error('縮圖色票格式錯誤');
-  return {version:1,order:[...order],colors:{...colors}};
+  const normalized = {};
+  for (const [id,color] of Object.entries(colors)) {
+    const resolved = currentColor(color);
+    if (!validId(id) || !PALETTE.some(([,hex]) => hex === resolved)) throw new Error('縮圖色票格式錯誤');
+    normalized[id] = resolved;
+  }
+  return {version:1,order:[...order],colors:normalized};
 }
 export function changePreferences(state, command) {
   const next=validatePreferences(state);

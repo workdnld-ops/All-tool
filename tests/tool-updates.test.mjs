@@ -6,7 +6,7 @@ import {PALETTE,paletteInk,changePreferences,validatePreferences,readPreferences
 import {createInitialState,applyCommand,selectTasks,backup,parseBackup} from '../apps/work-assignment/model.mjs';
 const memory=() => {const data=new Map();return {getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};};
 
-test('all toolbox swatches have matching dark ink with readable text contrast',()=>{
+test('all toolbox swatches have matching dark icons with readable contrast',()=>{
   const luminance=hex=>hex.slice(1).match(/../g).map(value=>parseInt(value,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
   for (const [name,color,ink] of PALETTE) {
     assert.equal(paletteInk(color),ink);
@@ -17,6 +17,23 @@ test('all toolbox swatches have matching dark ink with readable text contrast',(
   }
   assert.equal(paletteInk('#FFE8A8'),'#805500');
   assert.equal(paletteInk('unknown'),null);
+});
+
+test('new palette matches all 30 reference swatches and migrates all old colors safely',()=>{
+  assert.deepEqual(PALETTE.map(([,color])=>color), '#FCEDEE #FBE4E6 #FFE1DF #FFE6D8 #FFF0DC #FFF6E1 #FFFBE2 #F9F4D9 #F1F9E8 #EAF6E1 #E3F7EF #DEF6F3 #E1F5F6 #E3F3FB #E6F0FF #DEEAF9 #E4E8FF #EAE4FF #F3E9FF #F6E6FB #F9E6F9 #FFE7F3 #FFE0EB #FBE7E3 #FCFCF9 #F7F7F3 #F0F2F5 #E8EDF3 #E1E4E8 #D6D8DD'.split(' '));
+  const old='#E7B1B1 #F6A6A6 #FFB997 #FFD29A #FFE8A8 #FFF6B6 #E6F39C #CDE8B2 #BFE7D5 #A6E1DF #A9D9E8 #B7D8F6 #9DBBE6 #A7B4ED #CBB5E8 #DAB9EF #E8B7D6 #F6C2D9'.split(' ');
+  const colors=Object.fromEntries(old.map((color,i)=>[`tool-${i}`,color]));
+  const original={version:1,order:['tool-5','tool-0'],colors};
+  const before=structuredClone(original), normalized=validatePreferences(original);
+  assert.deepEqual(original,before);
+  assert.deepEqual(normalized.order,original.order);
+  assert.equal(Object.keys(normalized.colors).length,18);
+  assert.ok(Object.values(normalized.colors).every(color=>PALETTE.some(([,hex])=>hex===color)));
+  assert.equal(normalized.colors['tool-4'],'#FFF6E1');
+  assert.deepEqual(validatePreferences(normalized),normalized);
+  const storage=memory();storage.setItem('opsToolboxPreferencesV1',JSON.stringify(original));
+  assert.deepEqual(readPreferences(storage),normalized);
+  assert.deepEqual(changePreferences(original,{type:'order',order:['tool-0','tool-5']}).colors,normalized.colors);
 });
 
 test('paper records are strict, unique, selected-year counts with seasonal forecasts',()=>{
@@ -71,11 +88,11 @@ test('notes height grows, shrinks and stays within the keyboard viewport',()=>{
 test('toolbox migration, palette validation and independent order/color edits',()=>{
   const storage=memory();storage.setItem('opsToolboxToolOrder','["todo-board","drink-calculator"]');
   const state=readPreferences(storage);
-  assert.equal(PALETTE.length,18);
+  assert.equal(PALETTE.length,30);
   assert.deepEqual(orderedIds(['new-tool','drink-calculator','todo-board'],state.order),['todo-board','drink-calculator','new-tool']);
   const colored=changePreferences(state,{type:'color',id:'todo-board',color:'#E7B1B1'});
   const ordered=changePreferences(colored,{type:'order',order:['drink-calculator','todo-board']});
-  assert.equal(ordered.colors['todo-board'],'#E7B1B1');
+  assert.equal(ordered.colors['todo-board'],'#FCEDEE');
   assert.deepEqual(changePreferences(ordered,{type:'color',id:'todo-board',color:null}).colors,{});
   assert.throws(()=>changePreferences(state,{type:'color',id:'todo-board',color:'red'}));
   assert.throws(()=>validatePreferences({version:1,order:['x','x']}));
@@ -106,7 +123,7 @@ test('toolbox two-device cloud sync keeps first migration and merges separate fi
   await a.commit({type:'color',id:'todo-board',color:'#BFE7D5'});
   await b.commit({type:'order',order:['drink-calculator','todo-board']});
   assert.deepEqual(aData,bData);
-  assert.equal(aData.colors['todo-board'],'#BFE7D5');
+  assert.equal(aData.colors['todo-board'],'#E3F7EF');
   assert.deepEqual(readPreferences(aStore),bData);
   connected=false;for(const [path,fn]of watchers)if(path==='.info/connected')fn(snapshot(false));
   await assert.rejects(a.commit({type:'color',id:'todo-board',color:null}),/雲端/);

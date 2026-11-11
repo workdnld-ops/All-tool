@@ -15,7 +15,7 @@
 
 ## 2026-11 工具設定與用量統計
 
-- 工具箱排序及縮圖色票：`assets/toolbox-preferences.mjs`，沿用 money-card Firebase 的 `users/single-user/toolboxPreferences`。首次雲端沒有資料時，使用第一個開啟新版裝置的舊 `opsToolboxToolOrder`；之後雲端為主。本機快取 `opsToolboxPreferencesV1` 供載入顯示，未連上雲端時暫停編輯以避免覆寫。排序與顏色透過交易獨立更新。色票固定為使用者提供的 18 色。localhost 僅用本機預覽資料，不存取正式設定。
+- 工具箱排序及縮圖色票：`assets/toolbox-preferences.mjs`，沿用 money-card Firebase 的 `users/single-user/toolboxPreferences`。首次雲端沒有資料時，使用第一個開啟新版裝置的舊 `opsToolboxToolOrder`；之後雲端為主。本機快取 `opsToolboxPreferencesV1` 供載入顯示，未連上雲端時暫停編輯以避免覆寫。排序與顏色透過交易獨立更新。色票固定為新版「柔和彩色命名圖表」30 色，縮圖 icon 搭配同色系深色、工具名稱維持原黑色。舊 18 色讀取時自動對應新版相近色，下次編輯設定才隨交易保存，不需清空資料或重新排序。localhost 僅用本機預覽資料，不存取正式設定。
 - 簽單統計：原 `credit-paper-use` Firebase 的 `shops/{shop}/{year}` 更換日期不遷移，新增 `stocktakes/{shop}` 儲存 `{date, quantity}`。每個有效且不重複的更換日期視為一捲；各期間同時列出紀錄數及按歷史間隔估計的用量。延續既有季節定義與間隔歸屬（依更換日），旺季 7～1 月、淡季 2～6 月；無該季樣本時用全期平均。缺漏紀錄會影響推估精度。
 - 盤點為最新一次可用整捲數，不是進貨紀錄。依季節用量扣除自盤點日至今天的估計消耗，再推算可用天數與日期；資料不足時不提供天數。補貨後需重新盤點。
 - 庶務工作：沿用原 `order`，只移動同分類項目，全部工作依分類順序及分類內順序顯示；搜尋或人員等篩選期間不允許排序，避免隱藏工作造成位置歧義。不重建或覆蓋既有工作。
