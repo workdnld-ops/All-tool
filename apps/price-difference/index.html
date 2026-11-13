@@ -152,7 +152,7 @@ input,.outputText.manualCopy{user-select:text;-webkit-user-select:text}
 </div>
 <div class="field compactRow discountField">
   <div class="fieldtitle">原課程額外折扣（%）</div>
-  <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="srcDiscount:-1" aria-label="減少原課程折扣">−</button><input id="srcDiscount" type="number" inputmode="decimal" min="0" max="100" step="any" aria-label="原課程折扣百分比"><button type="button" data-adjust="srcDiscount:1" aria-label="增加原課程折扣">+</button></div><span class="unit">%</span></div>
+  <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="srcDiscount:-1" aria-label="減少原課程折扣">−</button><input id="srcDiscount" type="text" inputmode="decimal" aria-label="原課程折扣百分比"><button type="button" data-adjust="srcDiscount:1" aria-label="增加原課程折扣">+</button></div><span class="unit">%</span></div>
 </div>
 </div>
 </article>
@@ -292,6 +292,7 @@ document.querySelectorAll('[data-step-tab]').forEach(b=>b.addEventListener('clic
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.copy)copyText(b.dataset.copy);if(b.dataset.adjust){let [name,amount]=b.dataset.adjust.split(':');if(name.toLowerCase().includes('discount'))updateDiscount(name,+amount);else updateCount(name,+amount)}});
 for(const id of ['remaining','dstCount'])$(id).addEventListener('input',e=>{s[id]=e.target.value===''?'':Math.max(0,Math.min(100000000,Math.floor(digits(e.target.value))));currentResult=calc();renderResult(currentResult)});
 $('srcDiscount').addEventListener('input',e=>{s.srcDiscount=Math.max(discount.min,Math.min(discount.max,digits(e.target.value)));currentResult=calc();renderResult(currentResult)});
+for(const eventName of ['focus','click'])$('srcDiscount').addEventListener(eventName,e=>e.target.select());
 for(const id of ['remaining','dstCount','srcDiscount'])$(id).addEventListener('blur',()=>{$(id).value=s[id]});
 renderAll();
 async function loadPrices(){
