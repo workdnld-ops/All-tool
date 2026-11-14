@@ -31,11 +31,13 @@ function unique(items,label) {
  if(new Set(items.map(x=>x.name)).size!==items.length)throw new Error(`${label}：名稱重複`);
 }
 export function roundingRule(value) {
+ if(value==='保留原值')return {mode:'保留原值',places:0};
  const match=String(value).match(/^(四捨五入|截斷)至(整數|小數([1-6])位)$/);
  if(!match)throw new Error(`不支援的捨入規則：${value}`);
  return {mode:match[1],places:match[2]==='整數'?0:Number(match[3])};
 }
 export function roundValue(n,rule) {
+ if(rule.mode==='保留原值')return n;
  const scale=10**rule.places, sign=n<0?-1:1;
  return sign*(rule.mode==='截斷'?Math.floor(Math.abs(n)*scale+1e-8):Math.floor(Math.abs(n)*scale+0.5+1e-10))/scale;
 }

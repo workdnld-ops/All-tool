@@ -1,8 +1,7 @@
 /*
   價目來源：「換算價格表 by Jack」A1:K20，2026-11-08 讀取快照。
   輸出文字來源：「補價差計算機(全體同仁)」B27 / B30 原始 Google Sheets 公式。
-  注意：來源 C9 = 1/(1/1988) 實際有效數值 1987.9999999999998，
-  試算表在 CRM 串接文字時會輸出「1988.」(末尾句點)，此版保留該已觀察的行為。
+  原課程單堂價須保留價目表小數；例如幼幼8堂為 2387.5，不可先取整數。
 */
 import {roundValue} from './sheet-config.mjs';
 const BASE = [
@@ -49,7 +48,7 @@ export function createCalculator(config=null){
  const implicitReciprocalText=n=>config&&!config.compatibility?textNum(n):((1/(1/n))!==n?textNum(n)+'.':textNum(n));
 function srcUnit(name,type){
  const basic=byName(BASE,name);
- if(basic){return type==='非會員'?basic.nonmember:type==='會員'?basic.member:rounding('原課程單堂價',basic.unit??basic.plan/basic.count,roundSheet)}
+ if(basic){return type==='非會員'?basic.nonmember:type==='會員'?basic.member:rounding('原課程單堂價',basic.unit??basic.plan/basic.count,n=>n)}
  if(type!=='單堂方案/套裝價')return null;
  if(config){const rule=byName(config.conversions,name);return rule?rounding('套裝換算單堂價',rule.unit,roundSheet):null;}
  const plan=byName(BASE,'中階'), highSingle=byName(BASE,'高階(單/桃雙)'), highDouble=byName(BASE,'高階(雙)');
@@ -79,7 +78,7 @@ function calculate(s){
  const check=!s.srcCourse?'① 請選擇原課程級別':!s.srcPrice?'① 請選擇原課程價格類型':s.remaining===''?'① 請填寫剩餘堂數':unit==null?'① 這個課程沒有此價格類型（全套請選「單堂方案/套裝價」）':!s.convert?'② 請選擇轉換類型':!s.dstCourse?'② 請選擇目標課程':s.convert==='單堂'&&!s.dstPrice?'② 請選擇單堂價格類型':s.convert==='單堂'&&!digits(s.dstCount)?'② 請填寫目標堂數':price==null?'② 目標課程與轉換類型不符（套裝請選全套、單堂/方案請選一般課程）':null;
  if(check||oldValue==null||newValue==null)return{done:false,unit,oldValue,price,newValue,check:check||'請檢查填寫欄位'};
  const diff=rounding('差額',newValue-oldValue,roundDown2),c23=diff>0?'需補價差 NT$'+fmt(diff):'無需補價差'+(diff<0?'（殘值多 NT$'+fmt(-diff)+'）':'');
- // 來源試算表：因 C9=1/(1/1988) 得到 1987.9999999999998，CRM 隱式數字文字化為「1988.」。
+ // 原表使用 1/(1/單價)；僅在相容模式下模擬其浮點文字化現象。
  const rawSrcUnit=implicitReciprocalText(unit);
  const discountSrc=digits(s.srcDiscount)>0?'(折'+textNum(s.srcDiscount)+'%)':'';
  const toDescription=s.convert==='單堂'?(s.dstPrice+implicitReciprocalText(price)+'x'+textNum(s.dstCount)+'堂'):s.convert==='方案'?('方案價'+implicitReciprocalText(price)+'('+count+'堂)'):('套裝價'+implicitReciprocalText(price));

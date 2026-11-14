@@ -14,7 +14,7 @@ function fixture(){
   '換算規則':OPTIONS.filter(x=>!BASE.some(b=>b.name===x.name)).map(x=>[x.name,x.group,calculate({...sample,srcCourse:x.name}).unit]),
   '計算設定':[
    ['小全套分攤堂數',24],['預設額外折扣百分比',0],['折扣最小百分比',0],['折扣最大百分比',60],['折扣按鈕增減幅度',1],
-   ['原課程單堂價','四捨五入至整數'],['套裝換算單堂價','四捨五入至整數'],['剩餘價值','截斷至小數2位'],['目標總價','四捨五入至整數'],['差額','截斷至小數2位'],['顯示金額','四捨五入至整數'],
+   ['原課程單堂價','保留原值'],['套裝換算單堂價','四捨五入至整數'],['剩餘價值','截斷至小數2位'],['目標總價','四捨五入至整數'],['差額','截斷至小數2位'],['顯示金額','四捨五入至整數'],
    ['差額小於或等於0','無需補價差'],['全套原課程價格類型','單堂方案/套裝價'],['目標單堂數量為0','不計算'],['CRM浮點尾點相容','TRUE']
   ]
  };
@@ -26,6 +26,8 @@ function mockFetch(tables){return async url=>{const name=new URL(url).searchPara
 test('sheet calculator preserves legacy output and all source choices with default rules',()=>{
  const engine=createCalculator(parseTables(fixture()));
  assert.deepEqual(engine.calculate(sample),calculate(sample));
+ const original={srcCourse:'幼幼8堂',srcPrice:'單堂方案/套裝價',remaining:2,srcDiscount:12,convert:'單堂',dstCourse:'中階',dstPrice:'會員',dstCount:2};
+ assert.equal(engine.calculate(original).crm,'#轉換單堂_原課程:幼幼8堂_單堂價值2387.5(折12%)_剩餘2堂_殘餘總值4202_目標:中階_會員2400x2堂_總價4800_差價598_需補價差 NT$598');
  for(const option of OPTIONS)assert.deepEqual(engine.calculate({...sample,srcCourse:option.name}),calculate({...sample,srcCourse:option.name}));
  assert.deepEqual(engine.SRC_GROUPS,['一般','小全套','中全套','大全套','幼幼']);
 });
@@ -39,7 +41,7 @@ test('live prices, conversion formulas, discounts and target packages are config
  setSetting(tables,'折扣按鈕增減幅度',0.5);
  const config=parseTables(tables),engine=createCalculator(config);
  const result=engine.calculate(sample);
- assert.equal(result.unit,2100);assert.equal(result.price,4000);assert.equal(result.diff,6015);
+ assert.equal(result.unit,2100.2);assert.equal(result.price,4000);assert.equal(result.diff,6014.43);
  assert.equal(engine.calculate({...sample,convert:'套裝',dstCourse:'小全套'}).newValue,50000);
  assert.equal(engine.calculate({...sample,srcCourse:tables['換算規則'][0][0]}).unit,1234);
  assert.equal(engine.calculate({...sample,srcDiscount:61}).done,false);
@@ -57,8 +59,9 @@ test('rounding and CRM compatibility options are honored',()=>{
  setSetting(tables,'顯示金額','四捨五入至小數2位');
  const engine=createCalculator(parseTables(tables));
  const result=engine.calculate(sample);
- assert.match(result.crm,/單堂價值1988\(折5%\)/);
- assert.equal(result.c23,'需補價差 NT$3,334.2');
+ assert.match(result.crm,/單堂價值1987\.5\(折5%\)/);
+ assert.equal(result.c23,'需補價差 NT$3,335.63');
+ assert.equal(roundValue(2387.5,roundingRule('保留原值')),2387.5);
  assert.equal(roundValue(-1.235,roundingRule('四捨五入至小數2位')),-1.24);
  assert.equal(roundValue(-1.239,roundingRule('截斷至小數2位')),-1.23);
 });
@@ -125,11 +128,12 @@ test('page loads sheet values, refreshes existing selections and blocks copy aft
  assert.match(node('configStatus').textContent,/已同步/);
  context.sample=sample;
  vm.runInContext('s={...s,...sample};renderAll()',context);
- assert.equal(vm.runInContext('currentResult.diff',context),3334.2);
+ assert.equal(vm.runInContext('currentResult.diff',context),3335.63);
+ assert.equal(vm.runInContext('preciseMoney(2387.5)',context),'NT$2,387.5');
  tables['課程價目'].find(r=>r[0]==='高階(雙)')[4]=4000;
  await vm.runInContext('loadPrices()',context);
  assert.equal(vm.runInContext('s.srcCourse',context),'初階');
- assert.equal(vm.runInContext('currentResult.diff',context),6334.2);
+ assert.equal(vm.runInContext('currentResult.diff',context),6335.63);
  fail=true;await vm.runInContext('loadPrices()',context);
  assert.equal(vm.runInContext('currentResult.done',context),false);
  assert.equal(node('.forms').inert,true);

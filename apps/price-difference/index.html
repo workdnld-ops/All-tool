@@ -261,8 +261,9 @@ document.addEventListener('touchmove',event=>{if(event.touches.length>1)event.pr
 function calc(){return engine?engine.calculate(s):{done:false,check:$('configStatus').textContent}}
 function escapeHTML(str){return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function money(n){return n==null||!engine?'—':'NT$'+engine.fmt(n)}
+function preciseMoney(n){return n==null?'—':'NT$'+new Intl.NumberFormat('en-US',{maximumFractionDigits:10}).format(n)}
 function renderResult(t){
- const summary=[['原課程單堂價值',money(t.unit)],['殘餘總值',money(t.oldValue)],['目標單價 / 方案價 / 套裝價',money(t.price)],['目標總價',money(t.newValue)],['差價',t.done?money(t.diff):'—']];
+ const summary=[['原課程單堂價值',preciseMoney(t.unit)],['殘餘總值',preciseMoney(t.oldValue)],['目標單價 / 方案價 / 套裝價',preciseMoney(t.price)],['目標總價',preciseMoney(t.newValue)],['差價',t.done?preciseMoney(t.diff):'—']];
  const summaryHtml=summary.map(x=>'<div class="summaryRow"><span>'+x[0]+'</span><b>'+escapeHTML(x[1])+'</b></div>').join('');
  const negative=t.done&&t.diff<0,zero=t.done&&t.diff===0;
  const totalHtml='<div class="total '+(t.done?(negative?'negative':zero?'zero':'positive'):'')+'"><span>'+(t.done?(t.diff>0?'需補價差':'無需補價差'):'等待資料')+'</span><span class="amount">'+(t.done?escapeHTML(money(t.diff)): '—')+'</span></div>';
