@@ -147,7 +147,7 @@ input,.outputText.manualCopy{user-select:text;-webkit-user-select:text}
   </div>
   <div class="field compactCell compactCount">
     <div class="fieldtitle"><span>剩餘堂數 <span class="required">*</span></span></div>
-    <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="remaining:-1" aria-label="減少剩餘堂數">−</button><input type="number" inputmode="numeric" min="0" max="100000000" step="1" id="remaining" aria-label="剩餘堂數（剩餘徽章）"><button type="button" data-adjust="remaining:1" aria-label="增加剩餘堂數">+</button></div><span class="unit">堂</span></div>
+    <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="remaining:-1" aria-label="減少剩餘堂數">−</button><input type="text" inputmode="numeric" id="remaining" aria-label="剩餘堂數（剩餘徽章）"><button type="button" data-adjust="remaining:1" aria-label="增加剩餘堂數">+</button></div><span class="unit">堂</span></div>
   </div>
 </div>
 <div class="field compactRow discountField">
@@ -176,7 +176,7 @@ input,.outputText.manualCopy{user-select:text;-webkit-user-select:text}
   </div>
   <div class="field compactCell compactCount" id="dstCountField">
     <div class="fieldtitle"><span>目標堂數 <span class="required">*</span></span></div>
-    <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="dstCount:-1" aria-label="減少目標堂數">−</button><input type="number" inputmode="numeric" min="0" max="100000000" step="1" id="dstCount" aria-label="目標堂數"><button type="button" data-adjust="dstCount:1" aria-label="增加目標堂數">+</button></div><span class="unit">堂</span></div>
+    <div class="inlineNumber"><div class="stepper"><button type="button" data-adjust="dstCount:-1" aria-label="減少目標堂數">−</button><input type="text" inputmode="numeric" id="dstCount" aria-label="目標堂數"><button type="button" data-adjust="dstCount:1" aria-label="增加目標堂數">+</button></div><span class="unit">堂</span></div>
   </div>
 </div>
 <div class="formline" id="targetCountNotice" style="display:none"></div>
@@ -290,9 +290,9 @@ function emptyState(){return{srcGroup:'一般',srcCourse:'',srcPrice:'',remainin
 $('resetBtn').addEventListener('click',()=>{if(!window.confirm('確定清除目前的課程與計算結果？'))return;s=emptyState();renderAll();switchStep(1);showToast('已重設')});
 document.querySelectorAll('[data-step-tab]').forEach(b=>b.addEventListener('click',()=>switchStep(+b.dataset.stepTab)));
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.copy)copyText(b.dataset.copy);if(b.dataset.adjust){let [name,amount]=b.dataset.adjust.split(':');if(name.toLowerCase().includes('discount'))updateDiscount(name,+amount);else updateCount(name,+amount)}});
-for(const id of ['remaining','dstCount'])$(id).addEventListener('input',e=>{s[id]=e.target.value===''?'':Math.max(0,Math.min(100000000,Math.floor(digits(e.target.value))));currentResult=calc();renderResult(currentResult)});
+for(const id of ['remaining','dstCount'])$(id).addEventListener('input',e=>{if(e.target.value!==''&&!/^\d+$/.test(e.target.value)){e.target.value=s[id];return;}s[id]=e.target.value===''?'':Math.max(0,Math.min(100000000,Math.floor(digits(e.target.value))));currentResult=calc();renderResult(currentResult)});
 $('srcDiscount').addEventListener('input',e=>{s.srcDiscount=Math.max(discount.min,Math.min(discount.max,digits(e.target.value)));currentResult=calc();renderResult(currentResult)});
-for(const eventName of ['focus','click'])$('srcDiscount').addEventListener(eventName,e=>e.target.select());
+for(const id of ['remaining','dstCount','srcDiscount'])for(const eventName of ['focus','click'])$(id).addEventListener(eventName,e=>e.target.select());
 for(const id of ['remaining','dstCount','srcDiscount'])$(id).addEventListener('blur',()=>{$(id).value=s[id]});
 renderAll();
 async function loadPrices(){

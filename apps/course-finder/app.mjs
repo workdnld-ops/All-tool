@@ -28,8 +28,8 @@ function renderFilters() {
   const audiences = filters.sport === 'SK' && filters.stage === '中' ? [['','不限'],['全','全'],['幼','幼']] : [['','不限'],['幼','幼'],['成','成'],['兒','兒'],...(filters.stage === '' ? [['全','全']] : [])];
   $('#choices').innerHTML = choices('sport','課程類型',[['SB','SB 單板'],['SK','SK 雙板'],['training','自主訓練']]) +
     (training ? '' : choices('stage','程度',[['','不限'],['初','初'],['中','中'],['高','高']])) +
-    (hideAudience ? '' : choices('audience','班別',audiences)) +
     (training || filters.audience === '幼' ? '' : choices('level','等級',[['','不限'],...grades.map(n=>[String(n),`${n}級`])])) +
+    (hideAudience ? '' : choices('audience','班別',audiences)) +
     choices('store','店別',[['','兩店'],['內湖店','內湖'],['瑞光店','瑞光']]);
   const names = [...new Set([...(data?.courses.map(c=>c.name) ?? []),...(filters.exact ? [filters.exact] : [])])].sort();
   $('#exact').innerHTML = '<option value="">依條件篩選</option>' + names.map(name=>`<option value="${escape(name)}">${escape(name)}</option>`).join('');

@@ -138,8 +138,9 @@ test('page loads sheet values, refreshes existing selections and blocks copy aft
  assert.equal(vm.runInContext('currentResult.done',context),true);
 });
 
-test('discount uses selectable text with a decimal keyboard and selects on tap or focus',async()=>{
+test('all numeric inputs use selectable text with appropriate keyboards',async()=>{
  const html=await readFile(new URL('../apps/price-difference/index.html',import.meta.url),'utf8');
  assert.match(html,/<input id="srcDiscount" type="text" inputmode="decimal"/);
- assert.match(html,/\['focus','click'\]\)\$\('srcDiscount'\)\.addEventListener\(eventName,e=>e\.target\.select\(\)\)/);
+ for(const id of ['remaining','dstCount'])assert.match(html,new RegExp(`<input type="text" inputmode="numeric" id="${id}"`));
+ assert.match(html,/for\(const id of \['remaining','dstCount','srcDiscount'\]\)for\(const eventName of \['focus','click'\]\)\$\(id\)\.addEventListener\(eventName,e=>e\.target\.select\(\)\)/);
 });

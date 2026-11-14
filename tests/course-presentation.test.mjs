@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {courseTimeClass,formatLineParts,formatLine,formatText,INITIAL_FILTERS} from '../apps/course-finder/format.mjs';
 
+test('grade choices precede audience choices and both use full mobile rows',async()=>{
+  const app=await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
+  const css=await readFile(new URL('../apps/course-finder/styles.css',import.meta.url),'utf8');
+  assert.ok(app.indexOf("choices('level','等級'")<app.indexOf("choices('audience','班別'"));
+  assert.match(css,/#choices fieldset:has\(\[data-filter="level"\]\)\{grid-column:1\/-1\}/);
+  assert.match(css,/#choices fieldset:has\(\[data-filter="audience"\]\)\{grid-column:1\/-1\}/);
+});
+
 test('emphasis is applied to the entire course row, not only its time',async()=>{
   const app = await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
   assert.match(app,/item\.className = courseTimeClass\(course\)/);
