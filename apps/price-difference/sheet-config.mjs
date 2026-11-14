@@ -1,9 +1,8 @@
 export const SHEET_ID = '1_EZBxqaQWrHpwCDNTTGyWWMzEMZsUQxw2NGQjFKo7_s';
 export const TABLES = {
- '課程價目':['課程名稱','方案堂數','方案總價','非會員單堂價','會員單堂價','方案單堂價'],
- '套裝價目':['套裝名稱','原價','售價'],
+ '課程價目':['(價格變動需手動修正)','堂數','方案/套裝價','非會員','會員','單堂方案/套裝價',null,null,'方案原價','套裝價','折扣'],
  '計算設定':['設定項目','設定值','說明'],
- '換算規則':['原課程名稱','分類','單堂換算價']
+ '換算規則':['原課程名稱','分類']
 };
 
 export function parseGviz(text, name) {
@@ -12,8 +11,7 @@ export function parseGviz(text, name) {
  const data = JSON.parse(match[1]);
  if (data.status !== 'ok' || !Array.isArray(data.table?.rows)) throw new Error(`${name}：試算表回傳錯誤`);
  const {cols, rows} = data.table;
- const aliases={'原價':'方案原價','售價':'套裝價'};
- if (!TABLES[name].every((label,i)=>cols[i]?.label === label || (aliases[label] && cols[i]?.label === aliases[label]))) throw new Error(`${name}：欄位標題不符`);
+ if (!TABLES[name].every((label,i)=>label===null||cols[i]?.label===label)) throw new Error(`${name}：欄位標題不符`);
  return rows.map(row=>TABLES[name].map((_,i)=>row.c?.[i]?.v ?? null));
 }
 
@@ -47,17 +45,18 @@ export function parseTables(tables) {
   tables={...tables,[key]:tables[key].filter(row=>row.some(v=>v!==null&&v!==''))};
   if(!tables[key].length||tables[key].length>200)throw new Error(`${key}：需有 1 至 200 筆資料`);
  }
- // The user's sheet also lists package reference units below basic courses.
- // Only explicitly named conversion rows with empty B:E are reference rows.
+ // 套裝參考列與一般課程共用 A:F；H:J 是目標套裝價目。
  const conversionNames=new Set(tables['換算規則'].map(r=>r[0]));
  const references=tables['課程價目'].filter(r=>conversionNames.has(r[0])&&r.slice(1,5).every(v=>v===null||v===''));
  for(const row of references)number(row[5],`${row[0]}參考單堂價`);
- const base=tables['課程價目'].filter(r=>!references.includes(r)).map(r=>({name:name(r[0],'課程'),count:number(r[1],`${r[0]}堂數`,true),plan:number(r[2],`${r[0]}方案總價`),nonmember:number(r[3],`${r[0]}非會員價`),member:number(r[4],`${r[0]}會員價`),unit:number(r[5],`${r[0]}方案單堂價`)}));
+ const base=tables['課程價目'].filter(r=>r[0]&&!references.includes(r)).map(r=>({name:name(r[0],'課程'),count:number(r[1],`${r[0]}堂數`,true),plan:number(r[2],`${r[0]}方案總價`),nonmember:number(r[3],`${r[0]}非會員價`),member:number(r[4],`${r[0]}會員價`),unit:number(r[5],`${r[0]}方案單堂價`)}));
  if(!base.length)throw new Error('課程價目：缺少基本課程');
- unique(tables['課程價目'].map(r=>({name:name(r[0],'課程')})),'課程價目');
+ unique(tables['課程價目'].filter(r=>r[0]).map(r=>({name:name(r[0],'課程')})),'課程價目');
  if(base.some(x=>!Number.isInteger(x.count)))throw new Error('方案堂數須為整數');
- const packs=tables['套裝價目'].map(r=>({name:name(r[0],'套裝'),original:number(r[1],`${r[0]}原價`,true),price:number(r[2],`${r[0]}售價`)}));
- const conversions=tables['換算規則'].map(r=>({name:name(r[0],'換算課程'),group:name(r[1],'分類'),unit:number(r[2],`${r[0]}換算價`)}));
+ const packs=tables['課程價目'].filter(r=>r[7]).map(r=>({name:name(r[7],'套裝'),original:number(r[8],`${r[7]}原價`,true),price:number(r[9],`${r[7]}售價`)}));
+ if(!packs.length)throw new Error('課程價目：缺少套裝價目');
+ const referenceByName=new Map(references.map(r=>[r[0],r]));
+ const conversions=tables['換算規則'].map(r=>({name:name(r[0],'換算課程'),group:name(r[1],'分類'),unit:number(referenceByName.get(r[0])?.[5],`${r[0]}參考單堂價`)}));
  unique([...base,...conversions],'原課程');unique(packs,'套裝');
  const settings=Object.create(null);
  for(const row of tables['計算設定']) {

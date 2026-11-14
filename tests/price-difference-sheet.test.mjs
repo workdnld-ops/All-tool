@@ -8,13 +8,16 @@ import {readPriceConfig,createPriceConfigHandler} from '../server/price-differen
 
 const sample={srcCourse:'初階',srcPrice:'單堂方案/套裝價',remaining:3,srcDiscount:5,convert:'單堂',dstCourse:'高階(雙)',dstPrice:'會員',dstCount:3};
 function fixture(){
+ const conversions=OPTIONS.filter(x=>!BASE.some(b=>b.name===x.name));
  return {
-  '課程價目':BASE.map(x=>[x.name,x.count,x.plan,x.nonmember,x.member,x.plan/x.count]),
-  '套裝價目':PACKS.map(x=>[x.name,x.original,x.price]),
-  '換算規則':OPTIONS.filter(x=>!BASE.some(b=>b.name===x.name)).map(x=>[x.name,x.group,calculate({...sample,srcCourse:x.name}).unit]),
+  '課程價目':[
+   ...BASE.map((x,i)=>[x.name,x.count,x.plan,x.nonmember,x.member,x.plan/x.count,null,PACKS[i]?.name??null,PACKS[i]?.original??null,PACKS[i]?.price??null,PACKS[i]?PACKS[i].price/PACKS[i].original:null]),
+   ...conversions.map(x=>[x.name,null,null,null,null,calculate({...sample,srcCourse:x.name}).unit])
+  ],
+  '換算規則':conversions.map(x=>[x.name,x.group]),
   '計算設定':[
    ['小全套分攤堂數',24],['預設額外折扣百分比',0],['折扣最小百分比',0],['折扣最大百分比',60],['折扣按鈕增減幅度',1],
-   ['原課程單堂價','保留原值'],['套裝換算單堂價','四捨五入至整數'],['剩餘價值','截斷至小數2位'],['目標總價','四捨五入至整數'],['差額','截斷至小數2位'],['顯示金額','四捨五入至整數'],
+   ['原課程單堂價','保留原值'],['套裝換算單堂價','保留原值'],['剩餘價值','截斷至小數2位'],['目標總價','四捨五入至整數'],['差額','截斷至小數2位'],['顯示金額','四捨五入至整數'],
    ['差額小於或等於0','無需補價差'],['全套原課程價格類型','單堂方案/套裝價'],['目標單堂數量為0','不計算'],['CRM浮點尾點相容','TRUE']
   ]
  };
@@ -28,6 +31,18 @@ test('sheet calculator preserves legacy output and all source choices with defau
  assert.deepEqual(engine.calculate(sample),calculate(sample));
  const original={srcCourse:'幼幼8堂',srcPrice:'單堂方案/套裝價',remaining:2,srcDiscount:12,convert:'單堂',dstCourse:'中階',dstPrice:'會員',dstCount:2};
  assert.equal(engine.calculate(original).crm,'#轉換單堂_原課程:幼幼8堂_單堂價值2387.5(折12%)_剩餘2堂_殘餘總值4202_目標:中階_會員2400x2堂_總價4800_差價598_需補價差 NT$598');
+ const packageCase={...original,srcCourse:'小全套中階',dstCourse:'幼幼8堂',dstPrice:'單堂方案/套裝價'};
+ assert.equal(engine.calculate(packageCase).crm,'#轉換單堂_原課程:小全套中階_單堂價值1920.83333333333(折12%)_剩餘2堂_殘餘總值3380.66_目標:幼幼8堂_單堂方案/套裝價2387.5x2堂_總價4775_差價1394.34_需補價差 NT$1,394');
+ for(const [change,oldValue,diff] of [
+  [{srcCourse:'中全套(單/桃雙)高階',remaining:3,srcDiscount:5,dstCourse:'中階',dstPrice:'會員',dstCount:3},8162.63,-962.63],
+  [{srcCourse:'大全套(雙)初階',remaining:6,srcDiscount:0,convert:'方案',dstCourse:'初階'},11081.2,4818.8],
+  [{srcCourse:'幼幼24堂',remaining:5,srcDiscount:7.5,convert:'套裝',dstCourse:'中全套(雙)'},10271.35,56228.65],
+  [{dstDiscount:5},4202,358]
+ ]){
+  const result=engine.calculate({...original,...change});
+  assert.equal(result.oldValue,oldValue);
+  assert.equal(result.diff,diff);
+ }
  for(const option of OPTIONS)assert.deepEqual(engine.calculate({...sample,srcCourse:option.name}),calculate({...sample,srcCourse:option.name}));
  assert.deepEqual(engine.SRC_GROUPS,['一般','小全套','中全套','大全套','幼幼']);
 });
@@ -35,24 +50,24 @@ test('live prices, conversion formulas, discounts and target packages are config
  const tables=fixture();
  tables['課程價目'].find(r=>r[0]==='初階')[5]=2100.2;
  tables['課程價目'].find(r=>r[0]==='高階(雙)')[4]=4000;
- tables['套裝價目'][0][2]=50000;
- tables['換算規則'][0][2]=1234;
+ tables['課程價目'][0][9]=50000;
+ tables['課程價目'].find(r=>r[0]==='小全套初階')[5]=1234;
  setSetting(tables,'預設額外折扣百分比',2.5);
  setSetting(tables,'折扣按鈕增減幅度',0.5);
  const config=parseTables(tables),engine=createCalculator(config);
  const result=engine.calculate(sample);
  assert.equal(result.unit,2100.2);assert.equal(result.price,4000);assert.equal(result.diff,6014.43);
  assert.equal(engine.calculate({...sample,convert:'套裝',dstCourse:'小全套'}).newValue,50000);
- assert.equal(engine.calculate({...sample,srcCourse:tables['換算規則'][0][0]}).unit,1234);
+ assert.equal(engine.calculate({...sample,srcCourse:'小全套初階'}).unit,1234);
  assert.equal(engine.calculate({...sample,srcDiscount:61}).done,false);
  assert.deepEqual(config.discount,{min:0,max:60,initial:2.5,step:0.5});
 });
 test('reference package rows do not duplicate options or become target plans',()=>{
- const tables=fixture();tables['課程價目'].push(['小全套初階',null,null,null,null,1920.833]);
+ const tables=fixture();
  const config=parseTables(tables);
  assert.equal(config.base.length,7);assert.equal(config.options.length,19);
- const parsed=parseGviz(gviz('套裝價目',tables['套裝價目'],['套裝名稱','方案原價','套裝價']),'套裝價目');
- assert.deepEqual(parsed,tables['套裝價目']);
+ const parsed=parseGviz(gviz('課程價目',tables['課程價目']),'課程價目');
+ assert.deepEqual(parsed,tables['課程價目'].map(row=>TABLES['課程價目'].map((_,i)=>row[i]??null)));
 });
 test('rounding and CRM compatibility options are honored',()=>{
  const tables=fixture();setSetting(tables,'CRM浮點尾點相容','FALSE');
@@ -69,9 +84,9 @@ test('invalid or incomplete sheets fail atomically',()=>{
  const mutations=[
   t=>delete t['換算規則'],
   t=>t['課程價目'].push(t['課程價目'][0]),
-  t=>t['套裝價目'].push(t['套裝價目'][0]),
+  t=>t['課程價目'].push([null,null,null,null,null,null,null,'小全套',49100,46100,46100/49100]),
   t=>t['課程價目'][0][5]=null,
-  t=>t['換算規則'][0][2]='#REF!',
+  t=>t['課程價目'].find(r=>r[0]==='小全套初階')[5]='#REF!',
   t=>t['課程價目'][0][1]=0,
   t=>setSetting(t,'折扣最大百分比',101),
   t=>setSetting(t,'折扣最小百分比',70),
@@ -87,7 +102,7 @@ test('invalid or incomplete sheets fail atomically',()=>{
  assert.throws(()=>parseGviz('<html>login required</html>','課程價目'));
  assert.throws(()=>parseGviz(gviz('課程價目',[],['wrong']),'課程價目'));
 });
-test('server reads four bounded known tabs, returns raw validated tables, never caches errors',async()=>{
+test('server reads three bounded known tabs, returns raw validated tables, never caches errors',async()=>{
  const tables=fixture(),calls=[];
  const handler=createPriceConfigHandler({fetchImpl:async(url,options)=>{
   calls.push([new URL(url),options]);return mockFetch(tables)(url);
@@ -95,8 +110,8 @@ test('server reads four bounded known tabs, returns raw validated tables, never 
  const response=await handler(new Request('https://tool.example/api/price-difference-config'));
  assert.equal(response.status,200);assert.match(response.headers.get('cache-control'),/no-store/);
  const payload=await response.json();assert.equal(parseTables(payload.tables).base.length,7);
- assert.ok(Number.isFinite(Date.parse(payload.fetchedAt)));assert.equal(calls.length,4);
- for(const [url,options] of calls){assert.equal(url.host,'docs.google.com');assert.equal(url.searchParams.get('range'),'A1:F202');assert.equal(options.cache,'no-store');}
+ assert.ok(Number.isFinite(Date.parse(payload.fetchedAt)));assert.equal(calls.length,3);
+ for(const [url,options] of calls){assert.equal(url.host,'docs.google.com');assert.equal(url.searchParams.get('range'),url.searchParams.get('sheet')==='課程價目'?'A1:K202':url.searchParams.get('sheet')==='換算規則'?'A1:B202':'A1:C202');assert.equal(options.cache,'no-store');}
  assert.equal((await handler(new Request('https://tool.example/',{method:'POST'}))).status,405);
  const denied=createPriceConfigHandler({fetchImpl:async()=>new Response('denied',{status:403})});
  const failure=await denied(new Request('https://tool.example/'));assert.equal(failure.status,503);
@@ -104,7 +119,7 @@ test('server reads four bounded known tabs, returns raw validated tables, never 
 });
 test('timeouts include stalled response bodies and formula failure blocks the whole response',async()=>{
  await assert.rejects(readPriceConfig({timeoutMs:10,fetchImpl:async()=>({ok:true,text:()=>new Promise(()=>{})})}),/逾時/);
- const tables=fixture();tables['換算規則'][0][2]=null;
+ const tables=fixture();tables['課程價目'].find(r=>r[0]==='小全套初階')[5]=null;
  await assert.rejects(readPriceConfig({fetchImpl:mockFetch(tables)}),/缺少數值/);
 });
 
@@ -145,6 +160,7 @@ test('page loads sheet values, refreshes existing selections and blocks copy aft
 test('all numeric inputs use selectable text with appropriate keyboards',async()=>{
  const html=await readFile(new URL('../apps/price-difference/index.html',import.meta.url),'utf8');
  assert.match(html,/<input id="srcDiscount" type="text" inputmode="decimal"/);
+ assert.match(html,/<input id="dstDiscount" type="text" inputmode="decimal"/);
  for(const id of ['remaining','dstCount'])assert.match(html,new RegExp(`<input type="text" inputmode="numeric" id="${id}"`));
- assert.match(html,/for\(const id of \['remaining','dstCount','srcDiscount'\]\)for\(const eventName of \['focus','click'\]\)\$\(id\)\.addEventListener\(eventName,e=>e\.target\.select\(\)\)/);
+ assert.match(html,/for\(const id of \['remaining','dstCount','srcDiscount','dstDiscount'\]\)for\(const eventName of \['focus','click'\]\)\$\(id\)\.addEventListener\(eventName,e=>e\.target\.select\(\)\)/);
 });

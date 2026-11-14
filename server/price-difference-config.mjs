@@ -9,7 +9,7 @@ export async function readPriceConfig({fetchImpl=fetch,timeoutMs=10000}={}) {
     const tables={};
     await Promise.all(Object.keys(TABLES).map(async name=>{
      const url=new URL(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq`);
-     url.search=new URLSearchParams({tqx:'out:json',sheet:name,range:'A1:F202',headers:'1',t:String(Date.now())});
+     url.search=new URLSearchParams({tqx:'out:json',sheet:name,range:name==='課程價目'?'A1:K202':name==='換算規則'?'A1:B202':'A1:C202',headers:'1',t:String(Date.now())});
      const response=await fetchImpl(url,{signal:controller.signal,cache:'no-store'});
      if(!response.ok)throw new Error(`${name}：讀取失敗 (${response.status})`);
      const text=await response.text();
