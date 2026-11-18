@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {courseTimeClass,formatLineParts,formatLine,formatText,INITIAL_FILTERS} from '../apps/course-finder/format.mjs';
 
+test('course results allow desktop selection and iOS long-press copy without enabling controls',async()=>{
+  const css=await readFile(new URL('../apps/course-finder/styles.css',import.meta.url),'utf8');
+  const app=await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
+  assert.match(css,/#schedule,#schedule \*\{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default\}/);
+  assert.match(css,/body\{[^}]*user-select:none/);
+  assert.doesNotMatch(app,/addEventListener\(['"](?:selectstart|contextmenu)['"]/);
+});
+
 test('grade choices precede audience choices and both use full mobile rows',async()=>{
   const app=await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
   const css=await readFile(new URL('../apps/course-finder/styles.css',import.meta.url),'utf8');
