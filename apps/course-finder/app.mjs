@@ -2,6 +2,7 @@ import {taipeiNow,matches,updateFilters,addDays} from './calendar.mjs?v=1.0.0';
 import {INITIAL_FILTERS,filterTitle,formatLine,courseTimeClass,formatText,formatCSV} from './format.mjs?v=1.2.2';
 import {weekOptions,weekLabel,toggleWeek,groupCoursesByWeek,reconcileWeeks} from './weeks.mjs?v=1.2.0';
 import {createWeekLoader} from './load-weeks.mjs?v=1.2.1';
+import {createRecommendations,completeQuery} from './recommendations.mjs?v=1.3.0';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -10,6 +11,15 @@ let availableWeeks = weekOptions(taipeiNow());
 let selectedWeeks = availableWeeks.slice(0,2);
 let data = null, rows = [], busy = false, error = '', sequence = 0, controller, toastTimer;
 const loadWeeks = createWeekLoader();
+const recommendations = createRecommendations({onChange:renderRecommendations});
+let renderedSchedule = '';
+
+function renderRecommendations() {
+  const suggestions=recommendations.list(),active=completeQuery(filters)?.name;
+  const container=document.querySelector('.presets');
+  container.hidden=!suggestions.length;
+  container.innerHTML=suggestions.map(item=>`<button data-suggestion="${escape(item.name)}" aria-pressed="${active===item.name}" title="${escape(item.name)} · 查詢 ${item.count} 次">${escape(item.name)}</button>`).join('');
+}
 
 function renderWeeks() {
   const options = weekOptions(taipeiNow());
@@ -36,11 +46,7 @@ function renderFilters() {
   $('#exact').value = filters.exact;
   $('#day').value = filters.day;
   $('#time').value = filters.time;
-  document.querySelectorAll('[data-preset]').forEach(button => {
-    const preset = button.dataset.preset;
-    const active = !filters.exact && filters.sport === 'SB' && filters.stage === '初' && filters.level === (preset === 'all' ? '' : '2') && filters.audience === (preset === 'adult' ? '成' : '');
-    button.setAttribute('aria-pressed',String(active));
-  });
+  renderRecommendations();
 }
 function renderResults() {
   const now = taipeiNow();
@@ -68,7 +74,8 @@ function renderResults() {
       items.push(item);
     }
   }
-  $('#schedule').replaceChildren(...items);
+  const signature=JSON.stringify(items.map(item=>[item.className,item.textContent]));
+  if (signature!==renderedSchedule) { $('#schedule').replaceChildren(...items); renderedSchedule=signature; }
   $('#schedule').hidden = !!error;
   for (const id of ['copy','download']) $(`#${id}`).disabled = busy || !!error || !rows.length;
   $('#refresh').disabled = busy || !selectedWeeks.length;
@@ -111,18 +118,22 @@ $('#choices').addEventListener('click',event=>{
   if (!button) return;
   const {filter:key,value} = button.dataset;
   filters = updateFilters(filters,key,value);
+  if (key!=='store') recommendations.track(filters);
   renderFilters(); renderResults();
   [...document.querySelectorAll('[data-filter]')].find(item=>item.dataset.filter === key && item.dataset.value === value)?.focus({preventScroll:true});
 });
 for (const key of ['day','time','exact']) $(`#${key}`).addEventListener('change',event=>{
   const value = event.target.value;
   filters = key === 'exact' ? {...filters,exact:value,...(value ? {sport:'',stage:'',level:'',audience:''} : {})} : updateFilters(filters,key,value);
+  if (key==='exact') recommendations.track(filters);
   renderFilters(); renderResults();
 });
-$('#reset').onclick = () => { filters = {...INITIAL_FILTERS,sport:'',stage:''}; renderFilters(); renderResults(); };
+$('#reset').onclick = () => { filters = {...INITIAL_FILTERS,sport:'',stage:''}; recommendations.track(filters); renderFilters(); renderResults(); };
 document.querySelector('.presets').addEventListener('click',event=>{
-  const button = event.target.closest('[data-preset]'); if (!button) return;
-  filters = {...filters,sport:'SB',stage:'初',level:button.dataset.preset === 'all' ? '' : '2',audience:button.dataset.preset === 'adult' ? '成' : '',exact:''};
+  const button = event.target.closest('[data-suggestion]'); if (!button) return;
+  const suggestion=recommendations.list().find(item=>item.name===button.dataset.suggestion); if (!suggestion) return;
+  filters = {...filters,...suggestion.filters};
+  recommendations.track(filters);
   renderFilters(); renderResults();
 });
 $('#weeks').addEventListener('change',event=>{

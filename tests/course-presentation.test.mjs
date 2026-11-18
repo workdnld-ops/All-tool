@@ -2,6 +2,51 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {courseTimeClass,formatLineParts,formatLine,formatText,INITIAL_FILTERS} from '../apps/course-finder/format.mjs';
+import {completeQuery,createRecommendations,HISTORY_KEY} from '../apps/course-finder/recommendations.mjs';
+
+test('recommendations use complete course names and normalize exact selections',()=>{
+  for(const [sport,stage,level,audience,name] of [['SK','中','4','','SK中4'],['SB','高','7','','SB高7'],['SK','初','2','兒','SK初2兒']]) {
+    const query=completeQuery({sport,stage,level,audience});
+    assert.equal(query.name,name);
+    assert.deepEqual(completeQuery({exact:name}),query);
+  }
+  assert.equal(completeQuery(INITIAL_FILTERS),null);
+  assert.equal(completeQuery({sport:'SB',stage:'高',level:'2'}),null);
+  assert.equal(completeQuery({sport:'SB',stage:'高',audience:'幼'}),null);
+});
+
+test('frequent queries persist, debounce edits, deduplicate and rank by count then recency',()=>{
+  let saved=null,clock=0,id=0;const jobs=new Map();
+  const storage={getItem:()=>saved,setItem:(key,value)=>{assert.equal(key,HISTORY_KEY);saved=value;}};
+  const options={storage,now:()=>++clock,schedule:fn=>{jobs.set(++id,fn);return id;},cancel:id=>jobs.delete(id)};
+  const flush=()=>{const pending=[...jobs.values()];jobs.clear();pending.forEach(fn=>fn());};
+  const history=createRecommendations(options),a={sport:'SK',stage:'中',level:'4'},b={sport:'SB',stage:'高',level:'7'};
+  assert.deepEqual(history.list(),[]);
+  history.track(a);history.track(b);flush();
+  assert.deepEqual(history.list().map(x=>x.name),['SB高7']);
+  history.track(b);flush();assert.equal(history.list()[0].count,1);
+  history.track(a);flush();history.track(b);flush();
+  assert.deepEqual(history.list().map(x=>[x.name,x.count]),[['SB高7',2],['SK中4',1]]);
+  assert.deepEqual(createRecommendations(options).list(),history.list());
+  assert.equal(createRecommendations({storage:{getItem:()=>null}}).list().length,0);
+  saved='not-json';assert.doesNotThrow(()=>createRecommendations(options).list());
+  saved='{"bad":1}';assert.deepEqual(createRecommendations(options).list(),[]);
+});
+
+test('recommendation storage failures do not block the course tool',()=>{
+  let run;const h=createRecommendations({storage:{getItem(){throw Error('denied')},setItem(){throw Error('denied')}},schedule:fn=>{run=fn;},cancel(){}});
+  h.track({sport:'SK',stage:'初',level:'2',audience:'兒'});run();
+  assert.equal(h.list()[0].name,'SK初2兒');
+});
+
+test('presets are history-driven and unchanged results retain native text selection',async()=>{
+  const html=await readFile(new URL('../apps/course-finder/index.html',import.meta.url),'utf8');
+  const app=await readFile(new URL('../apps/course-finder/app.mjs',import.meta.url),'utf8');
+  assert.doesNotMatch(html,/data-preset=/);
+  assert.match(app,/filters = \{\.\.\.filters,\.\.\.suggestion.filters\}/);
+  assert.match(app,/if \(signature!==renderedSchedule\)/);
+  assert.doesNotMatch(app.slice(app.indexOf('async function load('),app.indexOf('function notify(')),/recommendations.track/);
+});
 
 test('course results allow desktop selection and iOS long-press copy without enabling controls',async()=>{
   const css=await readFile(new URL('../apps/course-finder/styles.css',import.meta.url),'utf8');
